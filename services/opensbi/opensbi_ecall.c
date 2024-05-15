@@ -36,10 +36,6 @@
 #  include "opensbi_rproc_ecall.h"
 #endif
 
-#if IS_ENABLED(CONFIG_USE_USER_CRYPTO) && IS_ENABLED(CONFIG_SERVICE_OPENSBI_CRYPTO)
-#  include "opensbi_crypto_ecall.h"
-#endif
-
 #include "hss_boot_service.h"
 
 int HSS_SBI_ECALL_Handler(long extid, long funcid,
@@ -71,28 +67,23 @@ int HSS_SBI_ECALL_Handler(long extid, long funcid,
 #endif
             break;
 
-#if IS_ENABLED(CONFIG_USE_USER_CRYPTO) && IS_ENABLED(CONFIG_SERVICE_OPENSBI_CRYPTO)
-        case SBI_EXT_CRYPTO_INIT:
-            __attribute__((fallthrough)); // deliberate fallthrough
-        case SBI_EXT_CRYPTO_SERVICES_PROBE:
-            __attribute__((fallthrough)); // deliberate fallthrough
-        case SBI_EXT_CRYPTO_SERVICES:
-            result = sbi_ecall_crypto_handler(extid, funcid, regs, out_val, out_trap);
-            break;
-#endif
-
         //
         // HSS functions
         case SBI_EXT_HSS_REBOOT:
             IPI_MessageAlloc(&index);
             IPI_MessageDeliver(index, HSS_HART_E51, IPI_MSG_BOOT_REQUEST, 0u, NULL, NULL);
-            result = SBI_OK;
+            result = 0;
             break;
 
         default:
             result = SBI_ENOTSUPP;
     };
 
+//exit:
+    //if (result >= 0) {
+    //    *out_val = result;
+    //    result = 0;
+    //}
     return result;
 }
 

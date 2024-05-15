@@ -24,6 +24,7 @@
 #include "encoding.h"
 #endif
 
+//#include "mss_legacy_defines.h"
 #include "mss_assert.h"
 
 #ifdef __cplusplus

@@ -45,8 +45,8 @@ int sbi_ecall_rproc_handler(unsigned long extid, unsigned long funcid,
     uint32_t ihc_tx_message[IHC_MAX_MESSAGE_SIZE];
 
     if ((remote_channel < IHC_CHANNEL_TO_CONTEXTA) || (remote_channel > IHC_CHANNEL_TO_CONTEXTB)) {
-        result = SBI_EINVAL;
-        goto exit;
+            result = SBI_EINVAL;
+            goto exit;
     }
 
     remote_hart_id = IHC_context_to_context_hart_id(remote_channel);
@@ -55,10 +55,9 @@ int sbi_ecall_rproc_handler(unsigned long extid, unsigned long funcid,
 #if IS_ENABLED(CONFIG_SERVICE_BOOT)
         case SBI_EXT_RPROC_STATE:
             if (!HSS_SkipBoot_IsSet(remote_hart_id))
-                *out_val = CONTEXT_RUNNING;
+                result = CONTEXT_RUNNING;
             else
-                *out_val = CONTEXT_OFFLINE;
-            result = SBI_OK;
+                result = CONTEXT_OFFLINE;
             break;
 #endif
         case SBI_EXT_RPROC_START:
@@ -82,6 +81,10 @@ int sbi_ecall_rproc_handler(unsigned long extid, unsigned long funcid,
     };
 
 exit:
+    if (result >= 0) {
+        *out_val = result;
+        result = 0;
+    }
     return result;
 }
 

@@ -36,6 +36,7 @@ INCLUDES +=\
 	-I./services/usbdmsc \
 	-I./services/usbdmsc/flash_drive \
 
-$(BINDIR)/services/usbdmsc/flash_drive/flash_drive_app.o: CFLAGS=$(CFLAGS_GCCEXT)
-$(BINDIR)/services/usbdmsc/usbdmsc_api.o: CFLAGS=$(CFLAGS_GCCEXT)
-$(BINDIR)/services/usbdmsc/flash_drive/usb_user_descriptors.o: CFLAGS=$(CFLAGS_GCCEXT)
+services/usbdmsc/flash_drive/flash_drive_app.o: CFLAGS=$(CFLAGS_GCCEXT)
+services/usbdmsc/usbdmsc_api.o: CFLAGS=$(CFLAGS_GCCEXT)
+services/usbdmsc/flash_drive/usb_user_descriptors.o: CFLAGS=$(CFLAGS_GCCEXT)
+

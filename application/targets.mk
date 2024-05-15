@@ -27,7 +27,7 @@
 # Defines build targets
 #
 
-all: $(CONFIG_H) $(TARGET)
+all: config.h $(TARGET)
 
 ##############################################################################
 #
@@ -36,51 +36,51 @@ all: $(CONFIG_H) $(TARGET)
 
 defconfig:
 	@$(ECHO) " CP       def_config";
-	cp boards/${BOARD}/def_config $(DOT_CONFIG)
+	cp boards/${BOARD}/def_config .config
 	@$(ECHO) " GENCONFIG"
-	KCONFIG_CONFIG=$(DOT_CONFIG) KCONFIG_AUTOHEADER=$(CONFIG_H) $(PYTHON) $(GENCONFIG)
+	$(PYTHON) $(GENCONFIG)
 
 menuconfig:
 	@$(ECHO) " MENUCONFIG"
-	KCONFIG_CONFIG=$(DOT_CONFIG) KCONFIG_AUTOHEADER=$(CONFIG_H) $(PYTHON) $(MENUCONFIG)
+	$(PYTHON) $(MENUCONFIG)
 
 config:
 	@$(ECHO) " MENUCONFIG"
-	KCONFIG_CONFIG=$(DOT_CONFIG) KCONFIG_AUTOHEADER=$(CONFIG_H) $(PYTHON) $(MENUCONFIG)
+	$(PYTHON) $(MENUCONFIG)
 
 guiconfig:
 	@$(ECHO) " GUICONFIG"
-	KCONFIG_CONFIG=$(DOT_CONFIG) KCONFIG_AUTOHEADER=$(CONFIG_H) $(PYTHON) $(GUICONFIG)
+	$(PYTHON) $(GUICONFIG)
 
 
 # we can't run curses in SoftConsole, so just copy a pre-canned
 # config, and the user can tweak if necessary
-$(DOT_CONFIG):
+.config:
 ifeq ($(HOST_WINDOWS), true)
 	$(info Using boards/${BOARD}/def_config - edit as necessary.)
 	@$(ECHO) " CP       def_config";
-	cp boards/${BOARD}/def_config $(DOT_CONFIG)
+	cp boards/${BOARD}/def_config .config
 	@$(ECHO) " GENCONFIG"
-	KCONFIG_CONFIG=$(DOT_CONFIG) KCONFIG_AUTOHEADER=$(CONFIG_H) $(PYTHON) $(GENCONFIG)
+	$(PYTHON) $(GENCONFIG)
 else
   ifeq ($(HOST_LINUX_DESKTOP), true)
 	@$(ECHO) " CP       def_config";
-	cp boards/${BOARD}/def_config $(DOT_CONFIG)
+	cp boards/${BOARD}/def_config .config
 	@$(ECHO) " GUICONFIG"
-	KCONFIG_CONFIG=$(DOT_CONFIG) KCONFIG_AUTOHEADER=$(CONFIG_H) $(PYTHON) $(GUICONFIG)
+	$(PYTHON) $(GUICONFIG)
   else
 	@$(ECHO) " CP       def_config";
-	cp boards/${BOARD}/def_config $(DOT_CONFIG)
+	cp boards/${BOARD}/def_config .config
 	@$(ECHO) " MENUCONFIG"
-	KCONFIG_CONFIG=$(DOT_CONFIG) KCONFIG_AUTOHEADER=$(CONFIG_H) $(PYTHON) $(MENUCONFIG)
+	$(PYTHON) $(MENUCONFIG)
   endif
 endif
 
-$(CONFIG_H): $(DOT_CONFIG)
+config.h: .config
 	@$(ECHO) " GENCONFIG"
-	KCONFIG_CONFIG=$(DOT_CONFIG) KCONFIG_AUTOHEADER=$(CONFIG_H) $(PYTHON) $(GENCONFIG)
+	$(PYTHON) $(GENCONFIG)
 
-genconfig: $(CONFIG_H)
+genconfig: config.h
 
 ##############################################################################
 #
@@ -99,18 +99,6 @@ profile: clean $(TARGET)
 
 .PHONY: clean cppcheck splint cscope cscope.files
 
-ifeq ($(OS), Windows_NT)
-# The make.exe bundled with SoftConsole has issues expanding a long list of
-# targets to clean...
-# working around this by forcibly clearing the entire $(BINDIR) here...
-clean: envm-wrapper_clean
-	$(RM) -r $(BINDIR)/*
-	$(RM) -r docs/DoxygenOutput
-	$(RM) -r lcovOutput coverage.info
-	$(RM) *.gcov
-	$(RM) *.lss *.hex *.sym
-	$(RM) x509-ec-secp384r1-public.h
-else
 clean: envm-wrapper_clean
 	$(RM) $(TARGET) $(TEST_TARGET) cppcheck.log splint.log valgrind.log \
 		$(OBJS:.o=.gcda) $(OBJS) $(OBJS:.o=.gcno) $(OBJS:.o=.c.gcov) $(OBJS:.o=.su) \
@@ -118,7 +106,7 @@ clean: envm-wrapper_clean
 		$(TEST_OBJS) $(TEST_OBJS.o=.gcno) $(TEST_OBJS.o=.c.gcov) $(TEST_OBJS:.o=.su) \
 		$(DEPENDENCIES) \
 		gmon.out cscope.out \
-		error.log flawfinder.log sparse.log $(BINDIR)/output-*.map $(CONFIG_H) \
+		error.log flawfinder.log sparse.log $(BINDIR)/output-*.map config.h \
                 $(TARGET:.elf=.hex) $(TARGET:.elf=.lss) $(TARGET:.elf=.sym) $(TARGET:.elf=.bin)
 	$(RM) -r docs/DoxygenOutput
 	$(RM) -r lcovOutput coverage.info
@@ -126,7 +114,6 @@ clean: envm-wrapper_clean
 	$(RM) *.lss *.hex *.sym
 	$(RM) $(BINDIR)/hss* $(BINDIR)/output.map
 	$(RM) x509-ec-secp384r1-public.h
-endif
 
 distclean:
 	$(RM) $(OBJS) $(TARGET) cppcheck.log splint.log valgrind.log \

@@ -23,7 +23,6 @@
 
 #include "hss_atomic.h"
 #include "hss_init.h"
-#include "hss_board_init.h"
 #include "hss_version.h"
 #if IS_ENABLED(CONFIG_SERVICE_TINYCLI)
 #  include "tinycli_service.h"
@@ -32,14 +31,12 @@
 #include "csr_helper.h"
 
 #if IS_ENABLED(CONFIG_SERVICE_BOOT)
-#  include "hss_boot_init.h"
 #  include "hss_boot_service.h"
 #endif
 
 #if IS_ENABLED(CONFIG_OPENSBI)
 #  include "sbi/riscv_asm.h"
 #  include "sbi/sbi_version.h"
-#  include "opensbi_service.h"
 #endif
 
 #include "hss_sys_setup.h"
@@ -64,6 +61,7 @@
 #define mMEM_SIZE(REGION)      (REGION##_END - REGION##_START + 1u)
 extern const uint64_t __dtim_start,    __dtim_end;
 extern const uint64_t __l2_start;
+extern const uint64_t __ddr_start,        __ddr_end;
 extern const uint64_t _hss_start;
 
 #define E51_DTIM_START         (&__dtim_start)
@@ -87,29 +85,28 @@ extern const uint64_t _hss_start;
 #define L2_START               (&__l2_start)
 #define L2_END                 (&__l2_end)
 
-// can't access DDRHI_START without getting an error:
-//     R_RISCV_PCREL_HI20 against symbol `__ddrhi_start'
+#define DDR_START              (&__ddr_start)
+// can't access DDR_END without getting an error:
+//     R_RISCV_PCREL_HI20 against symbol `__ddr_end'
 // solution is to use assembler instead as the symbol is constant at link time
 //
-//  #define DDRHI_START                (&__ddrhi_start)
+//  #define DDR_END                (&__ddr_end)
 asm(".align 3\n"
-    ".globl hss_init_ddrhi_start\n"
-    ".globl hss_init_ddrhi_end\n\t"
-    "hss_init_ddrhi_start: .quad (__ddrhi_start)\n\t"
-    "hss_init_ddrhi_end: .quad (__ddrhi_max_end)\n");
+    "hss_init_ddr_end: .quad (__ddr_end)\n");
 
-extern const uint64_t hss_init_ddrhi_start, hss_init_ddrhi_end;
-#define DDRHI_START          (&hss_init_ddrhi_start)
-#define DDRHI_END            (&hss_init_ddrhi_end)
+extern const uint64_t hss_init_ddr_end;
+#define DDR_END                (&hss_init_ddr_end)
 
-#include "mss_sysreg.h"
+#if IS_ENABLED(CONFIG_PLATFORM_MPFS)
+#  include "mss_sysreg.h"
+#endif
 
 bool HSS_ZeroDDR(void)
 {
 #if IS_ENABLED(CONFIG_INITIALIZE_MEMORIES)
-    uint64_t volatile *pDWord = (uint64_t volatile *)DDRHI_START;
+    uint64_t volatile *pDWord = (uint64_t volatile *)DDR_START;
 
-    while (pDWord < (uint64_t volatile const * const)DDRHI_END) {
+    while (pDWord < (uint64_t volatile const * const)DDR_END) {
         *pDWord = 0llu;
         pDWord++;
     }
@@ -142,7 +139,9 @@ bool HSS_Init_RWDATA_BSS(void)
     //UART not setup at this point
     //mHSS_DEBUG_PRINTF("Setting up RW Data and BSS sections\n");
 
+#if IS_ENABLED(CONFIG_PLATFORM_MPFS)
     init_memory();
+#endif
 
     return true;
 }
@@ -187,12 +186,16 @@ void HSS_PrintToolVersions(void)
 
 bool HSS_E51_Banner(void)
 {
+#ifndef VENDOR_STRING
+#    define VENDOR_STRING ""
+#endif
+
 #if !IS_ENABLED(CONFIG_SKIP_DDR)
     extern const char DDR_DRIVER_VERSION[];
 #endif
 
     mHSS_FANCY_PRINTF(LOG_STATUS,
-        "PolarFire(R) SoC Hart Software Services (HSS) - version %d.%d.%d-" STR(VENDOR_STRING) "\n"
+        "PolarFire(R) SoC Hart Software Services (HSS) - version %d.%d.%d" VENDOR_STRING "\n"
         "MPFS HAL version %d.%d.%d"
 #if !IS_ENABLED(CONFIG_SKIP_DDR)
         " / DDR Driver version %s"
@@ -226,9 +229,9 @@ bool HSS_E51_Banner(void)
     HSS_PrintToolVersions();
 #endif
 
-    //if (&_hss_start == &__l2_start) {
-    //    mHSS_FANCY_PRINTF(LOG_WARN, "NOTICE: Running from L2 Scratchpad\n\n");
-    //}
+    if (&_hss_start == &__l2_start) {
+        mHSS_FANCY_PRINTF(LOG_WARN, "NOTICE: Running from L2 Scratchpad\n\n");
+    }
 
     return true;
 }
@@ -237,7 +240,7 @@ bool HSS_E51_Banner(void)
 bool HSS_ResetReasonInit(void)
 {
 #if IS_ENABLED(CONFIG_DEBUG_RESET_REASON)
-    uint32_t reset_reason = SYSREG->RESET_SR;
+    uint8_t reset_reason = SYSREG->RESET_SR;
 
     const char* const reset_reason_string[] = {
         [ RESET_SR_SCB_PERIPH_RESET_OFFSET ]	= "SCB peripheral reset signal",
@@ -274,7 +277,17 @@ bool HSS_ResetReasonInit(void)
 
 void HSS_Init(void)
 {
-    HSS_Init_RWDATA_BSS();
-    HSS_UARTInit();
-    HSS_OpenSBIInit();
+    RunInitFunctions(spanOfGlobalInitFunctions, globalInitFunctions);
+
+#if IS_ENABLED(CONFIG_SERVICE_BOOT)
+    HSS_Boot_RestartCore(HSS_HART_ALL);
+
+#    if IS_ENABLED(CONFIG_UART_SURRENDER)
+#        if IS_ENABLED(CONFIG_SERVICE_TINYCLI)
+    HSS_TinyCLI_SurrenderUART();
+#        endif
+    void uart_surrender(void);
+    uart_surrender();
+#    endif
+#endif
 }

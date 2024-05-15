@@ -17,9 +17,6 @@
 #include "hss_state_machine.h"
 #include "hss_debug.h"
 #include "hss_clock.h"
-#include "hss_boot_init.h"
-#include "hss_progress.h"
-#include "hss_trigger.h"
 
 #include <string.h> //memset
 #include <assert.h>
@@ -32,8 +29,11 @@
 
 #include "drivers/mss/mss_mmuart/mss_uart.h"
 
+#if IS_ENABLED(CONFIG_SERVICE_USBDMSC)
+#  include "usbdmsc_service.h"
+#endif
+
 static void tinycli_init_handler(struct StateMachine * const pMyMachine);
-static void tinycli_preboot_handler(struct StateMachine * const pMyMachine);
 static void tinycli_readline_onEntry(struct StateMachine * const pMyMachine);
 static void tinycli_readline_handler(struct StateMachine * const pMyMachine);
 static void tinycli_readline_onExit(struct StateMachine * const pMyMachine);
@@ -47,7 +47,6 @@ static void tinycli_uart_surrender_handler(struct StateMachine * const pMyMachin
  */
 enum UartStatesEnum {
     TINYCLI_INITIALIZATION,
-    TINYCLI_PREBOOT,
     TINYCLI_READLINE,
     TINYCLI_PARSELINE,
     TINYCLI_USBDMSC,
@@ -61,7 +60,6 @@ enum UartStatesEnum {
  */
 static const struct StateDesc tinycli_state_descs[] = {
     { (const stateType_t)TINYCLI_INITIALIZATION, (const char *)"init",           NULL,                      NULL,                     &tinycli_init_handler },
-    { (const stateType_t)TINYCLI_PREBOOT,        (const char *)"preboot",        NULL,                      NULL,                     &tinycli_preboot_handler },
     { (const stateType_t)TINYCLI_READLINE,       (const char *)"readline",       &tinycli_readline_onEntry, &tinycli_readline_onExit, &tinycli_readline_handler },
     { (const stateType_t)TINYCLI_PARSELINE,      (const char *)"parseline",      NULL,                      NULL,                     &tinycli_parseline_handler },
     { (const stateType_t)TINYCLI_USBDMSC,        (const char *)"usbdmsc",        NULL,                      NULL,                     &tinycli_usbdmsc_handler },
@@ -92,15 +90,7 @@ struct StateMachine tinycli_service = {
 
 static void tinycli_init_handler(struct StateMachine * const pMyMachine)
 {
-    if (HSS_Trigger_IsNotified(EVENT_DDR_TRAINED) && HSS_Trigger_IsNotified(EVENT_STARTUP_COMPLETE)) {
-#if IS_ENABLED(CONFIG_SERVICE_USBDMSC)
-        if (!HSS_Trigger_IsNotified(EVENT_USBDMSC_REQUESTED) && !USBDMSC_IsActive()) {
-#else
-        {
-#endif
-            pMyMachine->state = TINYCLI_PREBOOT;
-        }
-    }
+    pMyMachine->state = TINYCLI_READLINE;
 }
 
 /////////////////
@@ -113,45 +103,10 @@ ssize_t readStringLen = 0;
 /////////////////
 
 const char* lineHeader = ">> ";
-#if IS_ENABLED(CONFIG_SERVICE_TINYCLI_ENABLE_PREBOOT_TIMEOUT)
-static HSSTicks_t readlineIdleTime = 0u;
-#endif
-
-static void tinycli_preboot_handler(struct StateMachine * const pMyMachine)
-{
-   bool keyPressedFlag = false;
-   uint8_t rcv_buf;
-
-   keyPressedFlag = HSS_ShowTimeout("Press a key to enter CLI, ESC to skip\n",
-       CONFIG_SERVICE_TINYCLI_TIMEOUT, &rcv_buf);
-
-    if (!keyPressedFlag) {
-        mHSS_FANCY_PUTS(LOG_NORMAL, "CLI boot interrupt timeout\n");
-        HSS_BootHarts();
-    } else {
-        mHSS_FANCY_PUTS(LOG_NORMAL, "Type HELP for list of commands\n");
-#if IS_ENABLED(CONFIG_SERVICE_TINYCLI_ENABLE_PREBOOT_TIMEOUT)
-        readlineIdleTime = HSS_GetTime();
-#endif
-    }
-
-    pMyMachine->state = TINYCLI_READLINE;
-}
 
 static void tinycli_readline_onEntry(struct StateMachine * const pMyMachine)
 {
     (void)pMyMachine;
-
-#if IS_ENABLED(CONFIG_SERVICE_TINYCLI_ENABLE_PREBOOT_TIMEOUT)
-#  define PREBOOT_IDLE_TIMEOUT (ONE_SEC * CONFIG_SERVICE_TINYCLI_PREBOOT_TIMEOUT)
-    if (!HSS_Trigger_IsNotified(EVENT_POST_BOOT)) {
-        if (HSS_Timer_IsElapsed(readlineIdleTime, PREBOOT_IDLE_TIMEOUT)) {
-            mHSS_DEBUG_PRINTF(LOG_ERROR, "***** Timeout on Pre-Boot TinyCLI *****\n");
-            HSS_SpinDelay_Secs(5u);
-            tinyCLI_Reset_();
-        }
-    }
-#endif
 
     //myBuffer[0] = '\0';
     readStringLen = 0u;
@@ -168,7 +123,7 @@ static void tinycli_readline_handler(struct StateMachine * const pMyMachine)
 
     static bool escapeActive = false;
 
-    if (uart_getchar(cBuf, 0, false)) {
+    if (0 != MSS_UART_get_rx(&g_mss_uart0_lo, cBuf, 1)) {
 	if (escapeActive) {
 		switch (cBuf[0]) {
 		case '[':
@@ -177,11 +132,11 @@ static void tinycli_readline_handler(struct StateMachine * const pMyMachine)
 
                 case 'A': // up arrow
                     readStringLen = strlen(myBuffer);
-                    uart_putc(HSS_HART_E51, '\r');
-                    uart_putstring(HSS_HART_E51, (char *)lineHeader);
+                    MSS_UART_polled_tx(&g_mss_uart0_lo, (uint8_t const *)"\r", 1);
+                    mHSS_PUTS(lineHeader);
                     if (readStringLen) {
                         memcpy(myBuffer, myPrevBuffer, readStringLen);
-                        uart_putstring(HSS_HART_E51, (char *)myBuffer);
+                        MSS_UART_polled_tx(&g_mss_uart0_lo, (uint8_t const *)myBuffer, readStringLen);
                     } else {
                         myBuffer[0] = '\0';
                     }
@@ -199,14 +154,14 @@ static void tinycli_readline_handler(struct StateMachine * const pMyMachine)
                         if (myBuffer[readStringLen] == 0) {
                             myBuffer[readStringLen] = ' ';
                         }
-                        uart_putstring(HSS_HART_E51, (char *)"\033[C");
+                        MSS_UART_polled_tx(&g_mss_uart0_lo, (uint8_t const *)"\033[C", 4u);
                     }
                     return;
 
                 case 'D': // left arrow
                     if (readStringLen) {
                         readStringLen--;
-                        uart_putstring(HSS_HART_E51, (char *)"\033[D");
+                        MSS_UART_polled_tx(&g_mss_uart0_lo, (uint8_t const *)"\033[D", 4u);
                     }
 		    escapeActive = false;
                     return;
@@ -223,7 +178,7 @@ static void tinycli_readline_handler(struct StateMachine * const pMyMachine)
         case '\r':
             __attribute__((fallthrough)); // deliberate fallthrough
         case '\n':
-            uart_putc(HSS_HART_E51, cBuf[0]);
+            MSS_UART_polled_tx(&g_mss_uart0_lo, cBuf, 1u);
             if (readStringLen < bufferLen) {
                 myBuffer[readStringLen] = '\0';
             }
@@ -231,6 +186,7 @@ static void tinycli_readline_handler(struct StateMachine * const pMyMachine)
                 memcpy(myPrevBuffer, myBuffer, readStringLen+1);
             } else {
                 // if just hit enter, as a convenience, reuse last command (a la GDB)
+		//mHSS_DEBUG_PRINTF(LOG_WARN, "Convenience: copying >>%s<< into myBuffer\n", myPrevBuffer);
 		readStringLen = strlen(myPrevBuffer);
                 memcpy(myBuffer, myPrevBuffer, readStringLen+1);
             }
@@ -240,7 +196,7 @@ static void tinycli_readline_handler(struct StateMachine * const pMyMachine)
         case 0x7Fu: // delete
             if (readStringLen) {
                 readStringLen--;
-                uart_putstring(HSS_HART_E51, (char *)"\033[D \033[D");
+                MSS_UART_polled_tx(&g_mss_uart0_lo, (uint8_t const *)"\033[D \033[D", 7u);
                 myBuffer[readStringLen] = 0;
             }
             break;
@@ -248,22 +204,22 @@ static void tinycli_readline_handler(struct StateMachine * const pMyMachine)
         case 0x08u: // backspace - ^H
             if (readStringLen) {
                 readStringLen--;
-                uart_putstring(HSS_HART_E51, (char *)"\033[D");
+                MSS_UART_polled_tx(&g_mss_uart0_lo, (uint8_t const *)" \033[D", 4u);
                 myBuffer[readStringLen] = 0;
             }
             break;
 
         case 0x01u: // ^A
             readStringLen = 0;
-            uart_putc(HSS_HART_E51, '\r');
+            MSS_UART_polled_tx(&g_mss_uart0_lo, (uint8_t const *)"\r", 1);
             mHSS_PUTS(lineHeader);
             break;
 
         case 0x05u: // ^E
             readStringLen = strlen(myBuffer);
-            uart_putc(HSS_HART_E51, '\r');
-            uart_putstring(HSS_HART_E51, (char *)lineHeader);
-            uart_putstring(HSS_HART_E51, (char *)myBuffer);
+            MSS_UART_polled_tx(&g_mss_uart0_lo, (uint8_t const *)"\r", 1);
+            mHSS_PUTS(lineHeader);
+            MSS_UART_polled_tx(&g_mss_uart0_lo, (uint8_t const *)myBuffer, readStringLen);
             break;
 
         case 0x04u: // ^D
@@ -283,7 +239,7 @@ static void tinycli_readline_handler(struct StateMachine * const pMyMachine)
 
         default:
             if (readStringLen < bufferLen) {
-                uart_putc(HSS_HART_E51, cBuf[0]);
+                MSS_UART_polled_tx(&g_mss_uart0_lo, cBuf, 1u);
                 myBuffer[readStringLen] = cBuf[0];
                 readStringLen++;
             }
@@ -297,7 +253,7 @@ static void tinycli_readline_onExit(struct StateMachine * const pMyMachine)
     (void)pMyMachine;
 
     const char crlf[] = "\n";
-    uart_putstring(HSS_HART_E51, (char *)crlf);
+    MSS_UART_polled_tx_string(&g_mss_uart0_lo, (const uint8_t *)crlf);
 
     if (readStringLen > 0) {
     } else {
@@ -339,7 +295,7 @@ static void tinycli_usbdmsc_handler(struct StateMachine * const pMyMachine)
 
     done = !USBDMSC_IsActive();
 
-    if (!done && (uart_getchar(cBuf, 0, false))) {
+    if (!done && (0 != MSS_UART_get_rx(&g_mss_uart0_lo, cBuf, 1))) {
         done = (cBuf[0] == '\003') || (cBuf[0] == '\033');
     }
 

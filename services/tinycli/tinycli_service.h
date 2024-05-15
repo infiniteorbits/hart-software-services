@@ -45,7 +45,7 @@ extern "C" {
 bool HSS_TinyCLI_Parser(void);
 size_t HSS_TinyCLI_ParseIntoTokens(char *buffer);
 void HSS_TinyCLI_Execute(void);
-bool HSS_TinyCLI_IsPostInit(void);
+bool HSS_TinyCLI_IndicatePostInit(void);
 
 void HSS_TinyCLI_RunMonitors(void);
 void HSS_TinyCLI_WaitForUSBMSCDDone(void);

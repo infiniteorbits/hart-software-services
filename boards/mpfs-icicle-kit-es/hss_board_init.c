@@ -22,7 +22,6 @@
 #include "hss_state_machine.h"
 #include "ssmb_ipi.h"
 #include "hss_registry.h"
-#include <string.h>
 
 /******************************************************************************************************/
 /*!
@@ -42,11 +41,10 @@ const struct InitFunction /*@null@*/ boardInitFunctions[] = {
     { "HSS_Setup_PLIC",         HSS_Setup_PLIC,         false, false },
     { "HSS_Setup_BusErrorUnit", HSS_Setup_BusErrorUnit, false, false },
     { "HSS_Setup_MPU",          HSS_Setup_MPU,          false, false },
+    { "HSS_DDRInit",            HSS_DDRInit,            false, false },
+    { "HSS_ZeroDDR",            HSS_ZeroDDR,            false, false },
 #ifdef CONFIG_USE_PCIE
     { "HSS_PCIeInit",           HSS_PCIeInit,           false, false },
-#endif
-#ifdef CONFIG_USE_TAMPER
-    { "HSS_TamperInit",         HSS_TamperInit,         false, false },
 #endif
     { "HSS_USBInit",            HSS_USBInit,            false, false },
 };
@@ -62,6 +60,7 @@ const struct InitFunction /*@null@*/ boardInitFunctions[] = {
 /****************************************************************************/
 
 
+#include "mss_sysreg.h"
 bool HSS_BoardInit(void)
 {
     RunInitFunctions(ARRAY_SIZE(boardInitFunctions), boardInitFunctions);
@@ -71,8 +70,6 @@ bool HSS_BoardInit(void)
 
 bool HSS_BoardLateInit(void)
 {
-    bool result = true;
-
 #if defined(CONFIG_SERVICE_MMC_MODE_SDCARD) || defined(CONFIG_SERVICE_MMC_MODE_EMMC)
     mHSS_DEBUG_PRINTF(LOG_WARN, "Please ensure that jumpers J34/J43 are correct for "
 #  if defined(CONFIG_SERVICE_MMC_BUS_VOLTAGE_1V8)
@@ -82,6 +79,5 @@ bool HSS_BoardLateInit(void)
 #  endif
         " MMC voltage... \n");
 #endif
-
-    return result;
+    return true;
 }

@@ -32,4 +32,4 @@ SRCS-$(CONFIG_SERVICE_GOTO) += \
 INCLUDES +=\
 	-I./services/goto \
 
-$(BINDIR)/services/goto/goto_service.o: CFLAGS=$(CFLAGS_GCCEXT)
+services/goto/goto_service.o: CFLAGS=$(CFLAGS_GCCEXT)

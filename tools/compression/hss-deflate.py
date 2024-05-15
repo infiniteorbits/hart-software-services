@@ -38,14 +38,7 @@ using Deflate
 #
 
 import argparse
-import sys
-try:
-    import zlib
-except:
-    print("Unable to import the zlib package, please check your Python installation")
-    print("If you are attempting to build the HSS using SoftConsole on Linux there is a known issue when importing the zlib module")
-    print("See: https://github.com/orgs/polarfire-soc/discussions/276 for more information")
-    sys.exit(1)
+import zlib
 
 
 def deflate(data: bytes, compression_level: int = 9) -> bytes:

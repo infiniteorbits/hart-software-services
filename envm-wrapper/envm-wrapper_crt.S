@@ -1,7 +1,7 @@
 /*
  * The HSS software is released under the following software license:
  *
- * Copyright 2019-2023 Microchip FPGA Embedded Systems Solutions.
+ * Copyright 2019-2020 Microchip FPGA Embedded Systems Solutions.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -43,6 +43,7 @@
 	.globl	_start
 
 _start:
+	#j _start
 	la	t0, .early_trap_handler
 	csrw	CSR_MTVEC, t0
 	li	ra, 0
@@ -100,11 +101,11 @@ _start:
 	add	sp, sp, tp
 
 .disable_and_clear_interrupts:
-	csrw	CSR_MIE, zero			// disable all interrupts
-	csrw	CSR_MIP, zero			// clear all interrupts
+	csrw	CSR_MIE, zero			# disable all interrupts
+	csrw	CSR_MIP, zero			# clear all interrupts
 
 .check_if_e51:
-    beqz	a0, .e51_decompress
+        beqz	a0, .e51_decompress
 
 .wait_for_decompress_done:
 	la	a1, decompress_done_flag
@@ -113,28 +114,22 @@ _start:
         j	.decompress_done
 
 .e51_decompress:
-	call	.clear_dtim
-	call	.clear_l2lim
-	li	a0, 1				// flush default way in case it has already been used
-	call    .flush_early_caching
 	call	config_l2_cache
-	call	.clear_l2scratchpad
+        call	.clear_dtim
+        call	.clear_l2lim
+        call	.clear_l2scratchpad
 	call	init_memory
 	call	HSS_Setup_Clocks
 
 	call	mss_nwc_init
 
-#define GET_HSS_UART \
-	la 	a0, 0; \
-	call	HSS_UART_GetInstance // value of UART is now in a0
-
 #ifndef CONFIG_CRYPTO_SIGNING
 .e51_print_message:
 	la	a0, g_mss_uart0_lo
 	li	a1, 115200
-#  define MSS_UART_DATA_8_BITS     (0x03)
-#  define MSS_UART_NO_PARITY       (0x00)
-#  define MSS_UART_ONE_STOP_BIT    (0x00)
+#define MSS_UART_DATA_8_BITS     (0x03)
+#define MSS_UART_NO_PARITY       (0x00)
+#define MSS_UART_ONE_STOP_BIT    (0x00)
 	li	a2, MSS_UART_DATA_8_BITS | MSS_UART_NO_PARITY | MSS_UART_ONE_STOP_BIT
 
 	la	a0, g_mss_uart1_lo
@@ -152,37 +147,32 @@ _start:
 	la	a0, g_mss_uart0_lo
 	call	MSS_UART_init
 
-	// it might look redundant, but we explicitly restore a0 here, in case the
-	// previous call to MSS_UART_init clobbers it (which can be the case
-	// depending on compiler options/optimization levels etc.)
-
-	GET_HSS_UART
 	la	a1, decomp_msg
 	call	MSS_UART_polled_tx_string
 #endif
 
-	la	a0, hss_l2scratch_lz				// compressed image header
-	lw	a1, OFFSET_OF(HSS_CompressedImage, version)(a0)	// version
+	la	a0, hss_l2scratch_lz				# compressed image header
+	lw	a1, OFFSET_OF(HSS_CompressedImage, version)(a0)	# version
 	li	a2, mHSS_COMPRESSED_VERSION_DEFLATE
 	beq	a1, a2, .e51_miniz_decompress
 .spin_unknown_compressor:
 	j	.spin_unknown_compressor
 
 .e51_miniz_decompress:
-	// a3 => compressed length...
+	# a3 => compressed length...
         REG_L	a3, OFFSET_OF(HSS_CompressedImage, compressedImageLen)(a0)
 
-	// a2 => pointer to source
+	# a2 => pointer to source
 	REG_L	a2, OFFSET_OF(HSS_CompressedImage, headerLength)(a0)
-	add	a2, a0, a2			// ... jump source past header to payload
+	add	a2, a0, a2			# ... jump source past header to payload
 
-	// a1 => pointer to store decompressed size, seeded with inital value from image header
+	# a1 => pointer to store decompressed size, seeded with inital value from image header
 	REG_L	a0, OFFSET_OF(HSS_CompressedImage, originalImageLen)(a0)
 	la	a1, decompressed_size
 	REG_S	a0, 0(a1)
 
-	// a0 => pointer to destination (where to decompress to)
-	la	a0, __l2_start		// destination
+	# a0 => pointer to destination (where to decompress to)
+	la	a0, __l2_start		# destination
 	call 	mz_uncompress
 	j	.clear_progress
 
@@ -200,7 +190,7 @@ _start:
 	call	MSS_UART_get_tx_status
 
 	andi	a0, a0, 64
-	beq	a0, zero, 1b // loop until transmitter empty (TEMT)
+	beq	a0, zero, 1b # loop until transmitter empty (TEMT)
 #endif
 
 .spin_bad_crc:
@@ -208,15 +198,15 @@ _start:
 
 .crc_good:
 #ifndef CONFIG_CRYPTO_SIGNING
-	GET_HSS_UART
+	la	a0, g_mss_uart0_lo
 	la	a1, passed_msg
 	call	MSS_UART_polled_tx_string
 1:
-	GET_HSS_UART
+	la	a0, g_mss_uart0_lo
 	call	MSS_UART_get_tx_status
 
 	andi	a0, a0, 64
-	beq	a0, zero, 1b // loop until transmitter empty (TEMT)
+	beq	a0, zero, 1b # loop until transmitter empty (TEMT)
 #endif
 
 
@@ -232,7 +222,7 @@ _start:
 	call	_hss_start
 	la	a0, _hss_start
 	csrw	CSR_MEPC, a0
-	csrw	CSR_MIE, zero			// disable all interrupts
+	csrw	CSR_MIE, zero			# disable all interrupts
 	csrr	a0, CSR_MSTATUS
 	and	a0, a0, ~MSTATUS_MPIE
 	li	a1, ~MSTATUS_MPP
@@ -336,15 +326,15 @@ init_memory:
         .weak  config_copy
         .type   config_copy, @function
 config_copy:
-        li      a5,0                     // initialize offset
+        li      a5,0                     # initialize offset
 .check_if_config_copy_done:
-        beq     a2,a5, .config_copy_done // if offset == length, goto config_copy_done
+        beq     a2,a5, .config_copy_done # if offset == length, goto config_copy_done
 .do_config_copy:
-        add     a4,a1,a5                 // csrc = src + offset
-        lbu     a3,0(a4)                 // tmp = *csrc
-        add     a4,a0,a5                 // cdest = dest + offset
-        addi    a5,a5,1                  // offset = offset + 1
-        sb      a3,0(a4)                 // *cdest = *csrc
+        add     a4,a1,a5                 # csrc = src + offset
+        lbu     a3,0(a4)                 # tmp = *csrc
+        add     a4,a0,a5                 # cdest = dest + offset
+        addi    a5,a5,1                  # offset = offset + 1
+        sb      a3,0(a4)                 # *cdest = *csrc
         j       .check_if_config_copy_done
 .config_copy_done:
         ret
@@ -354,23 +344,15 @@ config_copy:
  */
 
 .clear_l2scratchpad:
-	// Clear the L2 Scratchpad
+	// Clear the LIM
 	//
 	// On reset, the first 15 ways are L2 and the last way is cache
 	// We can initialize all, as cache write through to DDR is blocked
 	// until DDR is initialized, so will have no effect other than clear ECC
 	//
 	// NOTE: we need to check if we are debugging from LIM,if so do not initialize
-	// Instead of taking L2 end address from link script
-	// we can call a routine to get the actual configured end of L2
-	addi	sp, sp, -8
-	sw	ra, 0(sp)
-	call	end_l2_scratchpad_address		// l2 scratchpad end address is returned in a0
-	lw	ra, 0(sp)
-	addi	sp, sp, 8
-	mv	a5, a0
-
 	la	a4, __l2_start
+	la	a5, __l2_end
 	j	1f
 .clear_l2lim:
 	// Clear the LIM
@@ -382,8 +364,7 @@ config_copy:
 	// NOTE: we need to check if we are debugging from LIM,if so do not initialize
 	//
 	la 	a4, __l2lim_start
-	//la	a5, __l2lim_end
-	la	a5, __l2lim_end_max
+	la	a5, __l2lim_end
         j	1f
 .clear_dtim:
         //
@@ -393,60 +374,11 @@ config_copy:
         la	a4, __dtim_start
         la	a5, __dtim_end
 1:
-        // common loop used by .clear_l2scratchpad, .clear_l2lim and .clear_dtim
+        // common loop used by both .clear_l2lim and .clear_dtim
 	REG_S	x0, 0(a4)
 	add	a4, a4, __SIZEOF_POINTER__
 	blt	a4, a5, 1b
 .done_clear:
-	ret
-
-/***********************************************************************************
- *
- */
-	.equ	L2_ZERO_DEVICE_ADDR, 0x0A000000
-	.equ	L2_CCACHE_ADDR, 0x02010000
-	.equ	FLUSH64_OFFSET, 0x200
-
-	//
-	// We want to flush anything that may be inadvertently cached
-	// by the actions of G5C at startup...
-	//
-	// The cache block is 64-bytes wide, and there are 4 banks * 512 sets * 16 ways.
-	//
-	// From power on, only a single way is enabled as cache (the remaining
-	// 15 are LIM), but this function is parameterisable (number of ways is
-	// passed via a0)...
-	//
-
-	// First, load the cache with "known" addresses by walking up L2 scratch
-	// with a 64-byte stride. We need to read (4 banks * 512 sets) to fill
-	// a single way.
-	//
-.flush_early_caching:
-					// a0 = num_ways
-	slli	a0, a0, 17		// a0' = a0 * (4 * 512 * 64)
-	li	a5, L2_ZERO_DEVICE_ADDR
-	add	a0, a0, a5		// a0''  = a0' + (4 * 512 * 64 * a0)
-                        		//  = 0x0A000000 + (4 * 512 * 64 * num_ways)
-	beq	a0, a5, .early_exit
-
-.preload_cache_with_known_addrs:
-	ld	a3, 0(a5)
-	addi	a5, a5, 64
-	bne	a5, a0, .preload_cache_with_known_addrs
-
-	//
-	// Now that the cache is filled with known addresses, we can simply flush each
-	// known address to end up with an empty cache...
-	//
-	li	a5, L2_ZERO_DEVICE_ADDR
-	li	a3, L2_CCACHE_ADDR
-.flush_known_addrs_from_cache:
-	sd	a5, FLUSH64_OFFSET(a3)      // write address to 0x02010200 (FLUSH64)
-	addi	a5, a5, 64
-	bne	a5, a0, .flush_known_addrs_from_cache
-
-.early_exit:
 	ret
 
 /***********************************************************************************
@@ -480,7 +412,7 @@ __sc_end:
 	.align 4
 	.globl	hss_l2scratch_lz
 hss_l2scratch_lz:
-	.incbin	"build/hss-l2scratch.bin.deflate"
+	.incbin	"Default/hss-l2scratch.bin.deflate"
 
 	.section .data
 	.align 8

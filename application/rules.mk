@@ -62,8 +62,6 @@ CORE_CFLAGS+=-mabi=$(PLATFORM_RISCV_ABI) -march=$(PLATFORM_RISCV_ISA)
 CORE_CFLAGS+=-g3 -DDEBUG -pipe -grecord-gcc-switches
 #CORE_CFLAGS+=-pipe
 
-VENDOR_STRING=$(shell git describe --tags 2> /dev/null || echo "unknown")
-CORE_CFLAGS+=-DVENDOR_STRING="$(VENDOR_STRING)"
 
 # Warning / Code Quality
 CORE_CFLAGS+=-Wall -Werror -Wshadow -fno-builtin -fno-builtin-printf \
@@ -115,9 +113,8 @@ ifdef CONFIG_CC_STACKPROTECTOR_STRONG
   # CORE_CFLAGS+=-fstack-clash-protection  # currently does nothing on RISC-V
 else
   $(info INFO: NOTICE: enabling -flto (which means stack protection is disabled))
-  OPT-y+=-flto=auto -ffat-lto-objects -fno-stack-protector
+  OPT-y+=-flto=auto -ffat-lto-objects -fcompare-debug -fno-stack-protector
 endif
-
 
 ##############################################################################
 #
@@ -127,7 +124,7 @@ endif
 
 ifeq ($(HOST_LINUX), true)
   ifeq ($, $(shell which $(CC)))
-    $(error "No $(CC) in $(PATH)")
+    $(error "No $(CC) in $(PATH)"
   endif
   CC_VERSION = $(strip $(shell $(CC) -dumpversion))
   EXPECTED_CC_VERSION := 8.3.0
@@ -152,45 +149,36 @@ else
 .SILENT:
 endif
 
-OBJS = $(addprefix $(BINDIR)/,$(SRCS-y:.c=.o))
-EXTRA_OBJS += $(addprefix $(BINDIR)/,$(EXTRA_SRCS-y:.c=.o))
-EXTRA_OBJS += $(addprefix $(BINDIR)/,$(ASM_SRCS:.S=.o))
-EXTRA_OBJS += $(addprefix $(BINDIR)/,$(EXTRA_OBJS-y))
-EXTRA_OBJS += $(addprefix $(BINDIR)/,$(ASM_SRCS-y:.S=.o))
+OBJS = $(SRCS-y:.c=.o)
+EXTRA_OBJS += $(EXTRA_SRCS-y:.c=.o) $(ASM_SRCS:.S=.o) $(EXTRA_OBJS-y) $(ASM_SRCS-y:.S=.o)
 
 .SUFFIXES:
 
-%.s: %.c $(CONFIG_H)
+%.s: %.c config.h
 	$(ECHO) " CC -s     $@"
 	$(CC) $(CFLAGS_GCCEXT) $(OPT-y) $(INCLUDES) -c -S -g  $<  -o $@
 
-%.S: %.c $($(CONFIG_H)
+%.S: %.c config.h
 	$(ECHO) " CC -S     $@"
 	$(CC) $(CFLAGS_GCCEXT) $(OPT-y) $(INCLUDES) -c -Wa,-adhln -g  $<  > $@
 
-%.e: %.c $($(CONFIG_H)
+%.e: %.c config.h
 	$(ECHO) " CC -E     $@"
 	$(CC) $(CFLAGS_GCCEXT) $(OPT-y) $(INCLUDES) -c -E -o $@ $<
 
-%.e: %.s $($(CONFIG_H)
+%.e: %.s config.h
 	$(ECHO) " CC -E     $@"
 	$(CC) $(CFLAGS_GCCEXT) $(OPT-y) $(INCLUDES) -c -E -o $@ $<
 
 ifdef CONFIG_CC_USE_MAKEDEP
-  $(BINDIR)/%.o: %.c $(CONFIG_H) $(BINDIR)/%.d
+  %.o: %.c config.h %.d
 else
-  $(BINDIR)/%.o: %.c $(CONFIG_H)
+  %.o: %.c config.h
 endif
-	if [ ! -d `dirname $@` ]; then mkdir -p `dirname $@`; fi
 	$(ECHO) " CC        $@"
 	$(CC) $(CFLAGS) $(OPT-y) $(INCLUDES) -c -o $@ $<
 
-%.o: %.c $(CONFIG_H)
-	$(ECHO) " CC        $@"
-	$(CC) $(CFLAGS) $(OPT-y) $(INCLUDES) -c -o $@ $<
-
-$(BINDIR)/%.o: %.S $(CONFIG_H)
-	if [ ! -d `dirname $@` ]; then mkdir -p `dirname $@`; fi
+%.o: %.S config.h
 	$(ECHO) " CC        $@"
 	$(CC) $(CFLAGS) $(OPT-y) $(INCLUDES) -D__ASSEMBLY__=1 -c -o $@ $<
 
@@ -211,15 +199,13 @@ $(BINDIR)/%.o: %.S $(CONFIG_H)
 	$(ECHO) " BIN       $@"
 	$(OBJCOPY) -O binary $< $@
 
-%.ld: %.lds $(CONFIG_H)
+%.ld: %.lds config.h
 	$(ECHO) " CPP       $@"
 	$(CPP) -P $(INCLUDES) $< -o $@
 
 #
-$(BINDIR)/%.d: %.c
-	if [ ! -d `dirname $@` ]; then mkdir -p `dirname $@`; fi
-	$(MAKEDEP) -f - $(INCLUDES) $< 2>/dev/null | sed 's,\($*\.o\)[ :]*\(.*\),$@ : $$\(wildcard \2\)\n\1 : \2,g' > $(BINDIR)/$*.d
+%.d: %.c
+	$(MAKEDEP) -f - $(INCLUDES) $< 2>/dev/null | sed 's,\($*\.o\)[ :]*\(.*\),$@ : $$\(wildcard \2\)\n\1 : \2,g' > $*.d
 
-$(BINDIR)/%.d: %.S
-	if [ ! -d `dirname $@` ]; then mkdir -p `dirname $@`; fi
-	$(MAKEDEP) -f - $(INCLUDES) $< 2>/dev/null | sed 's,\($*\.o\)[ :]*\(.*\),$@ : $$\(wildcard \2\)\n\1 : \2,g' > $(BINDIR)/$*.d
+%.d: %.S
+	$(MAKEDEP) -f - $(INCLUDES) $< 2>/dev/null | sed 's,\($*\.o\)[ :]*\(.*\),$@ : $$\(wildcard \2\)\n\1 : \2,g' > $*.d

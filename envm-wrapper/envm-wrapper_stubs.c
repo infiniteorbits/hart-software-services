@@ -11,12 +11,7 @@
 #include "hss_types.h"
 #include "hss_debug.h"
 #include "hss_progress.h"
-#include "hss_trigger.h"
 #include "uart_helper.h"
-
-bool HSS_Trigger_IsNotified(enum HSS_Event event) {
-    return TRUE;
-}
 
 void HSS_Debug_Timestamp(void)
 {
@@ -98,11 +93,3 @@ void free(void *ptr)
     ;
 }
 
-#if IS_ENABLED(CONFIG_DEBUG_PROFILING_SUPPORT)
-void __attribute__((no_instrument_function, weak)) __cyg_profile_func_enter (void *pFunc, void *pCaller)
-{
-}
-void __attribute__((no_instrument_function, weak)) __cyg_profile_func_exit (void *pFunc, void *pCaller)
-{
-}
-#endif

@@ -16,20 +16,16 @@
 #include "hss_types.h"
 #include "hss_state_machine.h"
 #include "hss_debug.h"
-#include "ssmb_ipi.h"
-
-#include "hss_trigger.h"
-#include "hss_init.h"
 #include "ddr_service.h"
 
-#include <assert.h>
+#include "ssmb_ipi.h"
+
 
 /* Timeouts */
 #define DDR_IDLE_PERIODIC_TIMEOUT (ONE_SEC * 60llu * 60llu * 10llu)
 
 /* Module Prototypes (states) */
 static void ddr_init_handler(struct StateMachine * const pMyMachine);
-static void ddr_train_handler(struct StateMachine * const pMyMachine);
 static void ddr_idle_handler(struct StateMachine * const pMyMachine);
 static void ddr_retrain_handler(struct StateMachine * const pMyMachine);
 
@@ -38,7 +34,6 @@ static void ddr_retrain_handler(struct StateMachine * const pMyMachine);
  */
 enum DDRStatesEnum {
     DDR_INITIALIZATION,
-    DDR_TRAIN,
     DDR_IDLE,
     DDR_RETRAIN,
     DDR_NUM_STATES = DDR_IDLE+1
@@ -49,7 +44,6 @@ enum DDRStatesEnum {
  */
 static const struct StateDesc ddr_state_descs[] = {
     { (const stateType_t)DDR_INITIALIZATION, (const char *)"Init",    NULL, NULL, &ddr_init_handler },
-    { (const stateType_t)DDR_TRAIN,          (const char *)"Train",   NULL, NULL, &ddr_train_handler },
     { (const stateType_t)DDR_IDLE,           (const char *)"Idle",    NULL, NULL, &ddr_idle_handler },
     { (const stateType_t)DDR_RETRAIN,        (const char *)"Retrain", NULL, NULL, &ddr_retrain_handler }
 };
@@ -78,21 +72,7 @@ static void ddr_init_handler(struct StateMachine * const pMyMachine)
 {
     (void) pMyMachine;
 
-    if (HSS_Trigger_IsNotified(EVENT_IPI_INITIALIZED)) {
-        HSS_DDR_Train();
-        pMyMachine->state = DDR_TRAIN;
-    }
-}
-
-/////////////////
-
-static void ddr_train_handler(struct StateMachine * const pMyMachine)
-{
-    (void) pMyMachine;
-
-    if (HSS_Trigger_IsNotified(EVENT_DDR_TRAINED)) {
-        pMyMachine->state = DDR_IDLE;
-    }
+    pMyMachine->state = DDR_IDLE;
 }
 
 /////////////////
@@ -112,7 +92,7 @@ static void ddr_retrain_handler(struct StateMachine * const pMyMachine)
 {
     (void) pMyMachine;
 
-    //HSS_DDRInit();
+    HSS_DDR_Train();
     pMyMachine->state = DDR_IDLE;
 }
 

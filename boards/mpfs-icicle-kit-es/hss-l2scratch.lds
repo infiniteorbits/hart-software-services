@@ -131,7 +131,6 @@ SECTIONS
 
     PROVIDE(__ddrhi_start      = ORIGIN(ddrhi));
     PROVIDE(__ddrhi_end        = ORIGIN(ddrhi) + LENGTH(ddrhi));
-    PROVIDE(__ddrhi_max_end    = ORIGIN(ddrhi) + LENGTH(ncddrhi));
 
     PROVIDE(__ncddrhi_start    = ORIGIN(ncddrhi));
     PROVIDE(__ncddrhi_end      = ORIGIN(ncddrhi) + LENGTH(ncddrhi));
@@ -259,7 +258,7 @@ SECTIONS
      * (Explicitly) Initialized data section
      *
      */
-#if defined(CONFIG_SERVICE_BOOT_USE_PAYLOAD) && !defined(CONFIG_SERVICE_BOOT_USE_PAYLOAD_IN_FABRIC)
+#ifdef CONFIG_SERVICE_BOOT_USE_PAYLOAD 
     .data.payload : ALIGN(16) 
     {
       _payload_start = .;

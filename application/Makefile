@@ -26,8 +26,8 @@
 #
 #
 
-all: $(TARGETS) $(CONFIG_H)
-include $(DOT_CONFIG)
+all: $(TARGETS) config.h
+include .config
 
 SRCS-y += \
     application/hart0/hss_state_machine.c \
@@ -36,7 +36,6 @@ SRCS-y += \
 
 INCLUDES +=\
     -I./include \
-    -I$(BINDIR) \
     -I.
 
 ASM_SRCS += \
@@ -47,11 +46,11 @@ EXTRA_SRCS-y += \
     application/hart0/hss_init.c \
     application/hart0/hss_main.c
 
-$(BINDIR)/application/hart0/hss_main.o: CFLAGS=$(CFLAGS_GCCEXT)
-$(BINDIR)/application/hart0/hss_init.o: include/tool_versions.h
-$(BINDIR)/application/hart0/hss_init.o: CFLAGS=$(CFLAGS_GCCEXT)
-$(BINDIR)/application/hart0/hss_state_machine.o: CFLAGS=$(CFLAGS_GCCEXT)
-$(BINDIR)/tools/bin2chunks/bootImage.o: CFLAGS=$(CFLAGS_GCCEXT)
+application/hart0/hss_main.o: CFLAGS=$(CFLAGS_GCCEXT)
+application/hart0/hss_init.o: CFLAGS=$(CFLAGS_GCCEXT)
+application/hart0/hss_init.o: include/tool_versions.h
+application/hart0/hss_state_machine.o: CFLAGS=$(CFLAGS_GCCEXT)
+tools/bin2chunks/bootImage.o: CFLAGS=$(CFLAGS_GCCEXT)
 
 #
 # U54 Functionality
@@ -60,4 +59,4 @@ EXTRA_SRCS-y += \
         application/hart1-4/u54_handle_ipi.c \
         application/hart1-4/u54_state.c \
 
-$(BINDIR)/application/hart1-4/u54_handle_ipi.o: CFLAGS=$(CFLAGS_GCCEXT)
+application/hart1-4/u54_handle_ipi.o: CFLAGS=$(CFLAGS_GCCEXT)

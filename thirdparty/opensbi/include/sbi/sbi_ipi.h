@@ -75,7 +75,7 @@ int sbi_ipi_send_halt(ulong hmask, ulong hbase);
 
 void sbi_ipi_process(void);
 
-int sbi_ipi_raw_send(u32 target_hart);
+void sbi_ipi_raw_send(u32 target_hart);
 
 const struct sbi_ipi_device *sbi_ipi_get_device(void);
 

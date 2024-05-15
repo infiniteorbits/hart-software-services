@@ -53,7 +53,7 @@ int misa_xlen(void)
 void misa_string(int xlen, char *out, unsigned int out_sz)
 {
 	unsigned int i, pos = 0;
-	const char valid_isa_order[] = "iemafdqclbjtpvnhkorwxyzg";
+	const char valid_isa_order[] = "iemafdqclbjtpvnsuhkorwxyzg";
 
 	if (!out)
 		return;
@@ -139,10 +139,6 @@ unsigned long csr_read_num(int csr_num)
 	switchcase_csr_read_4(CSR_MHPMCOUNTER4H, ret)
 	switchcase_csr_read_8(CSR_MHPMCOUNTER8H, ret)
 	switchcase_csr_read_16(CSR_MHPMCOUNTER16H, ret)
-	/**
-	 * The CSR range MHPMEVENT[3-16]H are available only if sscofpmf
-	 * extension is present. The caller must ensure that.
-	 */
 	switchcase_csr_read(CSR_MHPMEVENT3H, ret)
 	switchcase_csr_read_4(CSR_MHPMEVENT4H, ret)
 	switchcase_csr_read_8(CSR_MHPMEVENT8H, ret)
@@ -265,7 +261,7 @@ int pmp_set(unsigned int n, unsigned long prot, unsigned long addr,
 	pmpcfg_csr   = (CSR_PMPCFG0 + (n >> 2)) & ~1;
 	pmpcfg_shift = (n & 7) << 3;
 #else
-# error "Unexpected __riscv_xlen"
+	return SBI_ENOTSUPP;
 #endif
 	pmpaddr_csr = CSR_PMPADDR0 + n;
 
@@ -316,7 +312,7 @@ int pmp_get(unsigned int n, unsigned long *prot_out, unsigned long *addr_out,
 	pmpcfg_csr   = (CSR_PMPCFG0 + (n >> 2)) & ~1;
 	pmpcfg_shift = (n & 7) << 3;
 #else
-# error "Unexpected __riscv_xlen"
+	return SBI_ENOTSUPP;
 #endif
 	pmpaddr_csr = CSR_PMPADDR0 + n;
 

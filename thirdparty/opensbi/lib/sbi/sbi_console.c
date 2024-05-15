@@ -77,22 +77,20 @@ typedef __builtin_va_list va_list;
 
 static void printc(char **out, u32 *out_len, char ch)
 {
-	if (!out) {
+	if (out) {
+		if (*out) {
+			if (out_len && (0 < *out_len)) {
+				**out = ch;
+				++(*out);
+				(*out_len)--;
+			} else {
+				**out = ch;
+				++(*out);
+			}
+		}
+	} else {
 		sbi_putc(ch);
-		return;
 	}
-
-	/*
-	 * The *printf entry point functions have enforced that (*out) can
-	 * only be null when out_len is non-null and its value is zero.
-	 */
-	if (!out_len || *out_len > 1) {
-		*(*out)++ = ch;
-		**out = '\0';
-	}
-
-	if (out_len && *out_len > 0)
-		--(*out_len);
 }
 
 static int prints(char **out, u32 *out_len, const char *string, int width,
@@ -186,7 +184,7 @@ static int printi(char **out, u32 *out_len, long long i, int b, int sg,
 
 static int print(char **out, u32 *out_len, const char *format, va_list args)
 {
-	int width, flags;
+	int width, flags, acnt = 0;
 	int pc = 0;
 	char scr[2];
 	unsigned long long tmp;
@@ -198,7 +196,7 @@ static int print(char **out, u32 *out_len, const char *format, va_list args)
 			if (*format == '\0')
 				break;
 			if (*format == '%')
-				goto literal;
+				goto out;
 			/* Get flags */
 			if (*format == '-') {
 				++format;
@@ -223,6 +221,7 @@ static int print(char **out, u32 *out_len, const char *format, va_list args)
 			}
 			if (*format == 's') {
 				char *s = va_arg(args, char *);
+				acnt += sizeof(char *);
 				pc += prints(out, out_len, s ? s : "(null)",
 					     width, flags);
 				continue;
@@ -230,40 +229,63 @@ static int print(char **out, u32 *out_len, const char *format, va_list args)
 			if ((*format == 'd') || (*format == 'i')) {
 				pc += printi(out, out_len, va_arg(args, int),
 					     10, 1, width, flags, '0');
+				acnt += sizeof(int);
 				continue;
 			}
 			if (*format == 'x') {
 				pc += printi(out, out_len,
 					     va_arg(args, unsigned int), 16, 0,
 					     width, flags, 'a');
+				acnt += sizeof(unsigned int);
 				continue;
 			}
 			if (*format == 'X') {
 				pc += printi(out, out_len,
 					     va_arg(args, unsigned int), 16, 0,
 					     width, flags, 'A');
+				acnt += sizeof(unsigned int);
 				continue;
 			}
 			if (*format == 'u') {
 				pc += printi(out, out_len,
 					     va_arg(args, unsigned int), 10, 0,
 					     width, flags, 'a');
+				acnt += sizeof(unsigned int);
 				continue;
 			}
 			if (*format == 'p') {
+				prints(out, 0, "0x", 0, 0);
 				pc += printi(out, out_len,
 					     va_arg(args, unsigned long), 16, 0,
 					     width, flags, 'a');
+				acnt += sizeof(unsigned long);
 				continue;
 			}
 			if (*format == 'P') {
+				prints(out, 0, "0x", 0, 0);
 				pc += printi(out, out_len,
 					     va_arg(args, unsigned long), 16, 0,
 					     width, flags, 'A');
+				acnt += sizeof(unsigned long);
 				continue;
 			}
 			if (*format == 'l' && *(format + 1) == 'l') {
-				tmp = va_arg(args, unsigned long long);
+				while (acnt &
+				       (sizeof(unsigned long long) - 1)) {
+					va_arg(args, int);
+					acnt += sizeof(int);
+				}
+				if (sizeof(unsigned long long) ==
+				    sizeof(unsigned long)) {
+					tmp = va_arg(args, unsigned long long);
+					acnt += sizeof(unsigned long long);
+				} else {
+					((unsigned long *)&tmp)[0] =
+						va_arg(args, unsigned long);
+					((unsigned long *)&tmp)[1] =
+						va_arg(args, unsigned long);
+					acnt += 2 * sizeof(unsigned long);
+				}
 				if (*(format + 2) == 'u') {
 					format += 2;
 					pc += printi(out, out_len, tmp, 10, 0,
@@ -295,16 +317,19 @@ static int print(char **out, u32 *out_len, const char *format, va_list args)
 						out, out_len,
 						va_arg(args, unsigned long), 16,
 						0, width, flags, 'a');
+					acnt += sizeof(unsigned long);
 				} else if (*(format + 1) == 'X') {
 					format += 1;
 					pc += printi(
 						out, out_len,
 						va_arg(args, unsigned long), 16,
 						0, width, flags, 'A');
+					acnt += sizeof(unsigned long);
 				} else {
 					pc += printi(out, out_len,
 						     va_arg(args, long), 10, 1,
 						     width, flags, '0');
+					acnt += sizeof(long);
 				}
 			}
 			if (*format == 'c') {
@@ -312,14 +337,17 @@ static int print(char **out, u32 *out_len, const char *format, va_list args)
 				scr[0] = va_arg(args, int);
 				scr[1] = '\0';
 				pc += prints(out, out_len, scr, width, flags);
+				acnt += sizeof(int);
 				continue;
 			}
 		} else {
-literal:
+		out:
 			printc(out, out_len, *format);
 			++pc;
 		}
 	}
+	if (out)
+		**out = '\0';
 
 	return pc;
 }
@@ -328,9 +356,6 @@ int sbi_sprintf(char *out, const char *format, ...)
 {
 	va_list args;
 	int retval;
-
-	if (unlikely(!out))
-		sbi_panic("sbi_sprintf called with NULL output string\n");
 
 	va_start(args, format);
 	retval = print(&out, NULL, format, args);
@@ -343,10 +368,6 @@ int sbi_snprintf(char *out, u32 out_sz, const char *format, ...)
 {
 	va_list args;
 	int retval;
-
-	if (unlikely(!out && out_sz != 0))
-		sbi_panic("sbi_snprintf called with NULL output string and "
-			  "output size is not zero\n");
 
 	va_start(args, format);
 	retval = print(&out, &out_sz, format, args);

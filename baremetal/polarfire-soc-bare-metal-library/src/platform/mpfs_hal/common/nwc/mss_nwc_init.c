@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include "mpfs_hal/mss_hal.h"
 #include "mss_nwc_init.h"
+#include "simulation.h"
 
 #ifdef DEBUG_DDR_INIT
 #include "drivers/mss/mss_mmuart/mss_uart.h"
@@ -299,11 +300,13 @@ uint8_t mss_nwc_init(void)
      * The SGMII set-upset configures the external clock reference so this must
      * be called before configuring the MSS PLL
      */
+    SIM_FEEDBACK0(2);
     sgmii_setup();
 
     /*
      * Setup the MSS PLL
      */
+    SIM_FEEDBACK0(3);
     mss_pll_config();
 
     return error;

@@ -559,6 +559,8 @@ static uint8_t usbd_msc_process_request_cb( mss_usbd_setup_pkt_t* setup_pkt, uin
                 }
 
             default:
+                length = 0u;
+
                 return USB_FAIL;
         }
     }

@@ -56,7 +56,7 @@ int sbi_ecall_ihc_handler(unsigned long extid, unsigned long funcid,
 {
     uint32_t my_hart_id;
     uint32_t remote_hart_id;
-    int result;
+    int result = 0;
     uint32_t remote_channel = (uint32_t) regs->a0;
     uint32_t * message_ptr = (uint32_t *) regs->a1;
 
@@ -75,8 +75,6 @@ int sbi_ecall_ihc_handler(unsigned long extid, unsigned long funcid,
         case SBI_EXT_IHC_SEND:
             if (IHC_tx_message_from_context(remote_channel, (uint32_t *) message_ptr))
                 result = SBI_ERR_DENIED;
-            else
-                result = SBI_OK;
             break;
         case SBI_EXT_IHC_RECEIVE:
             IHC_context_indirect_isr((uint32_t *) message_ptr);
@@ -87,6 +85,10 @@ int sbi_ecall_ihc_handler(unsigned long extid, unsigned long funcid,
     };
 
 exit:
+    if (result >= 0) {
+        *out_val = result;
+        result = 0;
+    }
     return result;
 }
 

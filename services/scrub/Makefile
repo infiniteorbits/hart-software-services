@@ -31,5 +31,3 @@ SRCS-$(CONFIG_SERVICE_SCRUB) += \
 
 INCLUDES +=\
 	-I./services/scrub \
-
-services/scrub/scrub_service.o: CFLAGS=$(CFLAGS_GCCEXT)

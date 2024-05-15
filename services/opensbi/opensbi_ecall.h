@@ -46,7 +46,7 @@ extern "C" {
 // Microchip Technology JEDEC Id: Bank 1, 0x29 => MVENDORID = 0x029
 #define MICROCHIP_TECHNOLOGY_MVENDOR_ID  0x029
 
-#define SBI_EXT_MICROCHIP_TECHNOLOGY    (SBI_EXT_VENDOR_START | MICROCHIP_TECHNOLOGY_MVENDOR_ID)
+#define SBI_EXT_MICROCHIP_TECHNOLOGY       (SBI_EXT_VENDOR_START | MICROCHIP_TECHNOLOGY_MVENDOR_ID)
 
 #define SBI_EXT_IHC_CTX_INIT   0x00
 #define SBI_EXT_IHC_SEND       0x01
@@ -57,10 +57,6 @@ extern "C" {
 #define SBI_EXT_RPROC_STOP     0x05
 
 #define SBI_EXT_HSS_REBOOT     0x10
-
-#define SBI_EXT_CRYPTO_INIT             0x11
-#define SBI_EXT_CRYPTO_SERVICES_PROBE   0x12
-#define SBI_EXT_CRYPTO_SERVICES         0x13
 
 #include <sbi/sbi_ecall.h>
 #include <sbi/sbi_ecall_interface.h>

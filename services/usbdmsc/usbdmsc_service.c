@@ -24,16 +24,13 @@
 #include "usbdmsc_service.h"
 #include "mpfs_reg_map.h"
 #include "hss_boot_service.h"
-#include "hss_trigger.h"
 
 #include "drivers/mss/mss_mmuart/mss_uart.h"
-#include "flash_drive_app.h"
 
 static void usbdmsc_init_handler(struct StateMachine * const pMyMachine);
 static void usbdmsc_idle_handler(struct StateMachine * const pMyMachine);
 static void usbdmsc_waitForUSBHost_onEntry(struct StateMachine * const pMyMachine);
 static void usbdmsc_waitForUSBHost_handler(struct StateMachine * const pMyMachine);
-static void usbdmsc_active_onEntry(struct StateMachine * const pMyMachine);
 static void usbdmsc_active_handler(struct StateMachine * const pMyMachine);
 static void usbdmsc_active_onExit(struct StateMachine * const pMyMachine);
 
@@ -57,7 +54,7 @@ static const struct StateDesc usbdmsc_state_descs[] = {
     { (const stateType_t)USBDMSC_INITIALIZATION,    (const char *)"Init",             NULL,                            NULL,                   &usbdmsc_init_handler },
     { (const stateType_t)USBDMSC_IDLE,              (const char *)"Idle",             NULL,                            NULL,                   &usbdmsc_idle_handler },
     { (const stateType_t)USBDMSC_WAIT_FOR_USB_HOST, (const char *)"WaitForUSBHost",   &usbdmsc_waitForUSBHost_onEntry, NULL,                   &usbdmsc_waitForUSBHost_handler },
-    { (const stateType_t)USBDMSC_ACTIVE,            (const char *)"Active",           &usbdmsc_active_onEntry,         &usbdmsc_active_onExit, &usbdmsc_active_handler },
+    { (const stateType_t)USBDMSC_ACTIVE,            (const char *)"Active",           NULL,                            &usbdmsc_active_onExit, &usbdmsc_active_handler },
 };
 
 /*!
@@ -84,13 +81,7 @@ struct StateMachine usbdmsc_service = {
 
 static void usbdmsc_init_handler(struct StateMachine * const pMyMachine)
 {
-    if (
-#if IS_ENABLED(CONFIG_SERVICE_DDR)
-        HSS_Trigger_IsNotified(EVENT_DDR_TRAINED) &&
-#endif
-        HSS_Trigger_IsNotified(EVENT_STARTUP_COMPLETE)) {
-        pMyMachine->state = USBDMSC_IDLE;
-    }
+    pMyMachine->state = USBDMSC_IDLE;
 }
 
 /////////////////
@@ -98,73 +89,36 @@ static void usbdmsc_init_handler(struct StateMachine * const pMyMachine)
 static void usbdmsc_idle_handler(struct StateMachine * const pMyMachine)
 {
     (void)pMyMachine;
-
-    if (HSS_Trigger_IsNotified(EVENT_USBDMSC_REQUESTED)) {
-        HSS_Trigger_Clear(EVENT_USBDMSC_REQUESTED);
-        usbdmsc_service.state = USBDMSC_WAIT_FOR_USB_HOST;
-    }
 }
 
 /////////////////
 
 static void usbdmsc_waitForUSBHost_onEntry(struct StateMachine * const pMyMachine)
 {
-    bool result = USBDMSC_Init();
-
-    if (result) {
-        mHSS_PUTS("Waiting for USB Host to connect... (CTRL-C to quit)\n");
-    } else {
-        mHSS_PUTS("USBDMSC_Init() returned false\n");
-        usbdmsc_service.state = USBDMSC_IDLE;
-    }
+    USBDMSC_Init();
+    mHSS_PUTS("Waiting for USB Host to connect... (CTRL-C to quit)\n");
 }
 
+uint32_t FLASH_DRIVE_is_host_connected(void); //TODO: tidy
 static void usbdmsc_waitForUSBHost_handler(struct StateMachine * const pMyMachine)
 {
-    bool idle = USBDMSC_Poll();
-
-    if (idle) {
-        pMyMachine->state = USBDMSC_IDLE;
-    } else if (FLASH_DRIVE_is_host_connected()) {
+    if (FLASH_DRIVE_is_host_connected()) {
         mHSS_PUTS("USB Host connected. Waiting for disconnect... (CTRL-C to quit)\n");
         pMyMachine->state = USBDMSC_ACTIVE;
     }
+
+    USBDMSC_Poll();
 }
 
 /////////////////
 
-#if IS_ENABLED(CONFIG_SERVICE_USBDMSC_ENABLE_MAX_SESSION_TIMEOUT)
-static HSSTicks_t activeTimer = 0u;
-#  define USBDMSC_ACTIVE_TIMEOUT (ONE_SEC * CONFIG_SERVICE_USBDMSC_MAX_SESSION_TIMEOUT) /* 60 minutes */
-#endif
-
-static void usbdmsc_active_onEntry(struct StateMachine * const pMyMachine)
-{
-    (void)pMyMachine;
-
-#if IS_ENABLED(CONFIG_SERVICE_USBDMSC_ENABLE_MAX_SESSION_TIMEOUT)
-   activeTimer = HSS_GetTime();
-#endif
-}
-
 static void usbdmsc_active_handler(struct StateMachine * const pMyMachine)
 {
-#if IS_ENABLED(CONFIG_SERVICE_USBDMSC_ENABLE_MAX_SESSION_TIMEOUT)
-    bool activeTimeout = HSS_Timer_IsElapsed(activeTimer, USBDMSC_ACTIVE_TIMEOUT);
-
-    if (activeTimeout) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "***** USBDMSC Max Session Timeout *****\n");
-        pMyMachine->state = USBDMSC_IDLE;
-    } else
-#endif
-    if ((!FLASH_DRIVE_is_host_connected())) {
+    if (!FLASH_DRIVE_is_host_connected()) {
         pMyMachine->state = USBDMSC_IDLE;
     }
 
-    bool idle = USBDMSC_Poll();
-    if (idle) {
-        pMyMachine->state = USBDMSC_IDLE;
-    }
+    USBDMSC_Poll();
 }
 
 static void usbdmsc_active_onExit(struct StateMachine * const pMyMachine)
@@ -174,8 +128,6 @@ static void usbdmsc_active_onExit(struct StateMachine * const pMyMachine)
     void HSS_Storage_FlushWriteBuffer(void);
     HSS_Storage_FlushWriteBuffer();
 
-    USBDMSC_Shutdown();
-
     mHSS_PUTS("\nUSB Host disconnected...\n");
 }
 
@@ -183,7 +135,7 @@ static void usbdmsc_active_onExit(struct StateMachine * const pMyMachine)
 
 void USBDMSC_Activate(void)
 {
-    HSS_Trigger_Notify(EVENT_USBDMSC_REQUESTED);
+    usbdmsc_service.state = USBDMSC_WAIT_FOR_USB_HOST;
 }
 
 void USBDMSC_Deactivate(void)

@@ -2,9 +2,12 @@
  * Copyright 2019-2022 Microchip FPGA Embedded Systems Solutions.
  *
  * SPDX-License-Identifier: MIT
- * 
+ *
  * Register bit offsets and masks definitions for PolarFire SoC MSS system
  * services
+ *
+ * SVN $Revision$
+ * SVN $Date$
  */
 #ifndef MSS_SYS_SERVICES_REGS_H_
 #define MSS_SYS_SERVICES_REGS_H_
@@ -14,7 +17,6 @@ extern "C" {
 #endif
 
 /***************SCBCTRL  SERVICES_CR register*************************/
-
 #define SCBCTRL_SERVICESCR_REQ                      (0u)
 #define SCBCTRL_SERVICESCR_REQ_MASK                 (1u << SCBCTRL_SERVICESCR_REQ)
 
@@ -32,7 +34,6 @@ extern "C" {
 
 
 /***************SCBCTRL  SERVICES_SR registers*************************/
-
 #define SCBCTRL_SERVICESSR_REQ                      (0u)
 #define SCBCTRL_SERVICESSR_REQ_MASK                 (1u << SCBCTRL_SERVICESSR_REQ)
 

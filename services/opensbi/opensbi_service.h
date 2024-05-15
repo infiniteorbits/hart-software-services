@@ -55,10 +55,6 @@ void mpfs_domains_register_boot_hart(char *pName, u32 hartMask, int boot_hartid,
 void mpfs_mark_hart_as_booted(int hartid);
 bool mpfs_is_last_hart_ready(void);
 bool mpfs_is_hart_using_opensbi(int hartid);
-bool mpfs_are_harts_in_same_domain(int hartid1, int hartid2);
-bool mpfs_is_cold_reboot_allowed(int hartid);
-bool mpfs_is_warm_reboot_allowed(int hartid);
-void mpfs_uart_surrender(void);
 
 extern struct StateMachine opensbi_service;
 

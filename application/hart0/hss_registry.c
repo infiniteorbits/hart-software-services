@@ -81,20 +81,6 @@
 #  include "beu_service.h"
 #endif
 
-#if IS_ENABLED(CONFIG_SERVICE_HEALTHMON)
-#  include "healthmon_service.h"
-#endif
-
-#if IS_ENABLED(CONFIG_SERVICE_SCRUB)
-#  include "scrub_service.h"
-#endif
-
-#if IS_ENABLED(CONFIG_SERVICE_GPIO_UI)
-#  include "gpio_ui_service.h"
-#endif
-
-#include "startup_service.h"
-
 #include "hss_debug.h"
 #include "hss_registry.h"
 
@@ -129,69 +115,63 @@ static enum IPIStatusCode HSS_Null_IPIHandler(TxId_t transaction_id, enum HSSHar
  */
 
 const struct IPI_Handler ipiRegistry[] = {
-    { IPI_MSG_NO_MESSAGE,        HSS_Null_IPIHandler },
+    { IPI_MSG_NO_MESSAGE, 		HSS_Null_IPIHandler },
 #if IS_ENABLED(CONFIG_SERVICE_BOOT)
-    { IPI_MSG_BOOT_REQUEST,      HSS_Boot_IPIHandler },
-    { IPI_MSG_PMP_SETUP,         HSS_Boot_PMPSetupHandler },
+    { IPI_MSG_BOOT_REQUEST, 		HSS_Boot_IPIHandler },
+    { IPI_MSG_PMP_SETUP, 		HSS_Boot_PMPSetupHandler },
 #else
-    { IPI_MSG_BOOT_REQUEST,      HSS_Null_IPIHandler },
-    { IPI_MSG_PMP_SETUP,         HSS_Null_IPIHandler },
+    { IPI_MSG_BOOT_REQUEST, 		HSS_Null_IPIHandler },
+    { IPI_MSG_PMP_SETUP, 		HSS_Null_IPIHandler },
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
-    { IPI_MSG_SPI_XFER,          HSS_Null_IPIHandler },
+    { IPI_MSG_SPI_XFER, 		HSS_Null_IPIHandler },
 #else
-    { IPI_MSG_SPI_XFER,          HSS_Null_IPIHandler },
+    { IPI_MSG_SPI_XFER, 		HSS_Null_IPIHandler },
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_NET)
-    { IPI_MSG_NET_RXPOLL,        HSS_Null_IPIHandler },
-    { IPI_MSG_NET_TX,            HSS_Null_IPIHandler },
+    { IPI_MSG_NET_RXPOLL, 		HSS_Null_IPIHandler },
+    { IPI_MSG_NET_TX, 			HSS_Null_IPIHandler },
 #else
-    { IPI_MSG_NET_RXPOLL,        HSS_Null_IPIHandler },
-    { IPI_MSG_NET_TX,            HSS_Null_IPIHandler },
+    { IPI_MSG_NET_RXPOLL, 		HSS_Null_IPIHandler },
+    { IPI_MSG_NET_TX, 			HSS_Null_IPIHandler },
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_SGDMA)
-    { IPI_MSG_SCATTERGATHER_DMA, HSS_SGDMA_IPIHandler },
+    { IPI_MSG_SCATTERGATHER_DMA, 	HSS_SGDMA_IPIHandler },
 #else
-    { IPI_MSG_SCATTERGATHER_DMA, HSS_Null_IPIHandler },
+    { IPI_MSG_SCATTERGATHER_DMA, 	HSS_Null_IPIHandler },
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_WDOG)
-    { IPI_MSG_WDOG_INIT,         HSS_Null_IPIHandler },
+    { IPI_MSG_WDOG_INIT, 		HSS_Null_IPIHandler },
 #else
-    { IPI_MSG_WDOG_INIT,         HSS_Null_IPIHandler },
+    { IPI_MSG_WDOG_INIT, 		HSS_Null_IPIHandler },
 #endif
-    { IPI_MSG_GPIO_SET,          HSS_Null_IPIHandler },
+    { IPI_MSG_GPIO_SET, 		HSS_Null_IPIHandler },
 #if IS_ENABLED(CONFIG_SERVICE_UART)
-    { IPI_MSG_UART_TX,           HSS_UartTx_IPIHandler },
-    { IPI_MSG_UART_POLL_RX,      HSS_UartPollRx_IPIHandler },
+    { IPI_MSG_UART_TX,                  HSS_UartTx_IPIHandler },
+    { IPI_MSG_UART_POLL_RX,             HSS_UartPollRx_IPIHandler },
 #else
-    { IPI_MSG_UART_TX,           HSS_Null_IPIHandler },
-    { IPI_MSG_UART_POLL_RX,      HSS_Null_IPIHandler },
+    { IPI_MSG_UART_TX,                  HSS_Null_IPIHandler },
+    { IPI_MSG_UART_POLL_RX,             HSS_Null_IPIHandler },
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_POWERMODE)
-    { IPI_MSG_POWERMODE,         HSS_Null_IPIHandler },
+    { IPI_MSG_POWERMODE,                HSS_Null_IPIHandler },
 #else
-    { IPI_MSG_POWERMODE,         HSS_Null_IPIHandler },
+    { IPI_MSG_POWERMODE,                HSS_Null_IPIHandler },
 #endif
-    { IPI_MSG_ACK_PENDING,       IPI_ACK_IPIHandler },
-    { IPI_MSG_ACK_COMPLETE,      IPI_ACK_IPIHandler },
-    { IPI_MSG_HALT,              HSS_Null_IPIHandler },
-    { IPI_MSG_CONTINUE,          HSS_Null_IPIHandler },
+    { IPI_MSG_ACK_PENDING, 	        IPI_ACK_IPIHandler },
+    { IPI_MSG_ACK_COMPLETE, 		IPI_ACK_IPIHandler },
+    { IPI_MSG_HALT, 			HSS_Null_IPIHandler },
+    { IPI_MSG_CONTINUE, 		HSS_Null_IPIHandler },
 #if IS_ENABLED(CONFIG_SERVICE_GOTO)
-    { IPI_MSG_GOTO,              HSS_GOTO_IPIHandler },
+    { IPI_MSG_GOTO, 			HSS_GOTO_IPIHandler },
 #else
-    { IPI_MSG_GOTO,              HSS_Null_IPIHandler },
+    { IPI_MSG_GOTO, 			HSS_Null_IPIHandler },
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_OPENSBI)
-    { IPI_MSG_OPENSBI_INIT,      HSS_OpenSBI_IPIHandler },
+    { IPI_MSG_OPENSBI_INIT, 	  	HSS_OpenSBI_IPIHandler },
 #else
-    { IPI_MSG_OPENSBI_INIT,      HSS_Null_IPIHandler },
+    { IPI_MSG_OPENSBI_INIT, 	  	HSS_Null_IPIHandler },
 #endif
-#if IS_ENABLED(CONFIG_SERVICE_SCRUB)
-    { IPI_MSG_SCRUB,             Scrub_IPIHandler },
-#else
-    { IPI_MSG_SCRUB,             HSS_Null_IPIHandler },
-#endif
-    { IPI_MSG_DDR_TRAIN,         HSS_DDR_Train_IPIHandler },
 };
 const size_t spanOfIpiRegistry = ARRAY_SIZE(ipiRegistry);
 
@@ -239,7 +219,7 @@ struct StateMachine /*@null@*/ * const pGlobalStateMachines[] = {
 #if IS_ENABLED(CONFIG_SERVICE_OPENSBI)
     &opensbi_service,
 #endif
-#if IS_ENABLED(CONFIG_SERVICE_TINYCLI)
+#if IS_ENABLED(CONFIG_SERVICE_TINYCLI_REGISTER)
     &tinycli_service,
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_USBDMSC)
@@ -251,13 +231,6 @@ struct StateMachine /*@null@*/ * const pGlobalStateMachines[] = {
 #if IS_ENABLED(CONFIG_SERVICE_BEU)
     &beu_service,
 #endif
-#if IS_ENABLED(CONFIG_SERVICE_HEALTHMON)
-    &healthmon_service,
-#endif
-#if IS_ENABLED(CONFIG_SERVICE_GPIO_UI)
-    &gpio_ui_service,
-#endif
-    &startup_service,
 };
 const size_t spanOfPGlobalStateMachines = ARRAY_SIZE(pGlobalStateMachines);
 
@@ -274,7 +247,6 @@ const size_t spanOfPGlobalStateMachines = ARRAY_SIZE(pGlobalStateMachines);
 #include "hss_sys_setup.h"
 #include "hss_board_init.h"
 #include "device_serial_number.h"
-#include "design_version_info.h"
 #if IS_ENABLED(CONFIG_MEMTEST)
 #  include "hss_memtest.h"
 #endif
@@ -284,26 +256,42 @@ const size_t spanOfPGlobalStateMachines = ARRAY_SIZE(pGlobalStateMachines);
 
 const struct InitFunction /*@null@*/ globalInitFunctions[] = {
     // Name                            FunctionPointer                Halt   Restart
-#if IS_ENABLED(CONFIG_SERVICE_BOOT)
-#  if IS_ENABLED(CONFIG_USE_IHC)
-    { "HSS_IHCInit",                   HSS_IHCInit,                   false, false },
-#  endif
-#endif
-    { "IPI_QueuesInit",                IPI_QueuesInit,                false, false },
+//    { "HSS_Setup_L2Cache",             HSS_Setup_L2Cache,             false, false },
+    { "HSS_Init_RWDATA_BSS",           HSS_Init_RWDATA_BSS,           false, false },
+    { "HSS_UARTInit",                  HSS_UARTInit,                  false, false },
+    { "HSS_OpenSBIInit",               HSS_OpenSBIInit,               false, false },
+    { "HSS_BoardInit",                 HSS_BoardInit,                 false, false },
 #if IS_ENABLED(CONFIG_USE_LOGO)
     { "HSS_LogoInit",                  HSS_LogoInit,                  false, false },
 #endif
-    { "HSS_PMP_Init",                  HSS_PMP_Init,                  false, false },
-    { "HSS_BoardInit",                 HSS_BoardInit ,                false, false },
     { "HSS_E51_Banner",                HSS_E51_Banner,                false, false },
     { "Device_Serial_Number_Init",     Device_Serial_Number_Init,     false, false },
     { "HSS_DDRPrintSegConfig",         HSS_DDRPrintSegConfig,         false, false },
     { "HSS_DDRPrintL2CacheWaysConfig", HSS_DDRPrintL2CacheWaysConfig, false, false },
+#if IS_ENABLED(CONFIG_MEMTEST)
+    { "HSS_MemTestDDRFast",            HSS_MemTestDDRFast,            false, false },
+#endif
 #if IS_ENABLED(CONFIG_DEBUG_RESET_REASON)
     { "HSS_ResetReasonInit",           HSS_ResetReasonInit,           false, false },
 #endif
-    { "Design_Version_Info_Init",      Design_Version_Info_Init,      false, false },
     { "HSS_BoardLateInit",             HSS_BoardLateInit,             false, false },
+#if IS_ENABLED(CONFIG_SERVICE_MMC)
+    { "HSS_MMCInit",                   HSS_MMCInit,                   false, false },
+#endif
+#if IS_ENABLED(CONFIG_SERVICE_QSPI)
+    { "HSS_QSPIInit",                  HSS_QSPIInit,                  false, false },
+#endif
+#if IS_ENABLED(CONFIG_SERVICE_BOOT)
+#  if IS_ENABLED(CONFIG_SERVICE_TINYCLI)
+    { "HSS_TinyCLI_Parser",            HSS_TinyCLI_Parser,            false, false },
+#  endif
+#  if IS_ENABLED(CONFIG_USE_IHC)
+    { "HSS_IHCInit",                   HSS_IHCInit,                   false, false },
+#  endif
+    { "IPI_QueuesInit",                IPI_QueuesInit,                false, false },
+    { "HSS_PMP_Init",                  HSS_PMP_Init,                  false, false },
+    { "HSS_BootInit",                  HSS_BootInit,                  false, true },
+#endif
 };
 const size_t spanOfGlobalInitFunctions = ARRAY_SIZE(globalInitFunctions);
 

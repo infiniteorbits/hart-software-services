@@ -66,11 +66,13 @@
 
 #include "mpfs_reg_map.h"
 
-#include "reboot_service.h"
-#include "clocks/hw_mss_clks.h"    // LIBERO_SETTING_MSS_RTC_TOGGLE_CLK
+#include "wdog_service.h"
+
 
 #define MPFS_HART_COUNT            5
 #define MPFS_HART_STACK_SIZE       8192
+
+#define MPFS_SYS_CLK               1000000000
 
 #define MPFS_CLINT_ADDR            0x2000000
 
@@ -78,8 +80,8 @@
 #define MPFS_PLIC_NUM_SOURCES      186
 #define MPFS_PLIC_NUM_PRIORITIES   7
 
-#define MPFS_ACLINT_MTIMER_FREQ    LIBERO_SETTING_MSS_RTC_TOGGLE_CLK
-#define MPFS_ACLINT_MTIMER_ADDR    (0x02004000)
+#define MPFS_ACLINT_MTIMER_FREQ 1000000
+#define MPFS_ACLINT_MTIMER_ADDR (0x02004000)
 
 /**
  * PolarFire SoC has 5 HARTs but HART ID 0 doesn't have S mode. enable only
@@ -104,11 +106,12 @@ static struct aclint_mswi_data mswi = {
 };
 
 static struct aclint_mtimer_data mtimer = {
-    .mtime_freq = MPFS_ACLINT_MTIMER_FREQ,
-    .mtime_addr = MPFS_ACLINT_MTIMER_ADDR + ACLINT_DEFAULT_MTIME_OFFSET,
-    .mtime_size = ACLINT_DEFAULT_MTIME_SIZE,
-    .mtimecmp_addr = MPFS_ACLINT_MTIMER_ADDR + ACLINT_DEFAULT_MTIMECMP_OFFSET,
-    .mtimecmp_size = ACLINT_DEFAULT_MTIMECMP_SIZE,
+        .mtime_freq = MPFS_ACLINT_MTIMER_FREQ,
+        .mtime_addr = MPFS_ACLINT_MTIMER_ADDR + ACLINT_DEFAULT_MTIME_OFFSET,
+        .mtime_size = ACLINT_DEFAULT_MTIME_SIZE,
+        .mtimecmp_addr = MPFS_ACLINT_MTIMER_ADDR + ACLINT_DEFAULT_MTIMECMP_OFFSET,
+        .mtimecmp_size = ACLINT_DEFAULT_MTIMECMP_SIZE,
+
     .first_hartid = 0,
     .hart_count = MPFS_HART_COUNT,
     .has_64bit_mmio = TRUE
@@ -133,7 +136,9 @@ extern unsigned long STACK_SIZE_PER_HART;
 static void mpfs_modify_dt(void *fdt)
 {
     fdt_cpu_fixup(fdt);
+
     fdt_fixups(fdt);
+
     fdt_reserved_memory_nomap_fixup(fdt);
 }
 
@@ -155,7 +160,8 @@ static void __attribute__((__noreturn__)) mpfs_system_reset(u32 reset_type, u32 
 
     sbi_exit(scratch);
 
-    __builtin_unreachable(); // never reached
+    // never reached
+    __builtin_unreachable();
 }
 
 static int mpfs_system_reset_check(u32 reset_type, u32 reset_reason)
@@ -214,7 +220,8 @@ static bool console_initialized = false;
 #if IS_ENABLED(CONFIG_UART_SURRENDER)
 static bool uart_surrendered_flag = false;
 
-void mpfs_uart_surrender(void)
+void uart_surrender(void);
+void uart_surrender(void)
 {
     uart_surrendered_flag = true;
 }
@@ -283,7 +290,6 @@ static int mpfs_irqchip_init(bool cold_boot)
         //
         // we'll do it ourselves to customize behavior..
         //const int m_cntx_id =  (hartid) ? (2 * hartid - 1) : 0;
-
         const int s_cntx_id =  (hartid) ? (2 * hartid) : -1;
         struct plic_data * const plic = &plicInfo;
         size_t i, ie_words;
@@ -301,9 +307,6 @@ static int mpfs_irqchip_init(bool cold_boot)
             //        plic_set_ie(plic, m_cntx_id, i, 0);
             //    }
             //}
-
-            extern void plic_set_ie(const struct plic_data *plic, u32 cntxid, u32 word_index, u32 val);
-            extern void plic_set_thresh(const struct plic_data *plic, u32 cntxid, u32 val);
 
             /* By default, disable all IRQs for S-mode of target HART */
             if (s_cntx_id > -1) {
@@ -393,7 +396,7 @@ static struct sbi_domain_memregion * mpfs_domains_root_regions(void)
     return mpfs_memregion;
 }
 
-__extension__ static u32 mpfs_hart_index2id[MPFS_HART_COUNT] = {
+u32 mpfs_hart_index2id[MPFS_HART_COUNT] = {
     [0] = -1,
     [1] = 1,
     [2] = 2,
@@ -434,35 +437,12 @@ bool mpfs_is_hart_using_opensbi(int hartid)
 
 void mpfs_mark_hart_as_booted(int hartid)
 {
+    assert(hartid < ARRAY_SIZE(hart_ledger));
     assert((hartid >= 0) & (hartid < ARRAY_SIZE(hart_ledger)));
 
     if (hartid < ARRAY_SIZE(hart_ledger)) {
         hart_ledger[hartid].boot_pending = 0;
     }
-}
-
-bool mpfs_are_harts_in_same_domain(int hartid1, int hartid2)
-{
-    bool result = false;
-
-    assert((hartid1 >= 0) & (hartid1 < ARRAY_SIZE(hart_ledger)));
-    assert((hartid2 >= 0) & (hartid2 < ARRAY_SIZE(hart_ledger)));
-
-    result = (hart_ledger[hartid1].owner_hartid == hart_ledger[hartid2].owner_hartid);
-
-    return result;
-}
-
-bool mpfs_is_cold_reboot_allowed(int hartid)
-{
-    assert((hartid >= 0) & (hartid < ARRAY_SIZE(hart_ledger)));
-    return hart_ledger[hartid].allow_cold_reboot;
-}
-
-bool mpfs_is_warm_reboot_allowed(int hartid)
-{
-    assert((hartid >= 0) & (hartid < ARRAY_SIZE(hart_ledger)));
-    return hart_ledger[hartid].allow_warm_reboot;
 }
 
 bool mpfs_is_last_hart_ready(void)
@@ -570,8 +550,8 @@ static int mpfs_hart_stop(void)
 #if IS_ENABLED(CONFIG_ALLOW_COLDREBOOT)
         case SBI_SRST_RESET_TYPE_COLD_REBOOT:
             if (IS_ENABLED(CONFIG_ALLOW_COLDREBOOT_ALWAYS) || hart_ledger[hartid].allow_cold_reboot) {
-#  if IS_ENABLED(CONFIG_SERVICE_REBOOT)
-                HSS_reboot_cold(HSS_HART_ALL);
+#  if IS_ENABLED(CONFIG_SERVICE_WDOG)
+                HSS_Wdog_Reboot(HSS_HART_ALL);
 #endif
             } else {
                 mHSS_DEBUG_PRINTF(LOG_ERROR, "u54_%d not permitted to cold reboot\n", hartid);

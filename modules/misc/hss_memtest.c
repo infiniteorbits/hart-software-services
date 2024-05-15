@@ -55,12 +55,6 @@ static void log_error_(const int count, volatile void *ptr, const uint64_t value
         count, ptr, value, expected);
 }
 
-static bool check_if_interrupted(void)
-{
-    uint8_t rx_char;
-    return (uart_getchar(&rx_char, 0, false) && ((rx_char == '\003') || (rx_char == '\033')));
-}
-
 static uint64_t* HSS_MemTestAddressBus(volatile uint64_t *baseAddr, const size_t numBytes)
 {
     const size_t numWords = numBytes / sizeof(uint64_t);
@@ -68,6 +62,7 @@ static uint64_t* HSS_MemTestAddressBus(volatile uint64_t *baseAddr, const size_t
     size_t offset;
     size_t testOffset;
     uint64_t* result = NULL;
+    uint8_t rx_char;
 
     const uint64_t pattern = (uint64_t)0xAAAAAAAAAAAAAAAAu;
     const uint64_t antiPattern = (uint64_t)0x5555555555555555u;
@@ -76,7 +71,7 @@ static uint64_t* HSS_MemTestAddressBus(volatile uint64_t *baseAddr, const size_t
     for (offset = 1u; (offset & addrMask) != 0u; offset <<= 1) {
         baseAddr[offset] = pattern;
 
-        if (check_if_interrupted()) {
+        if (uart_getchar(&rx_char, 0, false) && ((rx_char == '\003') || (rx_char == '\033'))) {
             goto do_return;
         }
     }
@@ -92,7 +87,7 @@ static uint64_t* HSS_MemTestAddressBus(volatile uint64_t *baseAddr, const size_t
             break;
         }
 
-        if (check_if_interrupted()) {
+        if (uart_getchar(&rx_char, 0, false) && ((rx_char == '\003') || (rx_char == '\033'))) {
             goto do_return;
         }
     }
@@ -128,7 +123,7 @@ static uint64_t* HSS_MemTestAddressBus(volatile uint64_t *baseAddr, const size_t
                 baseAddr[testOffset] = pattern;
             }
 
-            if (check_if_interrupted()) {
+            if (uart_getchar(&rx_char, 0, false) && ((rx_char == '\003') || (rx_char == '\033'))) {
                 goto do_return;
             }
         }
@@ -146,6 +141,7 @@ static uint64_t *HSS_MemTestDevice(volatile uint64_t *baseAddr, size_t numBytes)
 
     uint64_t pattern;
     uint64_t antiPattern;
+    uint8_t rx_char;
 
     // write pattern to every cell
     mHSS_FANCY_PRINTF(LOG_NORMAL, "Write Seed Pattern to all cells\n");
@@ -154,7 +150,7 @@ static uint64_t *HSS_MemTestDevice(volatile uint64_t *baseAddr, size_t numBytes)
         baseAddr[offset] = pattern;
         HSS_ShowProgress(numWords, numWords - offset);
 
-        if (check_if_interrupted()) {
+        if (uart_getchar(&rx_char, 0, false) && ((rx_char == '\003') || (rx_char == '\033'))) {
             goto do_return;
         }
     }
@@ -180,7 +176,7 @@ static uint64_t *HSS_MemTestDevice(volatile uint64_t *baseAddr, size_t numBytes)
 
         HSS_ShowProgress(numWords, numWords - offset);
 
-        if (check_if_interrupted()) {
+        if (uart_getchar(&rx_char, 0, false) && ((rx_char == '\003') || (rx_char == '\033'))) {
             goto do_return;
         }
     }
@@ -199,7 +195,7 @@ static uint64_t *HSS_MemTestDevice(volatile uint64_t *baseAddr, size_t numBytes)
 
             HSS_ShowProgress(numWords, numWords - offset);
 
-            if (check_if_interrupted()) {
+            if (uart_getchar(&rx_char, 0, false) && ((rx_char == '\003') || (rx_char == '\033'))) {
                 goto do_return;
             }
         }
@@ -218,7 +214,6 @@ do_return:
 
 #include "ddr_service.h"
 
-extern void clear_bootup_cache_ways(void);
 bool HSS_MemTestDDRFast(void)
 {
     bool result = true;
@@ -245,8 +240,6 @@ bool HSS_MemTestDDRFast(void)
     }
     HSS_PerfCtr_Lap(perf_ctr_index_mem64);
 
-    clear_bootup_cache_ways();
-
     return result;
 }
 
@@ -256,12 +249,10 @@ bool HSS_MemTestDDRFull(void)
 
     if (result) {
         if (HSS_MemTestDevice((uint64_t *)HSS_DDR_GetStart(), HSS_DDR_GetSize()) != NULL) {
-            //mHSS_FANCY_PRINTF(LOG_ERROR, "FAILED!\n");
+            mHSS_FANCY_PRINTF(LOG_ERROR, "FAILED!\n");
             result = false;
         }
     }
-
-    clear_bootup_cache_ways();
 
     return result;
 }
@@ -273,11 +264,9 @@ bool HSS_MemTestDDR_Ex(volatile uint64_t *baseAddr, size_t numBytes)
     if ((HSS_MemTestDataBus(baseAddr) != 0u)
             || (HSS_MemTestAddressBus(baseAddr, numBytes) != NULL)
             || (HSS_MemTestDevice(baseAddr, numBytes) != NULL)) {
-            //mHSS_FANCY_PRINTF(LOG_ERROR, "FAILED!\n");
+            mHSS_FANCY_PRINTF(LOG_ERROR, "FAILED!\n");
         result = false;
     }
-
-    clear_bootup_cache_ways();
 
     return result;
 }

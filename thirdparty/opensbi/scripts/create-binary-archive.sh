@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 function usage()
 {
@@ -103,6 +103,7 @@ build_opensbi() {
 		BUILD_PLATFORM_SUBDIR+=("kendryte/k210")
 		BUILD_PLATFORM_SUBDIR+=("fpga/ariane")
 		BUILD_PLATFORM_SUBDIR+=("fpga/openpiton")
+		BUILD_PLATFORM_SUBDIR+=("andes/ae350")
 		BUILD_PLATFORM_SUBDIR+=("generic")
 		;;
 	*)
@@ -117,7 +118,7 @@ build_opensbi() {
 	# Build and install generic library
 	echo "Build and install generic library XLEN=${BUILD_RISCV_XLEN}"
 	echo ""
-	make -C "${BUILD_OPENSBI_SOURCE_PATH}" O="${BUILD_OUTPUT_PATH}/${BUILD_NAME}" I="${BUILD_OUTPUT_PATH}/${BUILD_ARCHIVE_NAME}" PLATFORM_RISCV_XLEN="${BUILD_RISCV_XLEN}" install_libsbi -j "${BUILD_NUM_THREADS}"
+	make -C "${BUILD_OPENSBI_SOURCE_PATH}" O="${BUILD_OUTPUT_PATH}/${BUILD_NAME}" I="${BUILD_OUTPUT_PATH}/${BUILD_ARCHIVE_NAME}" PLATFORM_RISCV_XLEN="${BUILD_RISCV_XLEN}" install_libsbi install_libsbiutils -j "${BUILD_NUM_THREADS}"
 	echo ""
 
 	# Build and install relevant platforms

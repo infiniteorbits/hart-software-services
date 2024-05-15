@@ -56,49 +56,6 @@
 
 extern uint8_t PLIC_mmc_main_IRQHandler(void);
 
-static enum {
-    MMC_SELECT_SDCARD_FALLBACK_EMMC,
-    MMC_SELECT_SDCARD_ONLY,
-    MMC_SELECT_EMMC_ONLY,
-} mmc_selectedMedium = MMC_SELECT_SDCARD_FALLBACK_EMMC;
-
-void HSS_MMC_SelectSDCARD(void)
-{
-#if IS_ENABLED(CONFIG_SERVICE_MMC_MODE_SDCARD)
-    if (mmc_selectedMedium != MMC_SELECT_SDCARD_ONLY) {
-        mmc_selectedMedium = MMC_SELECT_SDCARD_ONLY;
-        HSS_MMCInit();
-    }
-#endif
-}
-
-void HSS_MMC_SelectMMC(void)
-{
-#if IS_ENABLED(CONFIG_SERVICE_MMC_MODE_EMMC)
-#if IS_ENABLED(CONFIG_SERVICE_MMC_MODE_SDCARD)
-    if (mmc_selectedMedium != MMC_SELECT_SDCARD_FALLBACK_EMMC) {
-        mmc_selectedMedium = MMC_SELECT_SDCARD_FALLBACK_EMMC;
-        HSS_MMCInit();
-    }
-#else
-    if (mmc_selectedMedium != MMC_SELECT_EMMC_ONLY) {
-        mmc_selectedMedium = MMC_SELECT_EMMC_ONLY;
-        HSS_MMCInit();
-    }
-#endif
-#endif
-}
-
-void HSS_MMC_SelectEMMC(void)
-{
-#if IS_ENABLED(CONFIG_SERVICE_MMC_MODE_EMMC)
-    if (mmc_selectedMedium != MMC_SELECT_EMMC_ONLY) {
-        mmc_selectedMedium = MMC_SELECT_EMMC_ONLY;
-        HSS_MMCInit();
-    }
-#endif
-}
-
 static void mmc_reset_block(void)
 {
     SYSREG->SUBBLK_CLOCK_CR |=
@@ -165,7 +122,7 @@ static bool mmc_init_emmc(void)
     MSS_GPIO_set_output(GPIO0_LO, MSS_GPIO_12, 0);
 #else
     /* we will attempt to switch anyway as default may be eMMC */
-    switch_demux_using_fabric_ip(EMMC_MSSIO_CONFIGURATION);
+    switch_external_mux(EMMC_MSSIO_CONFIGURATION);
 #endif
 
     /* Initialize eMMC/SD */
@@ -182,11 +139,7 @@ static bool mmc_init_sdcard(void)
     {
         .card_type = MSS_MMC_CARD_TYPE_SD,
         .data_bus_width = MSS_MMC_DATA_WIDTH_4BIT,
-#if IS_ENABLED(CONFIG_SERVICE_MMC_DEFAULT_SPEED)
-        .bus_speed_mode = MSS_SDCARD_MODE_DEFAULT_SPEED,
-#else
         .bus_speed_mode = MSS_SDCARD_MODE_HIGH_SPEED,
-#endif
         .clk_rate = MSS_MMC_CLOCK_50MHZ,
     };
 
@@ -203,7 +156,7 @@ static bool mmc_init_sdcard(void)
 #if IS_ENABLED(CONFIG_MODULE_M100PFS)
     MSS_GPIO_set_output(GPIO0_LO, MSS_GPIO_12, 1);
 #else
-    switch_demux_using_fabric_ip(SD_MSSIO_CONFIGURATION);
+    switch_external_mux(SD_MSSIO_CONFIGURATION);
 #endif
 
     /* Initialize eMMC/SD */
@@ -218,33 +171,33 @@ bool HSS_MMCInit(void)
 {
     bool result = false;
 
-    mmc_initialized = false;
-    int perf_ctr_index = PERF_CTR_UNINITIALIZED;
-    HSS_PerfCtr_Allocate(&perf_ctr_index, "MMC Init");
+    if (!mmc_initialized) {
+        int perf_ctr_index = PERF_CTR_UNINITIALIZED;
+        HSS_PerfCtr_Allocate(&perf_ctr_index, "MMC Init");
 
 #ifdef CONFIG_MODULE_M100PFS
-    MSS_GPIO_init(GPIO0_LO);
-    MSS_GPIO_config(GPIO0_LO, MSS_GPIO_12, MSS_GPIO_OUTPUT_MODE);
-    MSS_GPIO_set_output(GPIO0_LO, MSS_GPIO_12, 0);
+        MSS_GPIO_init(GPIO0_LO);
+        MSS_GPIO_config(GPIO0_LO, MSS_GPIO_12, MSS_GPIO_OUTPUT_MODE);
+        MSS_GPIO_set_output(GPIO0_LO, MSS_GPIO_12, 0);
 #endif
 
-    mmc_reset_block();
+        mmc_reset_block();
 
 #if defined(CONFIG_SERVICE_MMC_MODE_SDCARD)
-    if ((mmc_selectedMedium == MMC_SELECT_SDCARD_ONLY) || (mmc_selectedMedium == MMC_SELECT_SDCARD_FALLBACK_EMMC)) {
         mHSS_DEBUG_PRINTF(LOG_STATUS, "Attempting to select SDCARD ... ");
         mmc_initialized = mmc_init_sdcard();
         mHSS_DEBUG_PRINTF_EX("%s\n", mmc_initialized ? "Passed" : "Failed");
-    }
+
 #endif
 #if defined(CONFIG_SERVICE_MMC_MODE_EMMC)
-    if ((!mmc_initialized) && ((mmc_selectedMedium == MMC_SELECT_EMMC_ONLY) || (mmc_selectedMedium == MMC_SELECT_SDCARD_FALLBACK_EMMC))) {
-        mHSS_DEBUG_PRINTF(LOG_STATUS, "Attempting to select eMMC ... ");
-        mmc_initialized = mmc_init_emmc();
-        mHSS_DEBUG_PRINTF_EX("%s\n", mmc_initialized ? "Passed" : "Failed");
-    }
+        if (!mmc_initialized) {
+            mHSS_DEBUG_PRINTF(LOG_STATUS, "Attempting to select eMMC ... ");
+            mmc_initialized = mmc_init_emmc();
+            mHSS_DEBUG_PRINTF_EX("%s\n", mmc_initialized ? "Passed" : "Failed");
+        }
 #endif
-    HSS_PerfCtr_Lap(perf_ctr_index);
+        HSS_PerfCtr_Lap(perf_ctr_index);
+    }
 
     result = mmc_initialized;
 
@@ -316,6 +269,7 @@ bool HSS_MMC_ReadBlock(void *pDest, size_t srcOffset, size_t byteCount)
 //
 bool HSS_MMC_WriteBlock(size_t dstOffset, void *pSrc, size_t byteCount)
 {
+    // temporary code to bring up Icicle board
     char *pCSrc = (char *)pSrc;
 
     // if byte count is not a multiple of the sector size, round it up...
@@ -358,6 +312,7 @@ bool HSS_MMC_WriteBlock(size_t dstOffset, void *pSrc, size_t byteCount)
 //
 bool HSS_MMC_WriteBlockSDMA(size_t dstOffset, void *pSrc, size_t byteCount)
 {
+    // temporary code to bring up Icicle board
     char *pCSrc = (char *)pSrc;
 
     // if byte count is not a multiple of the sector size, round it up...

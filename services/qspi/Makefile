@@ -32,4 +32,4 @@ EXTRA_SRCS-$(CONFIG_SERVICE_QSPI) += \
 INCLUDES +=\
 	-I./services/qspi \
 
-$(BINDIR)/services/qspi/qspi_api.o: CFLAGS=$(CFLAGS_GCCEXT)
+services/qspi/qspi_api.o: CFLAGS=$(CFLAGS_GCCEXT)

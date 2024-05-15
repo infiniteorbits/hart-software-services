@@ -73,10 +73,6 @@ void HSS_IHCInit_U54(void);
 bool HSS_PCIeInit(void);
 #endif
 
-#ifdef CONFIG_USE_TAMPER
-bool HSS_TamperInit(void);
-#endif
-
 bool HSS_USBInit(void);
 
 bool HSS_PDMAInit(void);

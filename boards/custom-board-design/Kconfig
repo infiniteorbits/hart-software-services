@@ -1,4 +1,4 @@
-menu "Custom Board Design Configuration Options"
+menu "Design Configuration Options"
 
 config SOC_FPGA_DESIGN_XML
 	string "Enter path to Libero XML file"

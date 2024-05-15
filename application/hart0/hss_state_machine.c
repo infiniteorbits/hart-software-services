@@ -197,6 +197,10 @@ void RunStateMachines(const size_t spanOfPStateMachines, struct StateMachine *co
 #endif
 
         if (unlikely(dump_flag || max_exceeded_flag)) {
+            if (IS_ENABLED(CONFIG_DEBUG_PROFILING_SUPPORT)) {
+                dump_profile();
+            }
+
             if (IS_ENABLED(CONFIG_DEBUG_IPI_STATS)) {
                 IPI_DebugDumpStats();
             }
@@ -261,7 +265,7 @@ void RunInitFunctions(const size_t spanOfInitFunctions, const struct InitFunctio
 
                     (void)HSS_TinyCLI_Parser();
                 } else {
-                    extern void _start(void);
+                    void _start(void);
                     _start();
                 }
             }

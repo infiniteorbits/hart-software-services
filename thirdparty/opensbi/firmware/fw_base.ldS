@@ -24,11 +24,13 @@
 		PROVIDE(_text_end = .);
 	}
 
-	/* End of the code sections */
-
 	. = ALIGN(0x1000); /* Ensure next section is page aligned */
 
+	/* End of the code sections */
+
 	/* Beginning of the read-only data sections */
+
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
 
 	.rodata :
 	{
@@ -40,9 +42,9 @@
 
 	/* End of the read-only data sections */
 
-	. = ALIGN(0x1000); /* Ensure next section is page aligned */
-
 	/* Beginning of the read-write data sections */
+
+	. = ALIGN(0x1000); /* Ensure next section is page aligned */
 
 	.data :
 	{

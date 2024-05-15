@@ -282,7 +282,7 @@ static uint8_t map_token_to_priv_mode(enum token token_idx)
 		break;
 
 	case TOKEN_PRIV_MODE_H:
-		__attribute__((fallthrough)); // deliberate fallthrough
+		// deliberate fallthrough
 	default:
 		fprintf(stderr, "Unknown priv mode token: %d\n", token_idx);
 		exit(EXIT_FAILURE);
@@ -652,14 +652,11 @@ static size_t base_secondary[3] = { 0u, 0u, 0u };
 static uint8_t base_priv_mode = PRV_ILLEGAL;
 static size_t secondary_idx = 0u;
 
-static struct {
-	bool ancilliary_data_present;
-	bool skip_opensbi;
-	bool skip_autoboot_flag;
-	bool allow_coldreboot;
-	bool allow_warmreboot;
-} entitlement_flags = { false, false, false, false, false };
-
+static bool ancilliary_data_present_flag = false;
+static bool skip_opensbi_flag = false;
+static bool skip_autoboot_flag = false;
+static bool allow_cold_reboot_flag = false;
+static bool allow_warm_reboot_flag = false;
 static char ancilliary_name[BOOT_IMAGE_MAX_NAME_LEN];
 
 static void Handle_STATE_PAYLOAD_MAPPINGS(yaml_event_t *pEvent)
@@ -678,7 +675,7 @@ static void Handle_STATE_PAYLOAD_MAPPINGS(yaml_event_t *pEvent)
 		debug_printf(0, "Parsing payload >>%s<<\n", pEvent->data.scalar.value);
 
 		strncpy(base_name, (char *)pEvent->data.scalar.value, BOOT_IMAGE_MAX_NAME_LEN-2);
-		payload_name[0] = '\0';
+                payload_name[0] = '\0';
 		base_name[BOOT_IMAGE_MAX_NAME_LEN-1] = '\0';
 
 		base_exec_addr = 0u;
@@ -689,11 +686,11 @@ static void Handle_STATE_PAYLOAD_MAPPINGS(yaml_event_t *pEvent)
 		base_secondary[2] = 0u;
 		base_priv_mode = PRV_M;
 
-		entitlement_flags.ancilliary_data_present = false;
-		entitlement_flags.skip_opensbi = false;
-		entitlement_flags.skip_autoboot_flag = false;
-		entitlement_flags.allow_coldreboot = false;
-		entitlement_flags.allow_warmreboot = false;
+		ancilliary_data_present_flag = false;
+		skip_opensbi_flag = false;
+		allow_cold_reboot_flag = false;
+		allow_warm_reboot_flag = false;
+		skip_autoboot_flag = false;
 
 		Do_State_Transition(STATE_NEW_PAYLOAD);
 		break;
@@ -739,10 +736,10 @@ static void Handle_STATE_NEW_PAYLOAD(yaml_event_t *pEvent)
 					ARRAY_SIZE(bootImage.hart[base_owner-1].name));
 		}
 
-		bool retVal = elf_parser(base_name, base_owner, base_exec_addr);
+		bool retVal = elf_parser(base_name, base_owner);
 		if (!retVal) {
 			// assume it is a binary file, so just embed the entire thing...
-			if (entitlement_flags.ancilliary_data_present) {
+			if (ancilliary_data_present_flag) {
 				// legacy: smuggle this into owner highest bit...
 				blob_handler(base_name, base_exec_addr, base_owner, true, ancilliary_name);
 			} else {
@@ -798,7 +795,7 @@ static void Handle_STATE_NEW_PAYLOAD(yaml_event_t *pEvent)
 
 		case TOKEN_PAYLOAD_ANCILLIARY_DATA:
 			debug_printf(1, "\tancilliary data found\n");
-			entitlement_flags.ancilliary_data_present = true;
+			ancilliary_data_present_flag = true;
 			Do_State_Transition(STATE_NEW_PAYLOAD_ANCILLIARY_DATA);
 			break;
 
@@ -860,11 +857,11 @@ static void Handle_STATE_NEW_PAYLOAD_OWNER_HART(yaml_event_t *pEvent)
 		token_idx = string_to_scalar(pEvent->data.scalar.value);
 		switch (token_idx) {
 		case TOKEN_HART_U54_1:
-			__attribute__((fallthrough)); // deliberate fallthrough
+			// deliberate fallthrough
 		case TOKEN_HART_U54_2:
-			__attribute__((fallthrough)); // deliberate fallthrough
+			// deliberate fallthrough
 		case TOKEN_HART_U54_3:
-			__attribute__((fallthrough)); // deliberate fallthrough
+			// deliberate fallthrough
 		case TOKEN_HART_U54_4:
 			base_owner = (token_idx - TOKEN_HART_U54_1 + 1u);
 			debug_printf(1, "\towner is %" PRIu64 "\n", base_owner);
@@ -904,11 +901,11 @@ static void Handle_STATE_NEW_PAYLOAD_SECONDARY_HART(yaml_event_t *pEvent)
 		token_idx = string_to_scalar(pEvent->data.scalar.value);
 		switch (token_idx) {
 		case TOKEN_HART_U54_1:
-			__attribute__((fallthrough)); // deliberate fallthrough
+			// deliberate fallthrough
 		case TOKEN_HART_U54_2:
-			__attribute__((fallthrough)); // deliberate fallthrough
+			// deliberate fallthrough
 		case TOKEN_HART_U54_3:
-			__attribute__((fallthrough)); // deliberate fallthrough
+			// deliberate fallthrough
 		case TOKEN_HART_U54_4:
 			base_secondary[secondary_idx] = (token_idx - TOKEN_HART_U54_1 + 1u);
 
@@ -935,23 +932,23 @@ static void populate_boot_flags(void)
 {
 	uint8_t flags = 0u;
 
-	if (entitlement_flags.ancilliary_data_present) {
+	if (ancilliary_data_present_flag) {
 		flags |= BOOT_FLAG_ANCILLIARY_DATA;
 	}
 
-	if (entitlement_flags.skip_opensbi) {
+	if (skip_opensbi_flag) {
 		flags |= BOOT_FLAG_SKIP_OPENSBI;
 	}
 
-	if (entitlement_flags.allow_coldreboot) {
+	if (allow_cold_reboot_flag) {
 		// cold reboot implies warm reboot also allowed
 		flags |= BOOT_FLAG_ALLOW_COLD_REBOOT;
 		flags |= BOOT_FLAG_ALLOW_WARM_REBOOT;
-	} else if (entitlement_flags.allow_warmreboot) {
+	} else if (allow_warm_reboot_flag) {
 		flags |= BOOT_FLAG_ALLOW_WARM_REBOOT;
 	}
 
-	if (entitlement_flags.skip_autoboot_flag) {
+	if (skip_autoboot_flag) {
 		flags |= BOOT_FLAG_SKIP_AUTOBOOT;
 	}
 
@@ -1011,9 +1008,9 @@ static void Handle_STATE_NEW_PAYLOAD_PRIV_MODE(yaml_event_t *pEvent)
 		token_idx = string_to_scalar(pEvent->data.scalar.value);
 		switch (token_idx) {
 		case TOKEN_PRIV_MODE_M:
-			__attribute__((fallthrough)); // deliberate fallthrough
+			// deliberate fallthrough
 		case TOKEN_PRIV_MODE_S:
-			__attribute__((fallthrough)); // deliberate fallthrough
+			// deliberate fallthrough
 		case TOKEN_PRIV_MODE_U:
 			base_priv_mode = map_token_to_priv_mode(token_idx);
 
@@ -1054,137 +1051,137 @@ static void Handle_STATE_NEW_PAYLOAD_PRIV_MODE(yaml_event_t *pEvent)
 
 static void Handle_STATE_NEW_PAYLOAD_SKIP_OPENSBI(yaml_event_t *pEvent)
 {
-	assert(pEvent);
+        assert(pEvent);
 	uint8_t value;
 
-	switch (pEvent->type) {
-	case YAML_MAPPING_START_EVENT:
-		break;
+        switch (pEvent->type) {
+        case YAML_MAPPING_START_EVENT:
+                break;
 
-	case YAML_MAPPING_END_EVENT:
+        case YAML_MAPPING_END_EVENT:
 		assert(0 == 1);
-		Do_State_Transition(STATE_MAPPING);
-		break;
+                Do_State_Transition(STATE_MAPPING);
+                break;
 
-	case YAML_SCALAR_EVENT:
+        case YAML_SCALAR_EVENT:
 		if (!strncasecmp((char *)pEvent->data.scalar.value, "true", 4)) {
 			value = 1u;
 		} else {
 			value = (uint8_t)strtoul((char *)pEvent->data.scalar.value, NULL, 0);
 		}
 
-		if (value) {
-			entitlement_flags.skip_opensbi = true;
+                if (value) {
+			skip_opensbi_flag = true;
 		}
 		Do_State_Transition(STATE_NEW_PAYLOAD);
-		break;
+                break;
 
-	default:
-		report_illegal_event(stateNames[parser_state], pEvent);
-		exit(EXIT_FAILURE);
-		break;
-	}
+        default:
+                report_illegal_event(stateNames[parser_state], pEvent);
+                exit(EXIT_FAILURE);
+                break;
+        }
 }
 
 static void Handle_STATE_NEW_PAYLOAD_ALLOW_REBOOT(yaml_event_t *pEvent)
 {
-	assert(pEvent);
+        assert(pEvent);
 
-	enum token token_idx = TOKEN_UNKNOWN;
+        enum token token_idx = TOKEN_UNKNOWN;
 
-	switch (pEvent->type) {
-	case YAML_MAPPING_START_EVENT:
-		break;
+        switch (pEvent->type) {
+        case YAML_MAPPING_START_EVENT:
+                break;
 
-	case YAML_MAPPING_END_EVENT:
-		Do_State_Transition(STATE_MAPPING);
-		break;
+        case YAML_MAPPING_END_EVENT:
+                Do_State_Transition(STATE_MAPPING);
+                break;
 
-	case YAML_SCALAR_EVENT:
-		token_idx = string_to_scalar(pEvent->data.scalar.value);
-		switch (token_idx) {
-		case TOKEN_REBOOT_WARM:
-			entitlement_flags.allow_warmreboot = true;
-			break;
+        case YAML_SCALAR_EVENT:
+                token_idx = string_to_scalar(pEvent->data.scalar.value);
+                switch (token_idx) {
+                case TOKEN_REBOOT_WARM:
+			allow_warm_reboot_flag = true;
+                        break;
 
-		case TOKEN_REBOOT_COLD:
-			entitlement_flags.allow_coldreboot = true;
-			break;
+                case TOKEN_REBOOT_COLD:
+			allow_cold_reboot_flag = true;
+                        break;
 
-		default:
-			report_illegal_token(stateNames[parser_state], pEvent);
-			exit(EXIT_FAILURE);
-			break;
-		}
+                default:
+                        report_illegal_token(stateNames[parser_state], pEvent);
+                        exit(EXIT_FAILURE);
+                        break;
+                }
 		Do_State_Transition(STATE_NEW_PAYLOAD);
-		break;
+                break;
 
-	default:
-		report_illegal_event(stateNames[parser_state], pEvent);
-		exit(EXIT_FAILURE);
-		break;
-	}
+        default:
+                report_illegal_event(stateNames[parser_state], pEvent);
+                exit(EXIT_FAILURE);
+                break;
+        }
 }
 
 static void Handle_STATE_NEW_PAYLOAD_SKIP_AUTOBOOT(yaml_event_t *pEvent)
 {
-	assert(pEvent);
+        assert(pEvent);
 	uint8_t value;
 
-	switch (pEvent->type) {
-	case YAML_MAPPING_START_EVENT:
-		break;
+        switch (pEvent->type) {
+        case YAML_MAPPING_START_EVENT:
+                break;
 
-	case YAML_MAPPING_END_EVENT:
-		Do_State_Transition(STATE_MAPPING);
-		break;
+        case YAML_MAPPING_END_EVENT:
+                Do_State_Transition(STATE_MAPPING);
+                break;
 
-	case YAML_SCALAR_EVENT:
+        case YAML_SCALAR_EVENT:
 		if (!strncasecmp((char *)pEvent->data.scalar.value, "true", 4)) {
 			value = 1;
 		} else {
 			value = (uint8_t)strtoul((char *)pEvent->data.scalar.value, NULL, 0);
 		}
 
-		if (value) {
-			entitlement_flags.skip_autoboot_flag = true;
+                if (value) {
+			skip_autoboot_flag = true;
 		}
 		Do_State_Transition(STATE_NEW_PAYLOAD);
-		break;
+                break;
 
-	default:
-		report_illegal_event(stateNames[parser_state], pEvent);
-		exit(EXIT_FAILURE);
-		break;
-	}
+        default:
+                report_illegal_event(stateNames[parser_state], pEvent);
+                exit(EXIT_FAILURE);
+                break;
+        }
 }
 
 static void Handle_STATE_NEW_PAYLOAD_ANCILLIARY_DATA(yaml_event_t *pEvent)
 {
-	assert(pEvent);
+        assert(pEvent);
 
 	//printf("%s(): event %d / token %s\n", __func__, pEvent->type, pEvent->data.scalar.value);
-	switch (pEvent->type) {
-	case YAML_MAPPING_START_EVENT:
-		break;
+        switch (pEvent->type) {
+        case YAML_MAPPING_START_EVENT:
+                break;
 
-	case YAML_MAPPING_END_EVENT:
-		Do_State_Transition(STATE_MAPPING);
-		break;
+        case YAML_MAPPING_END_EVENT:
+                Do_State_Transition(STATE_MAPPING);
+                break;
 
-	case YAML_SCALAR_EVENT:
+        case YAML_SCALAR_EVENT:
 		debug_printf(0, "Parsing ancilliary payload >>%s<<\n", pEvent->data.scalar.value);
 		strncpy(ancilliary_name, (char *)pEvent->data.scalar.value, BOOT_IMAGE_MAX_NAME_LEN-2);
 		ancilliary_name[BOOT_IMAGE_MAX_NAME_LEN-1] = '\0';
 
 		Do_State_Transition(STATE_NEW_PAYLOAD);
-		break;
+                break;
 
-	default:
-		report_illegal_event(stateNames[parser_state], pEvent);
-		exit(EXIT_FAILURE);
-		break;
-	}
+        default:
+                report_illegal_event(stateNames[parser_state], pEvent);
+                exit(EXIT_FAILURE);
+                break;
+        }
 }
 
 

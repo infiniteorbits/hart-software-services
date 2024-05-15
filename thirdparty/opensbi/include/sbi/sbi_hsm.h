@@ -34,17 +34,9 @@ struct sbi_hsm_device {
 	 * the hart resumes normal execution.
 	 *
 	 * For successful non-retentive suspend, the hart will resume from
-	 * the warm boot entry point.
+	 * specified resume address
 	 */
-	int (*hart_suspend)(u32 suspend_type);
-
-	/**
-	 * Perform platform-specific actions to resume from a suspended state.
-	 *
-	 * This includes restoring any platform state that was lost during
-	 * non-retentive suspend.
-	 */
-	void (*hart_resume)(void);
+	int (*hart_suspend)(u32 suspend_type, ulong raddr);
 };
 
 struct sbi_domain;

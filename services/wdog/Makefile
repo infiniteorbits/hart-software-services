@@ -31,5 +31,3 @@ SRCS-$(CONFIG_SERVICE_WDOG) += \
 
 INCLUDES +=\
 	-I./services/wdog \
-
-$(BINDIR)/services/wdog/wdog_service.o: CFLAGS=$(CFLAGS_GCCEXT)

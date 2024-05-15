@@ -89,7 +89,7 @@ First, ensure that the environment variable `$SC_INSTALL_DIR` is set to the loca
 
 For building on Linux from the command line, configure the path appropriately. For example, the following will add the SoftConsole provided Python and RISC-V compiler toolchain to the path:
 
-    $ export PATH=$PATH:$SC_INSTALL_DIR/python3/bin:$SC_INSTALL_DIR/riscv-unknown-elf-gcc/bin
+    $ export PATH=$PATH:$SC_INSTALL_DIR/python/bin:$SC_INSTALL_DIR/riscv-unknown-elf-gcc/bin
 
 Next, set the environment variable `$FPGENPROG` to the location of the fpgenprog tool installed by Libero -- this is used to program the eNVM ('make program') and also to generate hex files suitable for programming by Libero, or inclusion in the fabric design with Libero. For example, assuming that Libero is installed at `/usr/local/microsemi/Libero_SoC_v2021.2/`:
 
@@ -113,15 +113,7 @@ Once configured, to build, run `make`:
 
     $ make BOARD=mpfs-icicle-kit-es
 
-In the `build` subdirectory, the standard build will create `hss-envm.elf` and various binary formats (`hss-envm.hex` and `hss-envm.bin`).  Also generated are `output-envm.map`, which is a mapfile for the build, and  `hss-envm.sym`, which is a list of symbols.  (The name `build` is required by SoftConsole for programming purposes. In earlier releases, this was called `Default`.)
-
-Once built, program the HSS to the board:
-
-    $ make program
-
-Note: For the PolarFire SoC Video Kit, the DIE argument must be set to MPFS250T to match the device die.
-
-    $ make program DIE=MPFS250T
+In the `Default` subdirectory, the standard build will create `hss-envm.elf` and various binary formats (`hss-envm.hex` and `hss-envm.bin`).  Also generated are `output-envm.map`, which is a mapfile for the build, and  `hss-envm.sym`, which is a list of symbols.  (The name `Default` is required by SoftConsole for programming purposes.)
 
 A variety of alternative build options can be seen by running `make help`:
 
@@ -135,7 +127,7 @@ Verbose builds (which show each individual command) are possible by adding V=1 t
 
 The HSS relies only on SoftConsole v2021.3 or later to build on Windows.
 
-For more detailed build instructions, particular with regards to using SoftConsole on Windows, see https://mi-v-ecosystem.github.io/redirects/software-development_polarfire-soc-software-tool-flow
+For more detailed build instructions, particular with regards to using SoftConsole on Windows, see https://github.com/polarfire-soc/polarfire-soc-documentation/blob/master/software-development/polarfire-soc-software-tool-flow.md#build-the-hss.
 
 First, ensure that the `%SC_INSTALL_DIR%` environment variable is correctly set to the location of SoftConsole.  For example, if SoftConsole is installed in `C:\Microchip\SoftConsole-v2021.3-7.0.0.578`:
 
@@ -143,7 +135,7 @@ First, ensure that the `%SC_INSTALL_DIR%` environment variable is correctly set 
 
 For building on Windows from the command line, you must configure the path appropriately to add Python, GNU build tools, and the RISC-V compiler toolchain. For example:
 
-    C:\> path %SystemRoot%;%SC_INSTALL_DIR%\build_tools\bin;%SC_INSTALL_DIR%\python3;%SC_INSTALL_DIR%\riscv-unknown-elf-gcc\bin
+    C:\> path %SystemRoot%;%SC_INSTALL_DIR%\build_tools\bin;%SC_INSTALL_DIR%\python3;%SC_INSTALL_DIR%\python;%SC_INSTALL_DIR%\riscv-unknown-elf-gcc\bin
 
 Ensure the `%SC_INSTALL_DIR%` variable correctly matches your system.
 
@@ -165,16 +157,6 @@ The `modules/debug/` subdirectory contains code to enable a number of debug feat
 
 ### Function Profiling
 
-Function profiling in the HSS can be enabled using the `CONFIG_DEBUG_PROFILING_SUPPORT` Kconfig option.
+Function profiling allows capturing of the time spent in each C function (through the use of `__cyg_profile_func_enter` and `__cyg_profile_func_exit`. This information can be logged to the serial console through calling the `dump_profile()` function at an appropriate time, depending on what is being debugged.
 
-Function profiling allows capturing of the time spent in each C function (through the use of `__cyg_profile_func_enter` and `__cyg_profile_func_exit`. This information can be logged to the serial console through calling the `HSS_Profile_DumpAll()` function at an appropriate time, depending on what is being debugged, and by using the `debug profile` CLI command.
-
-For more information, please refer to the [HSS Function Profiling documentation](https://mi-v-ecosystem.github.io/redirects/hart-software-services-profiling).
-
-### Scrubbing for ECCs and Non-Coherent Memory.
-
-The HSS includes a scrubbing service (running on the E51) to scrub ECC protected memories such as DDR, L2 Scratchpad, LIM for correctable single-bit errors in an effort to correct them before they propagate to uncorrectable double-bit errors. Note that by default, mpfs-linux is configured such that DDR accesses to/from peripherals such as PCIe, eNVM and USB are directed to uncached memory addresses; with cache synchronisation performed explicitly by the Linux kerne. Enabling scrubbing can result in interfering with this default mpfs-linux behavior, and so it is important to configure mpfs-linux to only used coherent memory when using scrubbing.
-
-As a consequence, scrubbing is currently off by default in provided `def_config` files.
-
-   # CONFIG_SERVICE_SCRUB is not set
+**NOTE:** *by default, this function is not called, even with profiling enabled.*

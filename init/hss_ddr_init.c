@@ -23,10 +23,13 @@
 #include <assert.h>
 #include <string.h>
 
-#include "ddr/hw_ddr_segs.h"
-#include "nwc/mss_nwc_init.h"
-#include "mss_hal.h"
-#include "mss_l2_cache.h"
+#if IS_ENABLED(CONFIG_PLATFORM_MPFS)
+#  include "ddr/hw_ddr_segs.h"
+#  include "nwc/mss_nwc_init.h"
+#  include "mss_hal.h"
+#  include "mss_l2_cache.h"
+#endif
+
 
 #include "hss_init.h"
 
@@ -44,6 +47,7 @@
  * or other)
  */
 
+#if IS_ENABLED(CONFIG_PLATFORM_MPFS)
 static const struct segment {
     char const * const description;
     uint64_t const baseAddr;
@@ -68,10 +72,12 @@ static const uint32_t seg_regs[2][8] = {
         LIBERO_SETTING_SEG1_4, LIBERO_SETTING_SEG1_5, LIBERO_SETTING_SEG1_6, LIBERO_SETTING_SEG1_7
     }
 };
+#endif
 
 static uint64_t seg_regOffset_to_addrOffset_(uint32_t offset, const int segment_index);
 static uint64_t seg_regOffset_to_addrOffset_(uint32_t offset, const int segment_index)
 {
+#if IS_ENABLED(CONFIG_PLATFORM_MPFS)
     uint64_t result = 0u;
 
     if (offset & (1u << 14)) {
@@ -82,10 +88,12 @@ static uint64_t seg_regOffset_to_addrOffset_(uint32_t offset, const int segment_
     }
 
     return result;
+#endif
 }
 
 bool HSS_DDRPrintSegConfig(void)
 {
+#if IS_ENABLED(CONFIG_PLATFORM_MPFS)
     mHSS_DEBUG_PRINTF(LOG_STATUS, "Segment Configuration:\n");
     for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 8; j++) {
@@ -98,6 +106,7 @@ bool HSS_DDRPrintSegConfig(void)
             }
         }
     }
+#endif
 
     return true;
 }
@@ -175,6 +184,7 @@ static size_t ddr_training_progress = 0;
 bool HSS_DDRInit(void)
 {
     bool result = true;
+#if IS_ENABLED(CONFIG_PLATFORM_MPFS)
     if (!IS_ENABLED(CONFIG_SKIP_DDR)) {
 	const char ddr_training_prefix[] = "DDR training ...";
 
@@ -204,6 +214,7 @@ bool HSS_DDRInit(void)
             sbi_printf("\n");
         }
         HSS_PerfCtr_Lap(perf_ctr_index);
+#  endif
     }
 
     return result;

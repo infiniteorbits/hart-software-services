@@ -33,13 +33,10 @@
 extern "C" {
 #endif
 
-void HSS_BootHarts(void);
 bool HSS_BootInit(void);
 
 void HSS_BootSelectQSPI(void);
 void HSS_BootSelectMMC(void);
-void HSS_BootSelectEMMC(void);
-void HSS_BootSelectSDCARD(void);
 void HSS_BootSelectPayload(void);
 void HSS_BootSelectSPI(void);
 
