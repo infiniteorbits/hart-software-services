@@ -122,30 +122,34 @@ void copyBufferToParamData(const uint8_t *buffer, ParamData *params) {
 // Function to determine the region to read based on LastFailed
 SlotsRegion determineSlotToRead(ParamData *params) 
 {
-    if(params->LastFailed >= sizeof(Params.BootSequence))
-    {
+    if(params->LastFailed < sizeof(Params.BootSequence)) {
+
+        if (params->BootSequence[params->LastFailed] == 0u) {
+            mHSS_DEBUG_PRINTF(LOG_NORMAL,"BootSequence[%d] = BOOT REGION_SLOT_0 \n", params->LastFailed);
+            return REGION_SLOT_0;
+        } else  if (params->BootSequence[params->LastFailed] == 1u) {
+            mHSS_DEBUG_PRINTF(LOG_NORMAL,"BootSequence[%d] = BOOT REGION_SLOT_1\n", params->LastFailed);
+            return REGION_SLOT_1;
+        } else  if (params->BootSequence[params->LastFailed] == 2u) {
+            mHSS_DEBUG_PRINTF(LOG_NORMAL,"BootSequence[%d] = BOOT REGION_SLOT_2\n", params->LastFailed);
+            return REGION_SLOT_2;
+        } else  if (params->BootSequence[params->LastFailed] == 3u) {
+            mHSS_DEBUG_PRINTF(LOG_NORMAL,"BootSequence[%d] = BOOT REGION_SLOT_3\n", params->LastFailed);
+            return REGION_SLOT_3;
+        } else {
+            params->BootSequence[params->LastFailed] = params->LastSuccessful;
+            BootGoldenFlag = true;
+            mHSS_DEBUG_PRINTF(LOG_ERROR,"BOOT SEQUENCE VALUE OF OUT RANGE, BOOT GOLDEN APP \n");
+            return REGION_SLOT_0;
+        }
+    }
+    else {
+
         mHSS_DEBUG_PRINTF(LOG_ERROR,"LAST FAILED VALUE OUT OF RANGE, BOOT GOLDEN APP\n");
         params->LastFailed = 0u;
+        Params.CurrentTry = 0u;
         BootGoldenFlag = true;
-        return REGION_SLOT_0;
-    }
-
-    if (params->BootSequence[params->LastFailed] == 0u) {
-        mHSS_DEBUG_PRINTF(LOG_NORMAL,"BOOT REGION_SLOT_0 \n");
-        return REGION_SLOT_0;
-    } else  if (params->BootSequence[params->LastFailed] == 1u) {
-        mHSS_DEBUG_PRINTF(LOG_NORMAL,"BOOT REGION_SLOT_1\n");
-        return REGION_SLOT_1;
-    } else  if (params->BootSequence[params->LastFailed] == 2u) {
-        mHSS_DEBUG_PRINTF(LOG_NORMAL,"BOOT REGION_SLOT_2\n");
-        return REGION_SLOT_2;
-    } else  if (params->BootSequence[params->LastFailed] == 3u) {
-        mHSS_DEBUG_PRINTF(LOG_NORMAL,"BOOT REGION_SLOT_3\n");
-        return REGION_SLOT_3;
-    } else {
-        params->BootSequence[params->LastFailed] = params->LastSuccessful;
-        BootGoldenFlag = true;
-        mHSS_DEBUG_PRINTF(LOG_ERROR,"BOOT SEQUENCE VALUE OF OUT RANGE, BOOT GOLDEN APP \n");
+        HSS_Slot_save_params();
         return REGION_SLOT_0;
     }
 }
@@ -153,7 +157,6 @@ SlotsRegion determineSlotToRead(ParamData *params)
 void HSS_Slot_Failed(void)
 {
     if ((!slotFailedFlag) && (!BootGoldenFlag)) {
-        Params.LastFailed = Params.LastFailed + 1;
         mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_Slot_Failed() Failed\n");
         HSS_Slot_save_params();
         slotFailedFlag = true;
@@ -172,17 +175,13 @@ void HSS_SlotSelection(size_t *pSlotOffset)
     HSS_MMC_ReadBlock(&buff, ParamRegionOffset, BLOCK_SIZE_BYTES);
     copyBufferToParamData(buff, &Params);
 
-    // Determine the region to read based on LastFailed
-    *pSlotOffset = (size_t)determineSlotToRead(&Params);
-
-    Params.LastFailed = Params.CurrentTry;    
     if (!BootGoldenFlag) {
+        Params.LastFailed = Params.CurrentTry;
         Params.CurrentTry++;
     }
 
-    if(Params.CurrentTry >= sizeof(Params.BootSequence)){
-        Params.CurrentTry = 0u;
-    }
+    // Determine the region to read based on LastFailed
+    *pSlotOffset = (size_t)determineSlotToRead(&Params);
 
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"LastFailed: %u\n", Params.LastFailed);
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"CurrentTry: %u\n", Params.CurrentTry);
