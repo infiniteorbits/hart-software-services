@@ -34,6 +34,7 @@ include services/goto/Makefile
 include services/healthmon/Makefile
 include services/gpio_ui/Makefile
 include services/ipi_poll/Makefile
+include services/lockdown/Makefile
 include services/mmc/Makefile
 include services/opensbi/Makefile
 include services/powermode/Makefile

@@ -85,12 +85,12 @@
 #  include "healthmon_service.h"
 #endif
 
-#if IS_ENABLED(CONFIG_SERVICE_SCRUB)
-#  include "scrub_service.h"
-#endif
-
 #if IS_ENABLED(CONFIG_SERVICE_GPIO_UI)
 #  include "gpio_ui_service.h"
+#endif
+
+#if IS_ENABLED(CONFIG_SERVICE_LOCKDOWN)
+#  include "lockdown_service.h"
 #endif
 
 #include "startup_service.h"
@@ -257,6 +257,9 @@ struct StateMachine /*@null@*/ * const pGlobalStateMachines[] = {
 #if IS_ENABLED(CONFIG_SERVICE_GPIO_UI)
     &gpio_ui_service,
 #endif
+#if IS_ENABLED(CONFIG_SERVICE_LOCKDOWN)
+    &lockdown_service,
+#endif
     &startup_service,
 };
 const size_t spanOfPGlobalStateMachines = ARRAY_SIZE(pGlobalStateMachines);
@@ -302,7 +305,10 @@ const struct InitFunction /*@null@*/ globalInitFunctions[] = {
 #if IS_ENABLED(CONFIG_DEBUG_RESET_REASON)
     { "HSS_ResetReasonInit",           HSS_ResetReasonInit,           false, false },
 #endif
+#if !IS_ENABLED(CONFIG_SERVICE_SPI)
+    // getting design version currently breaks SPI boot
     { "Design_Version_Info_Init",      Design_Version_Info_Init,      false, false },
+#endif
     { "HSS_BoardLateInit",             HSS_BoardLateInit,             false, false },
 };
 const size_t spanOfGlobalInitFunctions = ARRAY_SIZE(globalInitFunctions);

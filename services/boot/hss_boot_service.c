@@ -18,6 +18,7 @@
 #include "hss_state_machine.h"
 #include "hss_boot_service.h"
 #include "opensbi_service.h"
+#include "ddr_service.h"
 #include "hss_boot_pmp.h"
 #include "hss_sys_setup.h"
 #include "hss_clock.h"
@@ -31,6 +32,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include "riscv_atomic.h"
 
 #include "mpfs_reg_map.h"
 
@@ -98,6 +100,8 @@ static void boot_opensbi_init_onExit(struct StateMachine * const pMyMachine);
 static void boot_wait_onEntry(struct StateMachine * const pMyMachine);
 static void boot_wait_handler(struct StateMachine * const pMyMachine);
 static void boot_error_handler(struct StateMachine * const pMyMachine);
+static void boot_complete_onEntry(struct StateMachine * const pMyMachine);
+static void boot_complete_handler(struct StateMachine * const pMyMachine);
 static void boot_idle_onEntry(struct StateMachine * const pMyMachine);
 static void boot_idle_handler(struct StateMachine * const pMyMachine);
 
@@ -119,6 +123,7 @@ enum BootStatesEnum {
     BOOT_DOWNLOAD_CHUNKS,
     BOOT_OPENSBI_INIT,
     BOOT_WAIT,
+    BOOT_COMPLETE,
     BOOT_IDLE,
     BOOT_ERROR,
     BOOT_NUM_STATES = BOOT_ERROR+1
@@ -136,6 +141,7 @@ static const struct StateDesc boot_state_descs[] = {
     { (const stateType_t)BOOT_DOWNLOAD_CHUNKS,    (const char *)"Download",         &boot_download_chunks_onEntry,    &boot_download_chunks_onExit, &boot_download_chunks_handler },
     { (const stateType_t)BOOT_OPENSBI_INIT,       (const char *)"OpenSBIInit",      &boot_opensbi_init_onEntry,       &boot_opensbi_init_onExit,    &boot_opensbi_init_handler },
     { (const stateType_t)BOOT_WAIT,               (const char *)"Wait",             &boot_wait_onEntry,               NULL,                         &boot_wait_handler },
+    { (const stateType_t)BOOT_COMPLETE,           (const char *)"Complete",         &boot_complete_onEntry,           NULL,                         &boot_complete_handler },
     { (const stateType_t)BOOT_IDLE,               (const char *)"Idle",             &boot_idle_onEntry,               NULL,                         &boot_idle_handler },
     { (const stateType_t)BOOT_ERROR,              (const char *)"Error",            NULL,                             NULL,                         &boot_error_handler } };
 
@@ -392,11 +398,23 @@ static void register_harts(struct StateMachine * const pMyMachine)
             mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::Registering domain \"%s\" (hart mask 0x%x)\n",
                 pMyMachine->pMachineName, pBootImage->hart[target-1].name, pInstanceData->hartMask);
 
+            void *pArg1 = NULL;
+
+            if (pInstanceData->ancilliaryData) {
+                pArg1 = (void *)pInstanceData->ancilliaryData;
+#if IS_ENABLED(CONFIG_PROVIDE_DTB)
+            } else {
+                extern unsigned long _binary_build_services_opensbi_mpfs_dtb_start;
+                pArg1 = (void *)&_binary_build_services_opensbi_mpfs_dtb_start;
+                mHSS_DEBUG_PRINTF(LOG_WARN, "%s::Using built-in DTB at 0x%p\n",
+                    pMyMachine->pMachineName, pArg1);
+#endif
+            }
+
             mpfs_domains_register_boot_hart(pBootImage->hart[target-1].name,
                 pInstanceData->hartMask, target,
                 pBootImage->hart[target-1].privMode,
-                (void *)pBootImage->hart[target-1].entryPoint,
-                (void *)pInstanceData->ancilliaryData,
+                (void *)pBootImage->hart[target-1].entryPoint, pArg1,
 		pBootImage->hart[target-1].flags & BOOT_FLAG_ALLOW_COLD_REBOOT,
 		pBootImage->hart[target-1].flags & BOOT_FLAG_ALLOW_WARM_REBOOT);
         }
@@ -434,7 +452,6 @@ static void boot_setup_pmp_complete_onEntry(struct StateMachine * const pMyMachi
 
 static void boot_setup_pmp_complete_handler(struct StateMachine * const pMyMachine)
 {
-
     struct HSS_Boot_LocalData * const pInstanceData = pMyMachine->pInstanceData;
     enum HSSHartId const target = pInstanceData->target;
 
@@ -458,7 +475,7 @@ static void boot_setup_pmp_complete_handler(struct StateMachine * const pMyMachi
             //mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::PMP setup completed\n", pMyMachine->pMachineName);
 
         if (pBootImage->hart[target-1].flags & BOOT_FLAG_SKIP_AUTOBOOT)
-            pMyMachine->state = BOOT_IDLE;
+            pMyMachine->state = BOOT_COMPLETE;
         else
             pMyMachine->state = BOOT_ZERO_INIT_CHUNKS;
         }
@@ -487,14 +504,20 @@ static void boot_zero_init_chunks_handler(struct StateMachine * const pMyMachine
 
     if (pZiChunk->size != 0u) {
         if (target == pZiChunk->owner) {
+            if (HSS_DDR_IsAddrInDDR((uintptr_t)pZiChunk->execAddr) && !HSS_Trigger_IsNotified(EVENT_DDR_TRAINED)) {
+                ; // need to wait until DDR is initialized
+            } else {
 #if IS_ENABLED(CONFIG_DEBUG_CHUNK_DOWNLOADS)
-            mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::%d:ziChunk->0x%x, %u bytes\n",
-                pMyMachine->pMachineName, pInstanceData->ziChunkCount,
-                (uintptr_t)pZiChunk->execAddr, pZiChunk->size);
+                mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::%d:ziChunk->0x%x, %u bytes\n",
+                    pMyMachine->pMachineName, pInstanceData->ziChunkCount,
+                    (uintptr_t)pZiChunk->execAddr, pZiChunk->size);
 #endif
-            boot_do_zero_init_chunk(pZiChunk);
+                boot_do_zero_init_chunk(pZiChunk);
+                pInstanceData->pZiChunk++;
+            }
+        } else {
+            pInstanceData->pZiChunk++;
         }
-        pInstanceData->pZiChunk++;
     } else {
         pMyMachine->state = BOOT_DOWNLOAD_CHUNKS;
     }
@@ -609,7 +632,7 @@ static void boot_download_chunks_handler(struct StateMachine * const pMyMachine)
             pMyMachine->state = BOOT_OPENSBI_INIT;
         }
     } else {
-        pMyMachine->state = BOOT_IDLE;
+        pMyMachine->state = BOOT_COMPLETE;
     }
 }
 
@@ -734,7 +757,7 @@ static void boot_wait_handler(struct StateMachine * const pMyMachine)
     if (!pBootImage->hart[target-1].entryPoint) {
         // nothing for me to do, not expecting GOTO ack...
         HSS_U54_SetState_Ex(target, HSS_State_Idle);
-        pMyMachine->state = BOOT_IDLE;
+        pMyMachine->state = BOOT_COMPLETE;
     } else if (HSS_Timer_IsElapsed(pMyMachine->startTime, BOOT_WAIT_TIMEOUT)) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "%s::IPI ACK Timeout after %" PRIu64 " iterations\n",
             pMyMachine->pMachineName, pMyMachine->executionCount);
@@ -756,7 +779,7 @@ static void boot_wait_handler(struct StateMachine * const pMyMachine)
 
             //mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::Checking for IPI ACKs: ACK/IDLE ACK\n",
             //    pMyMachine->pMachineName);
-            pMyMachine->state = BOOT_IDLE;
+            pMyMachine->state = BOOT_COMPLETE;
         }
     }
 }
@@ -774,10 +797,39 @@ static void boot_error_handler(struct StateMachine * const pMyMachine)
     // Set BOOT_FAIL_CR to indicate to the fabric that boot process failed...
     SYSREG->BOOT_FAIL_CR = 1;
 
-    pMyMachine->state = BOOT_IDLE;
+    pMyMachine->state = BOOT_COMPLETE;
 }
 
 
+/////////////////
+
+atomic_t bootComplete[5] = {
+     ATOMIC_INITIALIZER(0),
+     ATOMIC_INITIALIZER(0),
+     ATOMIC_INITIALIZER(0),
+     ATOMIC_INITIALIZER(0),
+     ATOMIC_INITIALIZER(0),
+};
+
+static void boot_complete_onEntry(struct StateMachine * const pMyMachine)
+{
+    struct HSS_Boot_LocalData const * const pInstanceData = pMyMachine->pInstanceData;
+    enum HSSHartId const hartId = pInstanceData->target;
+    atomic_write(&bootComplete[hartId], 1);
+}
+
+static void boot_complete_handler(struct StateMachine * const pMyMachine)
+{
+    bool all_complete = atomic_read(&bootComplete[1]) ? true : false;
+    all_complete &= atomic_read(&bootComplete[2]) ? true : false;
+    all_complete &= atomic_read(&bootComplete[3]) ? true : false;
+    all_complete &= atomic_read(&bootComplete[4]) ? true : false;
+
+    if (all_complete) {
+       HSS_Trigger_Notify(EVENT_BOOT_COMPLETE);
+       pMyMachine->state = BOOT_IDLE;
+   }
+}
 /////////////////
 
 static void boot_idle_onEntry(struct StateMachine * const pMyMachine)
@@ -841,9 +893,7 @@ enum IPIStatusCode HSS_Boot_RestartCore(enum HSSHartId source)
 {
     enum IPIStatusCode result = IPI_FAIL;
 
-    if (!pBootImage) {
-        HSS_BootInit();
-    }
+    assert(pBootImage);
 
     if (source != HSS_HART_ALL) {
         union HSSHartBitmask restartHartBitmask = { .uint = BIT(source) };
@@ -873,10 +923,8 @@ enum IPIStatusCode HSS_Boot_RestartCores_Using_Bitmask(union HSSHartBitmask rest
     enum IPIStatusCode result = IPI_FAIL;
 
     if (!pBootImage) {
-        HSS_BootInit();
-    }
-
-    if (!HSS_Boot_ValidateImage(pBootImage)) {
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "pBootImage is NULL\n");
+    } else if (!HSS_Boot_ValidateImage(pBootImage)) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "validation failed for Hart bitmask %x\n", restartHartBitmask.uint);
     } else {
         for (unsigned int source = HSS_HART_U54_1;

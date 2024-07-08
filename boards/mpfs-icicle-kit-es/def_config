@@ -7,6 +7,7 @@
 # Icicle-Kit Design Configuration Options
 #
 CONFIG_SOC_FPGA_DESIGN_XML="boards/mpfs-icicle-kit-es/soc_fpga_design/xml/ICICLE_MSS_mss_cfg.xml"
+CONFIG_DEFAULT_DEVICE_TREE="boards/mpfs-icicle-kit-es/mpfs_minimal_uboot.dtb"
 # end of Icicle-Kit Design Configuration Options
 # end of Board/Design Configuration Options
 
@@ -28,8 +29,8 @@ CONFIG_SERVICE_BOOT_MMC_USE_GPT=y
 CONFIG_SERVICE_DDR=y
 CONFIG_SERVICE_GOTO=y
 CONFIG_SERVICE_HEALTHMON=y
-# CONFIG_SERVICE_GPIO_UI is not set
 CONFIG_SERVICE_IPI_POLL=y
+# CONFIG_SERVICE_LOCKDOWN is not set
 CONFIG_SERVICE_MMC=y
 
 #
@@ -142,7 +143,7 @@ CONFIG_USE_PCIE=y
 # Enabled PCIe controllers
 #
 # CONFIG_ENABLE_PCIE_CTRL_0 is not set
-# CONFIG_ENABLE_PCIE_CTRL_1 is not set
+CONFIG_ENABLE_PCIE_CTRL_1=y
 # end of Enabled PCIe controllers
 
 CONFIG_OPENSBI=y
@@ -176,7 +177,7 @@ CONFIG_ALLOW_COLDREBOOT_ALWAYS=y
 #
 # OpenSBI
 #
-# CONFIG_PROVIDE_DTB is not set
+CONFIG_PROVIDE_DTB=y
 # end of OpenSBI
 
 #

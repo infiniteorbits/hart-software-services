@@ -7,6 +7,7 @@
 # BeagleV-Fire Design Configuration Options
 #
 CONFIG_SOC_FPGA_DESIGN_XML="boards/mpfs-beaglev-fire/soc_fpga_design/xml/PF_SOC_MSS_mss_cfg.xml"
+CONFIG_DEFAULT_DEVICE_TREE="boards/mpfs-beaglev-fire/mpfs_minimal_uboot.dtb"
 # end of BeagleV-Fire Design Configuration Options
 # end of Board/Design Configuration Options
 
@@ -30,6 +31,7 @@ CONFIG_SERVICE_GOTO=y
 CONFIG_SERVICE_HEALTHMON=y
 CONFIG_SERVICE_GPIO_UI=y
 CONFIG_SERVICE_IPI_POLL=y
+# CONFIG_SERVICE_LOCKDOWN is not set
 CONFIG_SERVICE_MMC=y
 
 #
@@ -48,6 +50,9 @@ CONFIG_SERVICE_MMC_MODE_EMMC=y
 #
 CONFIG_SERVICE_MMC_BUS_VOLTAGE_1V8=y
 # end of MMC Voltage
+
+CONFIG_SERVICE_MMC_HIGH_SPEED=y
+# CONFIG_SERVICE_MMC_DEFAULT_SPEED is not set
 
 #
 # SDIO Control
@@ -177,7 +182,7 @@ CONFIG_COLDREBOOT_TRY_AUTO_UPDATE=y
 #
 # OpenSBI
 #
-# CONFIG_PROVIDE_DTB is not set
+CONFIG_PROVIDE_DTB=y
 # end of OpenSBI
 
 #
@@ -228,6 +233,7 @@ CONFIG_DEBUG_LOOP_TIMES_THRESHOLD=2500000
 # CONFIG_DEBUG_CHUNK_DOWNLOADS is not set
 # CONFIG_DEBUG_MSCGEN_IPI is not set
 # CONFIG_DEBUG_PROFILING_SUPPORT is not set
+# CONFIG_DEBUG_PERF_CTRS is not set
 # CONFIG_DEBUG_RESET_REASON is not set
 # end of Debug Options
 
