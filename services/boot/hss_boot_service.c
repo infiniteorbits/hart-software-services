@@ -458,6 +458,9 @@ static void boot_setup_pmp_complete_handler(struct StateMachine * const pMyMachi
     if (HSS_Timer_IsElapsed(pMyMachine->startTime, BOOT_SETUP_PMP_COMPLETE_TIMEOUT)) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "%s::Timeout after %" PRIu64 " iterations\n",
             pMyMachine->pMachineName, pMyMachine->executionCount);
+#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
+            HSS_Slot_Failed();
+#endif
 
         for (unsigned int i = 0u; i < ARRAY_SIZE(bootMachine); i++) {
             enum HSSHartId peer = bootMachine[i].hartId;

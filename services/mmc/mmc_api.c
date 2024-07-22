@@ -139,13 +139,13 @@ static bool mmc_init_emmc(void)
         .data_bus_width = MSS_MMC_DATA_WIDTH_8BIT,
 #if defined(CONFIG_SERVICE_MMC_BUS_VOLTAGE_1V8)
         .bus_voltage = MSS_MMC_1_8V_BUS_VOLTAGE,
-#ifdef CONFIG_MODULE_M100PFS
+//#ifdef CONFIG_MODULE_M100PFS
         .clk_rate = MSS_MMC_CLOCK_50MHZ,
         .bus_speed_mode = MSS_MMC_MODE_SDR,
-#else
+/*#else
         .clk_rate = MSS_MMC_CLOCK_200MHZ,
         .bus_speed_mode = MSS_MMC_MODE_HS200,
-#endif
+#endif*/
 #elif defined(CONFIG_SERVICE_MMC_BUS_VOLTAGE_3V3)
         .bus_voltage = MSS_MMC_3_3V_BUS_VOLTAGE,
         .clk_rate = MSS_MMC_CLOCK_50MHZ,

@@ -571,7 +571,7 @@ static int mpfs_hart_stop(void)
         case SBI_SRST_RESET_TYPE_COLD_REBOOT:
             if (IS_ENABLED(CONFIG_ALLOW_COLDREBOOT_ALWAYS) || hart_ledger[hartid].allow_cold_reboot) {
 #  if IS_ENABLED(CONFIG_SERVICE_REBOOT)
-                HSS_reboot_cold(HSS_HART_ALL);
+               // HSS_reboot_cold(HSS_HART_ALL);
 #endif
             } else {
                 mHSS_DEBUG_PRINTF(LOG_ERROR, "u54_%d not permitted to cold reboot\n", hartid);

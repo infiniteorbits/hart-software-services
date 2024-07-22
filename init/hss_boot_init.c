@@ -22,6 +22,8 @@
 #include "hss_progress.h"
 #include "hss_trigger.h"
 #include "u54_state.h"
+#include "hss_slot_selection.h"
+
 
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
 #  include <mss_sys_services.h>
@@ -364,6 +366,9 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
     }
 
     if (!result) {
+#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
+            HSS_SlotSelection(&srcLBAOffset);
+#endif
         mHSS_DEBUG_PRINTF(LOG_WARN, "GPT_PartitionIdToLBAOffset() failed - using offset %lu\n", srcLBAOffset);
     } else {
         //mHSS_DEBUG_PRINTF(LOG_WARN, "GPT_PartitionIdToLBAOffset() returned %lu\n", srcLBAOffset);
@@ -381,6 +386,9 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
 
         if (!result) {
             mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_MMC_ReadBlock() failed\n");
+#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
+                HSS_Slot_Failed();
+#endif
         } else {
             result = HSS_Boot_VerifyMagic(&bootImage);
 
@@ -399,8 +407,14 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
 
                 if (!result) {
                      mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
+#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
+                    HSS_Slot_Failed();
+#endif
                 }
             }
+#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
+            HSS_Slot_save_params();
+#endif
         }
     }
 #endif

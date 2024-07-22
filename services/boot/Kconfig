@@ -61,5 +61,12 @@ config SERVICE_BOOT_MMC_USE_GPT
 		If CONFIG_SERVICE_MMC is enabled, then for MMC boots this option enables
                 parsing of a GUID Partition Table (GPT) in search of the boot image starting
                 sector..
-
+                
+config SERVICE_SLOT_SELECTION
+        bool "Use slot selection"
+        default n
+	depends on SERVICE_BOOT
+	help
+		If SERVICE_SLOT_SELECTION is enabled, then for MMC boots this option enables 
+                selected slot
 endmenu
