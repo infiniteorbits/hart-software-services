@@ -23,6 +23,7 @@
 #include "hss_trigger.h"
 #include "u54_state.h"
 #include "hss_slot_selection.h"
+#include "mss_sysreg.h"
 
 
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
@@ -227,6 +228,7 @@ bool HSS_BootInit(void)
             if (result) {
                 result = tryBootFunction_(pStorages[i], pStorages[i]->getBootImage);
                 if (result) { break; }
+
             }
         }
     }
@@ -274,6 +276,11 @@ bool tryBootFunction_(struct HSS_Storage *pStorage, HSS_GetBootImageFnPtr_t cons
     } else if (!result) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "Failed to get boot image, cannot decompress\n");
         result = false;
+#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "REBOOTING in 3 seconds\n");
+        HSS_SpinDelay_Secs(3);
+        SYSREG->MSS_RESET_CR = 0xDEAD;
+#endif
     } else if (!pBootImage) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot Image NULL, ignoring\n");
         result = false;
@@ -317,6 +324,7 @@ static bool copyBootImageToDDR_(struct HSS_BootImage *pBootImage, char *pDest,
     return result;
 }
 #endif
+
 
 static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootImage **ppBootImage)
 {
@@ -394,6 +402,9 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
 
             if (!result) {
                 mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_Boot_VerifyMagic() failed\n");
+#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
+                    HSS_Slot_Failed();
+#endif
             } else {
                 int perf_ctr_index = PERF_CTR_UNINITIALIZED;
                 HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image MMC Copy");
