@@ -142,10 +142,10 @@ static bool mmc_init_emmc(void)
 //#ifdef CONFIG_MODULE_M100PFS
         .clk_rate = MSS_MMC_CLOCK_50MHZ,
         .bus_speed_mode = MSS_MMC_MODE_SDR,
-/*#else
-        .clk_rate = MSS_MMC_CLOCK_200MHZ,
-        .bus_speed_mode = MSS_MMC_MODE_HS200,
-#endif*/
+//#else
+        //.clk_rate = MSS_MMC_CLOCK_200MHZ,
+        //.bus_speed_mode = MSS_MMC_MODE_HS200,
+//#endif
 #elif defined(CONFIG_SERVICE_MMC_BUS_VOLTAGE_3V3)
         .bus_voltage = MSS_MMC_3_3V_BUS_VOLTAGE,
         .clk_rate = MSS_MMC_CLOCK_50MHZ,

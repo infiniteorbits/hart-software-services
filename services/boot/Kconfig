@@ -64,7 +64,7 @@ config SERVICE_BOOT_MMC_USE_GPT
                 
 config SERVICE_SLOT_SELECTION
         bool "Use slot selection"
-        default n
+        default y
 	depends on SERVICE_BOOT
 	help
 		If SERVICE_SLOT_SELECTION is enabled, then for MMC boots this option enables 
