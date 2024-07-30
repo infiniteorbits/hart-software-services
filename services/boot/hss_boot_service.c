@@ -29,6 +29,7 @@
 #include "u54_state.h"
 #include "hss_trigger.h"
 #include "hss_boot_init.h"
+#include "hss_slot_selection.h"
 
 #include <assert.h>
 #include <string.h>
