@@ -1,6 +1,6 @@
 config SERVICE_SPI
 	bool "Boot from System Controller SPI flash support"
-	default n
+	default y
 	help
                 This feature enables booting from a payload stored in the SPI flash connected to the PolarFire SoC System Controller.
 

@@ -27,7 +27,8 @@
 # Virtual SPI Service
 
 SRCS-$(CONFIG_SERVICE_SPI) += \
-	services/spi/spi_service.c \
+	#services/spi/spi_service.c \
+	
 
 INCLUDES +=\
 	-I./services/spi \

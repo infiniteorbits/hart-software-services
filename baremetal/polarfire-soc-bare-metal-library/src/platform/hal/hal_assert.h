@@ -43,7 +43,7 @@ extern "C" {
  *------------------------------------------------------------------------------
   The behaviour is toolchain specific and project setting specific.
  ******************************************************************************/
-#define ASSERT(CHECK)     ASSERT(CHECK);
+#define HAL_ASSERT(CHECK)     ASSERT(CHECK);
 
 #endif  /* NDEBUG */
 

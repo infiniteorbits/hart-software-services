@@ -22,13 +22,15 @@
 #include "hss_progress.h"
 #include "hss_trigger.h"
 #include "u54_state.h"
-#include "hss_slot_selection.h"
 #include "mss_sysreg.h"
+#include "hss_slot_selection.h"
+#include "micron1gflash.h"
+#include "hss_spi.h"
 
 
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
 #  include <mss_sys_services.h>
-#  define SPI_FLASH_BOOT_ENABLED (CONFIG_SERVICE_BOOT_SPI_FLASH_OFFSET != 0xFFFFFFFF)
+#  define SPI_FLASH_BOOT_ENABLED 1 //(CONFIG_SERVICE_BOOT_SPI_FLASH_OFFSET != 0xFFFFFFFF)
 #else
 #  define SPI_FLASH_BOOT_ENABLED 0
 #endif
@@ -117,10 +119,10 @@ static struct HSS_Storage mmcStorage_ = {
 static struct HSS_Storage spiStorage_ = {
     .name = "SPI",
     .getBootImage = getBootImageFromSpiFlash_,
-    .init = NULL,
-    .readBlock = NULL,
-    .writeBlock = NULL,
-    .getInfo = NULL,
+    .init = spi_init,
+    .readBlock = spi_read,
+    .writeBlock = spi_write,
+    .getInfo = spi_GetInfo,
     .flushWriteBuffer = NULL
 };
 #endif
@@ -200,8 +202,30 @@ void HSS_BootHarts(void)
 #endif
 }
 
+#include "../baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_peripherals.h"
+#include "../baremetal/polarfire-soc-bare-metal-library/src/platform/drivers/mss/mss_gpio/mss_gpio.h"
+
 bool HSS_BootInit(void)
 {
+    (void)mss_config_clk_rst(MSS_PERIPH_GPIO1, (uint8_t) 1, PERIPHERAL_ON);
+    MSS_GPIO_init(GPIO1_LO);
+    MSS_GPIO_config(GPIO1_LO, MSS_GPIO_7, MSS_GPIO_OUTPUT_MODE);
+    MSS_GPIO_set_output(GPIO1_LO, MSS_GPIO_7, 0u); //CAN0_EN
+    MSS_GPIO_config(GPIO1_LO, MSS_GPIO_13, MSS_GPIO_OUTPUT_MODE);
+    MSS_GPIO_set_output(GPIO1_LO, MSS_GPIO_13, 0u); //CAN1_EN
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"GPIO init\n");
+
+    //PLIC_init();
+    //(void)mss_config_clk_rst(MSS_PERIPH_I2C1, (uint8_t) 1, PERIPHERAL_ON);
+    //MSS_I2C_init(&g_mss_i2c1_lo, 0x21, MSS_I2C_PCLK_DIV_192);
+    //MSS_I2C_register_transfer_completion_handler(I2C_MASTER, i2c1_completion_handler);
+    //mHSS_DEBUG_PRINTF(LOG_NORMAL,"\n \r I2C init");
+    /*mss_i2c_status_t instance;
+    uint8_t g_master_tx_buf[32];
+    g_master_tx_buf[0] = 0x0;
+    instance = do_write_transaction(0x21, g_master_tx_buf, 1u);
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"\n \r I2C status ) %d", instance);*/
+
     bool result = true;
 #if IS_ENABLED(CONFIG_SERVICE_BOOT)
 
@@ -561,6 +585,7 @@ void HSS_BootSelectPayload(void)
 #endif
 }
 
+#if 0
 #if IS_ENABLED(CONFIG_SERVICE_BOOT) && IS_ENABLED(CONFIG_SERVICE_SPI)
 static bool spiFlashReadBlock_(void *dst, size_t offs, size_t count) {
    int retval = MSS_SYS_spi_copy((uintptr_t)dst, offs, count, /* options */ 3, /* mb_offset */ 0);
@@ -572,6 +597,7 @@ static bool spiFlashReadBlock_(void *dst, size_t offs, size_t count) {
    return (retval == 0);
 }
 #endif
+#endif
 
 static bool getBootImageFromSpiFlash_(struct HSS_Storage *pStorage, struct HSS_BootImage **ppBootImage) {
     bool result = false;
@@ -581,27 +607,46 @@ static bool getBootImageFromSpiFlash_(struct HSS_Storage *pStorage, struct HSS_B
 
     assert(ppBootImage);
 
-    size_t srcOffset = CONFIG_SERVICE_BOOT_SPI_FLASH_OFFSET;
+    size_t srcOffset = SPI1_PADDR;
 
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "Preparing to copy from SPI Flash +0x%lx to DDR ...\n", srcOffset);
+
+    //MSS_SYS_select_service_mode(MSS_SYS_SERVICE_POLLING_MODE, NULL);
+
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to read image header (%d bytes) ...\n",
         sizeof(struct HSS_BootImage));
+    result = spi_read(&bootImage, srcOffset, sizeof(struct HSS_BootImage));
 
-    MSS_SYS_select_service_mode(MSS_SYS_SERVICE_POLLING_MODE, NULL);
-
-    result = spiFlashReadBlock_(&bootImage, srcOffset, sizeof(struct HSS_BootImage));
     if (!result) {
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "SPI_ReadBlock() failed\n");
+#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
+                //HSS_Slot_Failed();
+#endif
         return false;
-    }
+    } else {
+        result = HSS_Boot_VerifyMagic(&bootImage);
+    
+        if (!result) {
+            mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_Boot_VerifyMagic() failed\n");
+#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
+                //HSS_Slot_Failed();
+#endif
+        } else {
+            result = copyBootImageToDDR_(&bootImage, (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR),
+                srcOffset, spi_read);
+            *ppBootImage = (struct HSS_BootImage *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR);
 
-    result = HSS_Boot_VerifyMagic(&bootImage);
-    if (!result) {
-        return false;
+            if (!result) {
+                mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
+#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
+                    //HSS_Slot_Failed();
+#endif
+            }
+        }
+#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
+           // HSS_Slot_save_params();
+#endif
     }
-
-    result = copyBootImageToDDR_(&bootImage, (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR),
-        srcOffset, spiFlashReadBlock_);
-    *ppBootImage = (struct HSS_BootImage *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR);
 #endif
 
     return result;

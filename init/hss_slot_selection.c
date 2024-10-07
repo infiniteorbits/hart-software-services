@@ -13,55 +13,13 @@
 
 #include "config.h"
 #include "hss_types.h"
-
 #include "hss_init.h"
-#include "hss_boot_service.h"
-#include "hss_boot_init.h"
-#include "hss_sys_setup.h"
-#include "hss_progress.h"
 #include "hss_slot_selection.h"
-
-#if IS_ENABLED(CONFIG_SERVICE_SPI)
-#  include <mss_sys_services.h>
-#  define SPI_FLASH_BOOT_ENABLED (CONFIG_SERVICE_BOOT_SPI_FLASH_OFFSET != 0xFFFFFFFF)
-#else
-#  define SPI_FLASH_BOOT_ENABLED 0
-#endif
-
-#if IS_ENABLED(CONFIG_SERVICE_OPENSBI)
-#  include "opensbi_service.h"
-#endif
-
-#if IS_ENABLED(CONFIG_SERVICE_QSPI)
-#  include "qspi_service.h"
-#endif
-
-#if IS_ENABLED(CONFIG_SERVICE_MMC)
-#  include "mmc_service.h"
-#  include "gpt.h"
-#endif
-
-#if (SPI_FLASH_BOOT_ENABLED)
-#  include "mss_sys_services.h"
-#endif
-
-#include "hss_state_machine.h"
+#include "mmc_service.h"
 #include "hss_debug.h"
-#include "hss_perfctr.h"
-
 #include <string.h>
 #include <assert.h>
 
-#if IS_ENABLED(CONFIG_COMPRESSION)
-#  include "hss_decompress.h"
-#endif
-
-#if IS_ENABLED(CONFIG_CRYPTO_SIGNING)
-#  include "hss_boot_secure.h"
-#endif
-
-#include "hss_boot_pmp.h"
-#include "hss_atomic.h"
 
 #define BLOCK_SIZE_BYTES 512
 #define SLOT_SIZE_BYTES (100 * 1024 * 1024)  // 100 MB in bytes
