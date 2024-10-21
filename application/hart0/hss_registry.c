@@ -33,9 +33,9 @@
 # include "uart_service.h"
 #endif
 
-//#if IS_ENABLED(CONFIG_SERVICE_SPI)
-//# include "spi_service.h"
-//#endif
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
+# include "spi_service.h"
+#endif
 
 #if IS_ENABLED(CONFIG_SERVICE_SCRUB)
 # include "scrub_service.h"
