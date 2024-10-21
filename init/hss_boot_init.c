@@ -25,8 +25,6 @@
 #include "mss_sysreg.h"
 #include "hss_slot_selection.h"
 #include "micron1gflash.h"
-#include "hss_spi.h"
-
 
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
 #  include <mss_sys_services.h>
@@ -105,8 +103,19 @@ static struct HSS_Storage qspiStorage_ = {
 };
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_MMC)
-static struct HSS_Storage mmcStorage_ = {
-    .name = "MMC",
+static struct HSS_Storage mmc1Storage_ = {
+    .name = "MMC1",
+    .getBootImage = getBootImageFromMMC_,
+    .init = HSS_MMCInit,
+    .readBlock = HSS_MMC_ReadBlock,
+    .writeBlock = HSS_MMC_WriteBlockSDMA,
+    .getInfo = HSS_MMC_GetInfo,
+    .flushWriteBuffer = NULL
+};
+#endif
+#if IS_ENABLED(CONFIG_SERVICE_MMC)
+static struct HSS_Storage mmc2Storage_ = {
+    .name = "MMC2",
     .getBootImage = getBootImageFromMMC_,
     .init = HSS_MMCInit,
     .readBlock = HSS_MMC_ReadBlock,
@@ -143,12 +152,16 @@ static struct HSS_Storage *pStorages[] =
 #if IS_ENABLED(CONFIG_SERVICE_QSPI)
 	&qspiStorage_,
 #endif
+#if IS_ENABLED(CONFIG_SERVICE_MMC)
+	&mmc1Storage_,
+#endif
+#if IS_ENABLED(CONFIG_SERVICE_MMC)
+	&mmc2Storage_,
+#endif
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
 	&spiStorage_,
 #endif
-#if IS_ENABLED(CONFIG_SERVICE_MMC)
-	&mmcStorage_,
-#endif
+
 #if IS_ENABLED(CONFIG_SERVICE_BOOT_USE_PAYLOAD)
 	&payloadStorage_,
 #endif
@@ -204,6 +217,15 @@ void HSS_BootHarts(void)
 
 #include "../baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_peripherals.h"
 #include "../baremetal/polarfire-soc-bare-metal-library/src/platform/drivers/mss/mss_gpio/mss_gpio.h"
+int compare_strings(const char *str1, const char *str2);
+
+int compare_strings(const char *str1, const char *str2) {
+    while (*str1 && (*str1 == *str2)) {
+        str1++;
+        str2++;
+    }
+    return (*str1 == '\0' && *str2 == '\0');
+}
 
 bool HSS_BootInit(void)
 {
@@ -234,6 +256,8 @@ bool HSS_BootInit(void)
     int perf_ctr_index = PERF_CTR_UNINITIALIZED;
     HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image Init");
 
+    HSS_slot_get_boot_params();
+
     if (pDefaultStorage) {
         if (pDefaultStorage->init) { result = pDefaultStorage->init(); }
         if (result) {
@@ -244,6 +268,12 @@ bool HSS_BootInit(void)
             mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot image via %s ...\n", pStorages[i]->name);
 
             if (pStorages[i]->init) {
+                HSS_slot_update_boot_params(i);
+                if (compare_strings(pStorages[i]->name, "MMC1")) {
+                    //enable_emmc(EMMC_PRIMARY);
+                }else if (compare_strings(pStorages[i]->name, "MMCM")) {
+                    //enable_emmc(EMMC_SECONDARY);
+                }
                 result = pStorages[i]->init();
             } else {
                 result = true;
@@ -300,11 +330,6 @@ bool tryBootFunction_(struct HSS_Storage *pStorage, HSS_GetBootImageFnPtr_t cons
     } else if (!result) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "Failed to get boot image, cannot decompress\n");
         result = false;
-#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "REBOOTING in 3 seconds\n");
-        HSS_SpinDelay_Secs(3);
-        SYSREG->MSS_RESET_CR = 0xDEAD;
-#endif
     } else if (!pBootImage) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot Image NULL, ignoring\n");
         result = false;
@@ -357,103 +382,47 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
 #if IS_ENABLED(CONFIG_SERVICE_BOOT) && IS_ENABLED(CONFIG_SERVICE_MMC)
     assert(ppBootImage);
 
-    // if we are using MMC, then we need to do an initial copy of the
-    // boot header into our structure, for subsequent use
-    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Preparing to copy from MMC to DDR ...\n");
-
     size_t srcLBAOffset = 0u;
     assert(pStorage);
 
     uint32_t blockSize, eraseSize, blockCount;
     pStorage->getInfo(&blockSize, &eraseSize, &blockCount);
 
-# if (IS_ENABLED(CONFIG_SERVICE_BOOT_MMC_USE_GPT))
-    {
-        HSS_GPT_t gpt;
-
-        gpt.lbaSize = blockSize;
-        GPT_Init(&gpt, pStorage);
-        result = GPT_ReadHeader(&gpt);
-
-        if (result) {
-            size_t srcIndex = 0u;
-
-            if (GPT_GetBootPartitionIndex(&gpt, &srcIndex)) {
-                mHSS_DEBUG_PRINTF(LOG_WARN, "Using manually set partition index\n");
-            } else {
-                result = GPT_FindBootSectorIndex(&gpt, &srcIndex, NULL);
-
-                if (!result) {
-                    mHSS_DEBUG_PRINTF(LOG_ERROR, "GPT_FindBootSectorIndex() failed\n");
-                } else {
-                    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Boot Partition found at index %lu\n",
-                        srcIndex);
-                }
-            }
-
-            if (result) {
-                result = GPT_PartitionIdToLBAOffset(&gpt, srcIndex, &srcLBAOffset);
-            }
-        }
+    if (compare_strings(pStorage->name, "MMC1")) {
+        srcLBAOffset = EMMC0_PADDR;
+    }else if (compare_strings(pStorage->name, "MMC2")) {
+        srcLBAOffset = EMMC0_PADDR;
     }
+
+    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to copy from EMMC 0x%lx to DDR ...\n", srcLBAOffset);  
+    result = HSS_MMC_ReadBlock(&bootImage, srcLBAOffset * blockSize, sizeof(struct HSS_BootImage));
 
     if (!result) {
-#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
-            HSS_SlotSelection(&srcLBAOffset);
-#endif
-        mHSS_DEBUG_PRINTF(LOG_WARN, "GPT_PartitionIdToLBAOffset() failed - using offset %lu\n", srcLBAOffset);
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_MMC_ReadBlock() failed\n");
     } else {
-        //mHSS_DEBUG_PRINTF(LOG_WARN, "GPT_PartitionIdToLBAOffset() returned %lu\n", srcLBAOffset);
-    }
-#endif
-
-    //
-    // Even if we have GPT enabled and it fails to find a GPT parttion, we'll still
-    // try to boot
-    {
-        mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to read image header (%d bytes) ...\n",
-            sizeof(struct HSS_BootImage));
-        result = HSS_MMC_ReadBlock(&bootImage, srcLBAOffset * blockSize,
-            sizeof(struct HSS_BootImage));
+        //result = HSS_Boot_VerifyMagic(&bootImage);
+        result = validateCrc_custom_emmc(&bootImage);       
 
         if (!result) {
-            mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_MMC_ReadBlock() failed\n");
-#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
-                HSS_Slot_Failed();
-#endif
+            mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC\n");
         } else {
-            result = HSS_Boot_VerifyMagic(&bootImage);
+            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Boot image passed CRC 0x%X\n", bootImage.headerCrc);
+            int perf_ctr_index = PERF_CTR_UNINITIALIZED;
+            HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image MMC Copy");
+
+            result = copyBootImageToDDR_(&bootImage,
+                (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR), srcLBAOffset * blockSize,
+                HSS_MMC_ReadBlock);
+            *ppBootImage = (struct HSS_BootImage *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR);
+
+            HSS_PerfCtr_Lap(perf_ctr_index);
 
             if (!result) {
-                mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_Boot_VerifyMagic() failed\n");
-#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
-                    HSS_Slot_Failed();
-#endif
-            } else {
-                int perf_ctr_index = PERF_CTR_UNINITIALIZED;
-                HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image MMC Copy");
-
-                result = copyBootImageToDDR_(&bootImage,
-                    (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR), srcLBAOffset * blockSize,
-                    HSS_MMC_ReadBlock);
-                *ppBootImage = (struct HSS_BootImage *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR);
-
-                HSS_PerfCtr_Lap(perf_ctr_index);
-
-                if (!result) {
-                     mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
-#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
-                    HSS_Slot_Failed();
-#endif
-                }
+                    mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
             }
-#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
-            HSS_Slot_save_params();
-#endif
         }
     }
 #endif
-
     return result;
 }
 
@@ -461,7 +430,7 @@ void HSS_BootSelectSDCARD(void)
 {
 #if IS_ENABLED(CONFIG_SERVICE_MMC)
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "Selecting SDCARD as boot source ...\n");
-    pDefaultStorage = &mmcStorage_;
+    pDefaultStorage = &mmc1Storage_;
     HSS_MMC_SelectSDCARD();
     HSS_Register_Boot_Image(NULL);
 #else
@@ -473,7 +442,7 @@ void HSS_BootSelectMMC(void)
 {
 #if IS_ENABLED(CONFIG_SERVICE_MMC)
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "Selecting SDCARD/MMC (fallback) as boot source ...\n");
-    pDefaultStorage = &mmcStorage_;
+    pDefaultStorage = &mmc1Storage_;
     HSS_MMC_SelectMMC();
     HSS_Register_Boot_Image(NULL);
 #else
@@ -485,7 +454,7 @@ void HSS_BootSelectEMMC(void)
 {
 #if IS_ENABLED(CONFIG_SERVICE_MMC)
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "Selecting EMMC as boot source ...\n");
-    pDefaultStorage = &mmcStorage_;
+    pDefaultStorage = &mmc1Storage_;
     HSS_MMC_SelectEMMC();
     HSS_Register_Boot_Image(NULL);
 #else
@@ -604,51 +573,27 @@ static bool getBootImageFromSpiFlash_(struct HSS_Storage *pStorage, struct HSS_B
     (void)pStorage;
 
 #if IS_ENABLED(CONFIG_SERVICE_BOOT) && IS_ENABLED(CONFIG_SERVICE_SPI)
-
     assert(ppBootImage);
 
-    size_t srcOffset = SPI1_PADDR;
-
-    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Preparing to copy from SPI Flash +0x%lx to DDR ...\n", srcOffset);
-
-    //MSS_SYS_select_service_mode(MSS_SYS_SERVICE_POLLING_MODE, NULL);
-
-    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to read image header (%d bytes) ...\n",
-        sizeof(struct HSS_BootImage));
-    result = spi_read(&bootImage, srcOffset, sizeof(struct HSS_BootImage));
-
-    if (!result) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "SPI_ReadBlock() failed\n");
-#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
-                //HSS_Slot_Failed();
-#endif
-        return false;
-    } else {
-        result = HSS_Boot_VerifyMagic(&bootImage);
+    size_t srcOffset = SPI0_PADDR;
+    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to copy from SPI Flash 0x%lx to DDR ...\n", srcOffset);
+    spi_read(&bootImage, srcOffset, sizeof(struct HSS_BootImage));
+    //result = HSS_Boot_VerifyMagic(&bootImage);
+    result = validateCrc_custom_spi(&bootImage);
     
-        if (!result) {
-            mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_Boot_VerifyMagic() failed\n");
-#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
-                //HSS_Slot_Failed();
-#endif
-        } else {
-            result = copyBootImageToDDR_(&bootImage, (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR),
-                srcOffset, spi_read);
-            *ppBootImage = (struct HSS_BootImage *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR);
+    if (!result) {
+       mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC\n");
+    } else {
+        mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot image passed CRC 0x%X\n", bootImage.headerCrc);
+        result = copyBootImageToDDR_(&bootImage, (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR),
+            srcOffset, spi_read);
+        *ppBootImage = (struct HSS_BootImage *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR);
 
-            if (!result) {
-                mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
-#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
-                    //HSS_Slot_Failed();
-#endif
-            }
+        if (!result) {
+            mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
         }
-#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
-           // HSS_Slot_save_params();
-#endif
     }
 #endif
-
     return result;
 }
 

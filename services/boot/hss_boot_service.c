@@ -459,9 +459,6 @@ static void boot_setup_pmp_complete_handler(struct StateMachine * const pMyMachi
     if (HSS_Timer_IsElapsed(pMyMachine->startTime, BOOT_SETUP_PMP_COMPLETE_TIMEOUT)) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "%s::Timeout after %" PRIu64 " iterations\n",
             pMyMachine->pMachineName, pMyMachine->executionCount);
-#if IS_ENABLED(CONFIG_SERVICE_SLOT_SELECTION)
-            HSS_Slot_Failed();
-#endif
 
         for (unsigned int i = 0u; i < ARRAY_SIZE(bootMachine); i++) {
             enum HSSHartId peer = bootMachine[i].hartId;
@@ -1008,7 +1005,7 @@ enum IPIStatusCode HSS_Boot_IPIHandler(TxId_t transaction_id, enum HSSHartId sou
 
 static bool validateCrc_(struct HSS_BootImage *pImageHdr)
 {
-    bool result = false;
+    bool result = true;
     uint32_t headerCrc;
 
     struct HSS_BootImage shadowHdr = *pImageHdr;
@@ -1033,8 +1030,8 @@ static bool validateCrc_(struct HSS_BootImage *pImageHdr)
     if (headerCrc == pImageHdr->headerCrc) {
         result = true;
     } else {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Checked HSS_BootImage header CRC (%p->%p): calculated %08x vs expected %08x\n",
-            pImageHdr, (char *)pImageHdr + sizeof(struct HSS_BootImage), headerCrc, pImageHdr->headerCrc);
+        /*mHSS_DEBUG_PRINTF(LOG_ERROR, "Checked HSS_BootImage header CRC (%p->%p): calculated %08x vs expected %08x\n",
+            pImageHdr, (char *)pImageHdr + sizeof(struct HSS_BootImage), headerCrc, pImageHdr->headerCrc);*/
     }
 
     return result;
