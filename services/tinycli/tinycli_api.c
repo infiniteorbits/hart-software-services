@@ -479,7 +479,7 @@ static void tinyCLI_PrintHelp_(void)
 static void tinyCLI_Reset_(void)
 {
 #if IS_ENABLED(CONFIG_SERVICE_REBOOT)
-    //HSS_reboot_cold(HSS_HART_ALL);
+    HSS_reboot_cold(HSS_HART_ALL);
 #endif
 }
 

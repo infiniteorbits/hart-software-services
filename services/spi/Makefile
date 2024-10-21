@@ -28,7 +28,6 @@
 
 SRCS-$(CONFIG_SERVICE_SPI) += \
 	services/spi/spi_service.c \
-	
 
 INCLUDES +=\
 	-I./services/spi \
