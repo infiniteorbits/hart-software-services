@@ -215,9 +215,9 @@ struct StateMachine /*@null@*/ * const pGlobalStateMachines[] = {
     &boot_service3,
     &boot_service4,
 #endif
-//#if IS_ENABLED(CONFIG_SERVICE_SPI)
-//    &spi_service,
-//#endif
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
+   &spi_service,
+#endif
 #if IS_ENABLED(CONFIG_SERVICE_UART)
     &uart_service,
 #endif

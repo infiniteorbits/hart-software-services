@@ -61,5 +61,5 @@ config SERVICE_BOOT_MMC_USE_GPT
 		If CONFIG_SERVICE_MMC is enabled, then for MMC boots this option enables
                 parsing of a GUID Partition Table (GPT) in search of the boot image starting
                 sector..
-                
+
 endmenu
