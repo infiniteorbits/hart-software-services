@@ -3,7 +3,7 @@ menu "Crypto"
 config CRYPTO_SIGNING
 	bool "Cryptographic Signing support"
         depends on SERVICE_BOOT
-	default y
+	default n
 	help
 		This feature enables support for signing of boot images
 

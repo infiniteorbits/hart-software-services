@@ -231,13 +231,11 @@ bool spi_init(void)
     }
 
     uint8_t manufacturer_id = 0, device_id = 0;
-    /*FLASH_init();
+    FLASH_init();
     FLASH_global_unprotect();
-    FLASH_read_device_id(&manufacturer_id, &device_id);*/
+    FLASH_read_device_id(&manufacturer_id, &device_id);
 
-    mHSS_DEBUG_PRINTF(LOG_NORMAL, "\n\r **** SPI Init **** \n\
-    \r  - Device ID: %u \n\
-    \r  - Manufacturer ID: %u \n\n", device_id, manufacturer_id);
+    mHSS_DEBUG_PRINTF(LOG_NORMAL, "SPI Init: Device ID: %u, Manufacturer ID: %u\n", device_id, manufacturer_id);
 
     initialized = true;  // Mark as initialized
 
@@ -268,16 +266,15 @@ void HSS_slot_update_boot_params(int index)
 {
     Params.LastFailed = index;
     Params.CurrentTry = index+1;
-    Params.LastSuccessful = Params.LastSuccessful;
+    Params.LastSuccessful = 0;//Params.LastSuccessful;
     Params.BootSequence[0] = EMMC_PRIMARY;
     Params.BootSequence[1] = EMMC_SECONDARY;
     Params.BootSequence[2] = SPI_FLASH;
 
     Params.CRC = 0;
-    memcpy(buff, &Params, sizeof(Params));
-
     uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
     Params.CRC = crc;
+    memcpy(buff, &Params, sizeof(Params));
 
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"LastFailed: %s\n", getBootDeviceName(Params.LastFailed));
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"CurrentTry: %s\n", getBootDeviceName(Params.CurrentTry));
@@ -287,36 +284,38 @@ void HSS_slot_update_boot_params(int index)
         getBootDeviceName(Params.BootSequence[1]), 
         getBootDeviceName(Params.BootSequence[2]));
     
-    /*FLASH_erase_64k_block(BOOT_PARAMS_PADDR);
+    FLASH_erase_4k_block(BOOT_PARAMS_PADDR);
     delay1(500);
-    spi_write(BOOT_PARAMS_PADDR, buff, sizeof(Params));*/
-
+    spi_write(BOOT_PARAMS_PADDR, buff, sizeof(Params));
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot parameters update with crc %x\n", crc);
 }
 
 void HSS_slot_get_boot_params(void)
 {
-    //spi_init();
-    //spi_read(&buff, BOOT_PARAMS_PADDR, sizeof(Params));
+    spi_init();
+    spi_read(&buff, BOOT_PARAMS_PADDR, sizeof(Params));
+
     Params.LastFailed = buff[0];
     Params.CurrentTry = buff[1];
     Params.LastSuccessful = buff[2];
     Params.BootSequence[0] = EMMC_PRIMARY;
     Params.BootSequence[1] = EMMC_SECONDARY;
     Params.BootSequence[2] = SPI_FLASH;
-    Params.CRC = (buff[6] << 24) |
-                 (buff[7] << 16) |
-                 (buff[8] << 8)  |
-                  buff[9];
+    Params.CRC = (buff[11] << 24) |
+                 (buff[10] << 16) |
+                 (buff[9] << 8)  |
+                  buff[8];
     
-    buff[6] = 0;
-    buff[7] = 0;
-    buff[8] = 0;
+    buff[11] = 0;
+    buff[10] = 0;
     buff[9] = 0;
+    buff[8] = 0;
     uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
 
-    if(crc != Params.CRC)
-    {
-        mHSS_DEBUG_PRINTF(LOG_ERROR,"Boot parameters CRC: expected %x | calculated %x\n", Params.CRC, crc);
+    if(crc != Params.CRC) {
+        mHSS_DEBUG_PRINTF(LOG_ERROR,"Boot parameters CRC: calculated %x vs expected %x\n", crc, Params.CRC);
+    }else{
+        mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot parameters passed CRC: %x\n", crc);
     }
 }
 
@@ -383,7 +382,7 @@ bool validateCrc_custom_emmc(struct HSS_BootImage *pImage)
     if (CRC_read == CRC_calculated) {
         result = true;
     } else {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Checked HSS_BootImage header CRC: calculated %08x vs expected %08x\n",
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image CRC: calculated %08x vs expected %08x\n",
             CRC_calculated, CRC_read);
     }
 
@@ -401,7 +400,7 @@ bool validateCrc_custom_spi(struct HSS_BootImage *pImage)
     uint32_t CRC_calculated = 0;
     uint8_t header_buffer[BLOCK_SIZE_CRC] = {0};
     uint8_t temp_buffer[BLOCK_SIZE_CRC] = {0};
-    bool result;
+    bool result = false;
 
     // 1. Read the CRC
     FLASH_read(start_addr, header_buffer, (size_t)BLOCK_SIZE_CRC);
@@ -431,13 +430,13 @@ bool validateCrc_custom_spi(struct HSS_BootImage *pImage)
         CRC_calculated = CRC32_calculate_ex(CRC_calculated, (const uint8_t *)&temp_buffer, BLOCK_SIZE_CRC);
         block_offset++;
     }
-    //mHSS_DEBUG_PRINTF(LOG_NORMAL, "CRC_calculated: 0x%0X\n", CRC_calculated); 
 
     // 4. Check and return result
     if (CRC_read == CRC_calculated) {
         result = true;
+        mHSS_DEBUG_PRINTF(LOG_NORMAL, "CRC_calculated: 0x%0X\n", CRC_calculated);
     } else {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Checked HSS_BootImage header CRC: calculated %08x vs expected %08x\n",
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image CRC: calculated %08x vs expected %08x\n",
             CRC_calculated, CRC_read);
     }
 

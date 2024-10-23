@@ -52,6 +52,10 @@ void FLASH_erase_64k_block
     uint32_t address
 );
 
+void FLASH_erase_4k_block
+(
+    uint32_t address
+);
 
 int FLASH_program
 (
