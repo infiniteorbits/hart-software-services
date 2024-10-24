@@ -400,27 +400,33 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
     if (!result) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_MMC_ReadBlock() failed\n");
     } else {
-        //result = HSS_Boot_VerifyMagic(&bootImage);
-        result = validateCrc_custom_emmc(&bootImage);       
+       result = HSS_Boot_VerifyMagic(&bootImage);
+       if (!result) {
+           mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot very magic failed \n");
+       }else {
+           mHSS_DEBUG_PRINTF(LOG_NORMAL, "Boot very magic passed \n");
+#if IGNORE_CRC
+           result = true;
+#else
+           result = validateCrc_custom_emmc(&bootImage);
+#endif
 
-        if (!result) {
-            mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC\n");
-        } else {
-            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Boot image passed CRC 0x%X\n", bootImage.headerCrc);
-            int perf_ctr_index = PERF_CTR_UNINITIALIZED;
-            HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image MMC Copy");
+            if (result) {
+                int perf_ctr_index = PERF_CTR_UNINITIALIZED;
+                HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image MMC Copy");
 
-            result = copyBootImageToDDR_(&bootImage,
-                (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR), srcLBAOffset * blockSize,
-                HSS_MMC_ReadBlock);
-            *ppBootImage = (struct HSS_BootImage *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR);
+                result = copyBootImageToDDR_(&bootImage,
+                    (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR), srcLBAOffset * blockSize,
+                    HSS_MMC_ReadBlock);
+                *ppBootImage = (struct HSS_BootImage *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR);
 
-            HSS_PerfCtr_Lap(perf_ctr_index);
+                HSS_PerfCtr_Lap(perf_ctr_index);
 
-            if (!result) {
-                    mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
+                if (!result) {
+                        mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
+                }
             }
-        }
+       }
     }
 #endif
     return result;
@@ -575,24 +581,30 @@ static bool getBootImageFromSpiFlash_(struct HSS_Storage *pStorage, struct HSS_B
 #if IS_ENABLED(CONFIG_SERVICE_BOOT) && IS_ENABLED(CONFIG_SERVICE_SPI)
     assert(ppBootImage);
 
-    size_t srcOffset = SPI0_PADDR;
-    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to copy from SPI Flash 0x%lx to DDR ...\n", srcOffset);
-    spi_read(&bootImage, srcOffset, sizeof(struct HSS_BootImage));
-    //result = HSS_Boot_VerifyMagic(&bootImage);
-    result = validateCrc_custom_spi(&bootImage);
+   size_t srcOffset = SPI0_PADDR;
+   mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to copy from SPI Flash 0x%lx to DDR ...\n", srcOffset);
+   spi_read(&bootImage, srcOffset, sizeof(struct HSS_BootImage));
+   result = HSS_Boot_VerifyMagic(&bootImage);
+   if (!result) {
+       mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot very magic failed \n");
+   }else {
+       mHSS_DEBUG_PRINTF(LOG_NORMAL, "Boot very magic passed \n");
+#if IGNORE_CRC
+       result = true;
+#else
+       result = validateCrc_custom_spi(&bootImage);
+#endif
+        if (result) {
+            mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot image passed CRC 0x%X\n", bootImage.headerCrc);
+            result = copyBootImageToDDR_(&bootImage, (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR),
+                srcOffset, spi_read);
+            *ppBootImage = (struct HSS_BootImage *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR);
     
-    if (!result) {
-       mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC\n");
-    } else {
-        mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot image passed CRC 0x%X\n", bootImage.headerCrc);
-        result = copyBootImageToDDR_(&bootImage, (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR),
-            srcOffset, spi_read);
-        *ppBootImage = (struct HSS_BootImage *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR);
-
-        if (!result) {
-            mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
+            if (!result) {
+                mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
+            }
         }
-    }
+   }
 #endif
     return result;
 }
