@@ -329,6 +329,7 @@ bool HSS_BootInit(void)
                 if (result) { break; }
             } else{
                 mHSS_DEBUG_PRINTF(LOG_ERROR, "Fail init\n", pStorages[i]->name);
+            }
         }
     }
 
