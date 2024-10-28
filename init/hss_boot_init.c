@@ -264,15 +264,60 @@ bool HSS_BootInit(void)
             result = tryBootFunction_(pDefaultStorage, pDefaultStorage->getBootImage);
         }
     } else {
+        if(get_boot_sequence() == 0){
+
+        } else if(get_boot_sequence() == 0xFF){
+            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot image via %s ...\n", pStorages[2]->name);
+            if (pStorages[2]->init) {
+                HSS_slot_update_boot_params(2);
+                result = pStorages[2]->init();
+            } else {
+                result = true;
+            }
+
+            if (result) {
+                result = tryBootFunction_(pStorages[2], pStorages[2]->getBootImage);
+            }
+        } else if(get_boot_sequence()  % 2 != 0){
+            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot image via %s ...\n", pStorages[0]->name);
+            enable_emmc(EMMC_PRIMARY);
+            if (pStorages[0]->init) {
+                HSS_slot_update_boot_params(0);
+                result = pStorages[0]->init();
+            } else {
+                result = true;
+            }
+
+            if (result) {
+                result = tryBootFunction_(pStorages[0], pStorages[0]->getBootImage);
+            }
+
+        } else if(get_boot_sequence()  % 2 == 0){
+            enable_emmc(EMMC_SECONDARY);
+            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot image via %s ...\n", pStorages[1]->name);
+            if (pStorages[1]->init) {
+                HSS_slot_update_boot_params(1);
+                result = pStorages[1]->init();
+            } else {
+                result = true;
+            }
+
+            if (result) {
+                result = tryBootFunction_(pStorages[1], pStorages[1]->getBootImage);
+            }
+
+        }else{
+             mHSS_DEBUG_PRINTF(LOG_ERROR, "Invalid boot sequence...\n");
+        }
         for (int i = 0; i < ARRAY_SIZE(pStorages); i++) {
             mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot image via %s ...\n", pStorages[i]->name);
 
             if (pStorages[i]->init) {
                 HSS_slot_update_boot_params(i);
                 if (compare_strings(pStorages[i]->name, "MMC1")) {
-                    //enable_emmc(EMMC_PRIMARY);
-                }else if (compare_strings(pStorages[i]->name, "MMCM")) {
-                    //enable_emmc(EMMC_SECONDARY);
+                    enable_emmc(EMMC_PRIMARY);
+                }else if (compare_strings(pStorages[i]->name, "MMC2")) {
+                    enable_emmc(EMMC_SECONDARY);
                 }
                 result = pStorages[i]->init();
             } else {
@@ -282,8 +327,8 @@ bool HSS_BootInit(void)
             if (result) {
                 result = tryBootFunction_(pStorages[i], pStorages[i]->getBootImage);
                 if (result) { break; }
-
-            }
+            } else{
+                mHSS_DEBUG_PRINTF(LOG_ERROR, "Fail init\n", pStorages[i]->name);
         }
     }
 
@@ -388,11 +433,7 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
     uint32_t blockSize, eraseSize, blockCount;
     pStorage->getInfo(&blockSize, &eraseSize, &blockCount);
 
-    if (compare_strings(pStorage->name, "MMC1")) {
-        srcLBAOffset = EMMC0_PADDR;
-    }else if (compare_strings(pStorage->name, "MMC2")) {
-        srcLBAOffset = EMMC0_PADDR;
-    }
+    srcLBAOffset = get_offset(get_boot_sequence());
 
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to copy from EMMC 0x%lx to DDR ...\n", srcLBAOffset);  
     result = HSS_MMC_ReadBlock(&bootImage, srcLBAOffset * blockSize, sizeof(struct HSS_BootImage));
@@ -401,15 +442,16 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
         mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_MMC_ReadBlock() failed\n");
     } else {
        result = HSS_Boot_VerifyMagic(&bootImage);
-       if (!result) {
+        if (!result) {
            mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot very magic failed \n");
-       }else {
+        }else {
            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Boot very magic passed \n");
-#if IGNORE_CRC
-           result = true;
-#else
-           result = validateCrc_custom_emmc(&bootImage);
-#endif
+
+            if(get_ignore_crc()){
+                result = true;
+            }else{
+                result = validateCrc_custom_emmc(&bootImage);
+            }
 
             if (result) {
                 int perf_ctr_index = PERF_CTR_UNINITIALIZED;
@@ -585,15 +627,17 @@ static bool getBootImageFromSpiFlash_(struct HSS_Storage *pStorage, struct HSS_B
    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to copy from SPI Flash 0x%lx to DDR ...\n", srcOffset);
    spi_read(&bootImage, srcOffset, sizeof(struct HSS_BootImage));
    result = HSS_Boot_VerifyMagic(&bootImage);
-   if (!result) {
-       mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot very magic failed \n");
-   }else {
-       mHSS_DEBUG_PRINTF(LOG_NORMAL, "Boot very magic passed \n");
-#if IGNORE_CRC
-       result = true;
-#else
-       result = validateCrc_custom_spi(&bootImage);
-#endif
+    if (!result) {
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot very magic failed \n");
+    }else {
+        mHSS_DEBUG_PRINTF(LOG_NORMAL, "Boot very magic passed \n");
+
+        if(get_ignore_crc()){
+            result = true;
+        }else{
+            result = validateCrc_custom_spi(&bootImage);
+        }
+
         if (result) {
             mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot image passed CRC 0x%X\n", bootImage.headerCrc);
             result = copyBootImageToDDR_(&bootImage, (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR),

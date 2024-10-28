@@ -5,9 +5,6 @@
 extern "C" {
 #endif
 
-
-#define IGNORE_CRC 0
-
 enum memory_devices_id {
     EMMC_PRIMARY = 1,
     EMMC_SECONDARY = 2,
@@ -48,6 +45,9 @@ bool spi_read(void *pDest, size_t srcOffset, size_t byteCount);
 bool spi_write(size_t dstOffset, void *pSrc, size_t byteCount);
 void spi_GetInfo(uint32_t *pBlockSize, uint32_t *pEraseSize, uint32_t *pBlockCount);
 void erase_section(uint32_t address);
+bool get_ignore_crc(void);
+uint64_t get_offset(uint8_t slot);
+uint8_t get_boot_sequence(void);
 
 #ifdef __cplusplus
 }
