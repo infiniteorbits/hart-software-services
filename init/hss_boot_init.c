@@ -88,6 +88,8 @@ static bool getBootImageFromSpiFlash_(struct HSS_Storage *pStorage, struct HSS_B
 static bool getBootImageFromPayload_(struct HSS_Storage *pStorage, struct HSS_BootImage **ppBootImage);
 
 
+static uint8_t index_boot_image = 0;
+
 //
 //
 
@@ -264,10 +266,12 @@ bool HSS_BootInit(void)
             result = tryBootFunction_(pDefaultStorage, pDefaultStorage->getBootImage);
         }
     } else {
-        if(get_boot_sequence() == 0){
 
-        } else if(get_boot_sequence() == 0xFF){
-            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot image via %s ...\n", pStorages[2]->name);
+
+        if(get_boot_sequence(0) == 0){
+            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to boot normal sequence ...\n");
+        } else if(get_boot_sequence(0) > 30u){
+            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot spi image via %s ...\n", pStorages[2]->name);
             if (pStorages[2]->init) {
                 HSS_slot_update_boot_params(2);
                 result = pStorages[2]->init();
@@ -276,10 +280,12 @@ bool HSS_BootInit(void)
             }
 
             if (result) {
+                index_boot_image = 3;
                 result = tryBootFunction_(pStorages[2], pStorages[2]->getBootImage);
             }
-        } else if(get_boot_sequence()  % 2 != 0){
-            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot image via %s ...\n", pStorages[0]->name);
+        } else if ((get_boot_sequence(0) % 2 != 0) && (get_boot_sequence(0) >= 11 && get_boot_sequence(0) <= 23)) {
+
+            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot odd image via %s ...\n", pStorages[0]->name);
             enable_emmc(EMMC_PRIMARY);
             if (pStorages[0]->init) {
                 HSS_slot_update_boot_params(0);
@@ -289,12 +295,13 @@ bool HSS_BootInit(void)
             }
 
             if (result) {
+                index_boot_image = 0;
                 result = tryBootFunction_(pStorages[0], pStorages[0]->getBootImage);
             }
 
-        } else if(get_boot_sequence()  % 2 == 0){
+        } else if ((get_boot_sequence(0) % 2 == 0) && (get_boot_sequence(0) >= 10 && get_boot_sequence(0) <= 22)) {
             enable_emmc(EMMC_SECONDARY);
-            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot image via %s ...\n", pStorages[1]->name);
+            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot pair image via %s ...\n", pStorages[1]->name);
             if (pStorages[1]->init) {
                 HSS_slot_update_boot_params(1);
                 result = pStorages[1]->init();
@@ -303,6 +310,7 @@ bool HSS_BootInit(void)
             }
 
             if (result) {
+                index_boot_image = 1;
                 result = tryBootFunction_(pStorages[1], pStorages[1]->getBootImage);
             }
 
@@ -325,10 +333,12 @@ bool HSS_BootInit(void)
             }
 
             if (result) {
+                index_boot_image = i;
                 result = tryBootFunction_(pStorages[i], pStorages[i]->getBootImage);
                 if (result) { break; }
             } else{
                 mHSS_DEBUG_PRINTF(LOG_ERROR, "Fail init\n", pStorages[i]->name);
+            }
         }
     }
 
@@ -433,7 +443,7 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
     uint32_t blockSize, eraseSize, blockCount;
     pStorage->getInfo(&blockSize, &eraseSize, &blockCount);
 
-    srcLBAOffset = get_offset(get_boot_sequence());
+    srcLBAOffset = get_offset(get_boot_sequence(index_boot_image));
 
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to copy from EMMC 0x%lx to DDR ...\n", srcLBAOffset);  
     result = HSS_MMC_ReadBlock(&bootImage, srcLBAOffset * blockSize, sizeof(struct HSS_BootImage));
@@ -450,7 +460,7 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
             if(get_ignore_crc()){
                 result = true;
             }else{
-                result = validateCrc_custom_emmc(&bootImage);
+                result = validateCrc_custom_emmc(&bootImage, srcLBAOffset);
             }
 
             if (result) {

@@ -79,47 +79,43 @@ void clear_register_bit(uint32_t* register_map_outputs, RegisterBits bit);
 
 bool get_ignore_crc(void)
 {
+# if IGNORE_CRC
+    return true;
+#else
     return (Params.ignore_CRC == 0xFF);
+#endif
 }
 
 uint64_t get_offset(uint8_t slot) 
 {
     switch (slot) {
-        case 1: case 2:
+        case 10: case 20:
             return EMMC0_PADDR;
-        case 3: case 4:
+        case 11: case 21:
             return EMMC1_PADDR;
-        case 5: case 6:
+        case 12: case 22:
             return EMMC2_PADDR;
-        case 7: case 8:
+        case 13: case 23:
             return EMMC3_PADDR;
-        case 9: case 10:
-            return EMMC4_PADDR;
-        case 11: case 12:
-            return EMMC5_PADDR;
-        case 13: case 14:
-            return EMMC6_PADDR;
-        case 15:
-            return EMMC7_PADDR;
         default:
             return 0;
     }
 }
 
 
-uint8_t get_boot_sequence(void)
+uint8_t get_boot_sequence(uint8_t index)
 {
-    return Params.BootSequence[0];
+    return Params.BootSequence[index];
 }
 
 const char* getBootDeviceName(uint8_t id)
 {
     switch (id) {
-        case 0x01:
+        case 10: case 11: case 12: case 13:
             return "EMMC1";
-        case 0x02:
+        case 20: case 21: case 22: case 23:
             return "EMMC2";
-        case 0x03:
+        case 30:
             return "SPI_FLASH";
         default:
             return "None";
@@ -133,7 +129,7 @@ void set_register_bit(uint32_t* register_map_outputs, RegisterBits bit)
 {
     uint32_t reg_value = *register_map_outputs; // Read the current value of the register
 
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"\n \r set bit %d of register_map_outputs = %08x", bit, *register_map_outputs);
+    //mHSS_DEBUG_PRINTF(LOG_NORMAL,"\n \r set bit %d of register_map_outputs = %08x", bit, *register_map_outputs);
 
     switch (bit)
     {
@@ -166,7 +162,7 @@ void clear_register_bit(uint32_t* register_map_outputs, RegisterBits bit)
 {
     uint32_t reg_value = *register_map_outputs; // Read the current value of the register
 
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"\n \r clear bit %d of register_map_outputs = %08x", bit, *register_map_outputs);
+    //mHSS_DEBUG_PRINTF(LOG_NORMAL,"\n \r clear bit %d of register_map_outputs = %08x", bit, *register_map_outputs);
 
     switch (bit)
     {
@@ -197,37 +193,24 @@ void clear_register_bit(uint32_t* register_map_outputs, RegisterBits bit)
  */
 void enable_emmc(uint8_t emmc_id)
 {
-    mss_mmc_status_t ret_status;
-
     switch (emmc_id) {
         case EMMC_PRIMARY:
-            clear_register_bit(stream_gen_base_register, SW_SEL0);
-            clear_register_bit(stream_gen_base_register, SW_SEL1);
-            set_register_bit(stream_gen_base_register, EMMPR_EN);
-            clear_register_bit(stream_gen_base_register, EMMSC_EN);
-            set_register_bit(stream_gen_base_register, SW_EN);
+           // clear_register_bit(stream_gen_base_register, SW_SEL0);
+           // clear_register_bit(stream_gen_base_register, SW_SEL1);
+           // set_register_bit(stream_gen_base_register, EMMPR_EN);
+           // clear_register_bit(stream_gen_base_register, EMMSC_EN);
+           // set_register_bit(stream_gen_base_register, SW_EN);
+            mHSS_DEBUG_PRINTF(LOG_NORMAL,"Primary eMMC enabled\n");
 
-            ret_status = 0;//HSS_MMCInit();
-            if (ret_status == 0) {
-                 mHSS_DEBUG_PRINTF(LOG_NORMAL,"Primary eMMC enabled\n");
-            } else {
-                 mHSS_DEBUG_PRINTF(LOG_ERROR,"Primary eMMC init Failed\n");
-            }
             break;
 
         case EMMC_SECONDARY:
-            set_register_bit(stream_gen_base_register, SW_SEL0);
-            set_register_bit(stream_gen_base_register, SW_SEL1);
-            clear_register_bit(stream_gen_base_register, EMMPR_EN);
-            set_register_bit(stream_gen_base_register, EMMSC_EN);
-            set_register_bit(stream_gen_base_register, SW_EN);
-
-            ret_status = HSS_MMCInit();
-            if (ret_status == 0) {
-                 mHSS_DEBUG_PRINTF(LOG_NORMAL,"Secondary eMMC enabled \n");
-            } else {
-                 mHSS_DEBUG_PRINTF(LOG_ERROR,"Secondary eMMC init Failed \n");
-            }
+           // set_register_bit(stream_gen_base_register, SW_SEL0);
+          //  set_register_bit(stream_gen_base_register, SW_SEL1);
+          // clear_register_bit(stream_gen_base_register, EMMPR_EN);
+          //  set_register_bit(stream_gen_base_register, EMMSC_EN);
+           // set_register_bit(stream_gen_base_register, SW_EN);
+            mHSS_DEBUG_PRINTF(LOG_NORMAL,"Secondary eMMC enabled \n");
             break;
 
         default:
@@ -303,30 +286,33 @@ void HSS_slot_update_boot_params(int index)
 {
     Params.LastFailed = index;
     Params.CurrentTry = index+1;
-    Params.LastSuccessful = 0;//Params.LastSuccessful;
-    Params.BootSequence[0] = EMMC_PRIMARY;
-    Params.BootSequence[1] = EMMC_SECONDARY;
-    Params.BootSequence[2] = SPI_FLASH;
+    Params.LastSuccessful = 0;
+    //Params.BootSequence[0] = 3;
+    Params.BootSequence[1] = EMMC_PRIMARY;
+    Params.BootSequence[2] = EMMC_SECONDARY;
+    Params.BootSequence[3] = SPI_FLASH;
+    //Params.ignore_CRC = 0xFF;
 
     Params.CRC = 0;
     uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
     Params.CRC = crc;
     memcpy(buff, &Params, sizeof(Params));
 
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"LastFailed: %s\n", getBootDeviceName(Params.LastFailed));
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"CurrentTry: %s\n", getBootDeviceName(Params.CurrentTry));
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"LastSuccessful: %s\n", getBootDeviceName(Params.LastSuccessful));
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"BootSequence: %s, %s, %s\n", 
-        getBootDeviceName(Params.BootSequence[0]),
-        getBootDeviceName(Params.BootSequence[1]), 
-        getBootDeviceName(Params.BootSequence[2]));
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"LastFailed: %d\n", Params.LastFailed);
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"CurrentTry: %d\n", Params.CurrentTry);
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"LastSuccessful: %d\n", Params.LastSuccessful);
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"BootSequence: %d, %d, %d, %d\n",
+        Params.BootSequence[0],
+        Params.BootSequence[1],
+        Params.BootSequence[2],
+        Params.BootSequence[3]);
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"CRC: 0x%X\n", Params.CRC);
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"ignore CRC: 0x%X\n",  Params.ignore_CRC);
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"ignore CRC: %d\n",  Params.ignore_CRC);
     
-    FLASH_erase_4k_block(BOOT_PARAMS_PADDR);
+    /*FLASH_erase_4k_block(BOOT_PARAMS_PADDR);
     delay1(500);
     spi_write(BOOT_PARAMS_PADDR, buff, sizeof(Params));
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot parameters update with crc %x\n", crc);
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot parameters update with crc %x\n", crc);*/
 }
 
 void HSS_slot_get_boot_params(void)
@@ -337,19 +323,20 @@ void HSS_slot_get_boot_params(void)
     Params.LastFailed = buff[0];
     Params.CurrentTry = buff[1];
     Params.LastSuccessful = buff[2];
-    Params.BootSequence[0] = EMMC_PRIMARY;
-    Params.BootSequence[1] = EMMC_SECONDARY;
-    Params.BootSequence[2] = SPI_FLASH;
-    Params.CRC = (buff[11] << 24) |
-                 (buff[10] << 16) |
-                 (buff[9] << 8)  |
-                  buff[8];
-    Params.ignore_CRC = buff[12];
+    Params.BootSequence[0] = 30;//buff[3];
+    Params.BootSequence[1] = EMMC_PRIMARY;
+    Params.BootSequence[2] = EMMC_SECONDARY;
+    Params.BootSequence[3] = SPI_FLASH;
+    Params.CRC = (buff[12] << 24) |
+                 (buff[11] << 16) |
+                 (buff[10] << 8)  |
+                  buff[9];
+    Params.ignore_CRC = buff[13];
     
+    buff[12] = 0;
     buff[11] = 0;
     buff[10] = 0;
     buff[9] = 0;
-    buff[8] = 0;
     uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
 
     if(crc != Params.CRC) {
@@ -359,7 +346,7 @@ void HSS_slot_get_boot_params(void)
     }
 }
 
-bool validateCrc_custom_emmc(struct HSS_BootImage *pImage)
+bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset)
 {
     uint8_t temp_buffer[BLOCK_SIZE_EMMC] = {0};
     uint8_t header_buffer[BLOCK_SIZE_EMMC] = {0};
@@ -369,7 +356,7 @@ bool validateCrc_custom_emmc(struct HSS_BootImage *pImage)
     uint32_t bootImageLength = 0;
     int8_t status = 0;
     bool result = false;
-    uint32_t start_addr = EMMC0_PADDR / BLOCK_SIZE_EMMC;
+    uint32_t start_addr = offset / BLOCK_SIZE_EMMC;
 
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "reading CRC\n");
     status = MSS_MMC_single_block_read(start_addr, (uint32_t*)header_buffer);

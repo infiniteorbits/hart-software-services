@@ -5,10 +5,12 @@
 extern "C" {
 #endif
 
+#define IGNORE_CRC 1
+
 enum memory_devices_id {
-    EMMC_PRIMARY = 1,
-    EMMC_SECONDARY = 2,
-    SPI_FLASH = 3,
+    EMMC_PRIMARY = 10,
+    EMMC_SECONDARY = 20,
+    SPI_FLASH = 30,
 };
 
 // Enumeration for **physical** SPI addresses
@@ -37,7 +39,7 @@ typedef enum {
 
 void HSS_slot_get_boot_params(void);
 void HSS_slot_update_boot_params(int index);
-bool validateCrc_custom_emmc(struct HSS_BootImage *pImage);
+bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset);
 bool validateCrc_custom_spi(struct HSS_BootImage *pImage);
 void enable_emmc(uint8_t emmc_id);
 bool spi_init(void);
@@ -47,7 +49,7 @@ void spi_GetInfo(uint32_t *pBlockSize, uint32_t *pEraseSize, uint32_t *pBlockCou
 void erase_section(uint32_t address);
 bool get_ignore_crc(void);
 uint64_t get_offset(uint8_t slot);
-uint8_t get_boot_sequence(void);
+uint8_t get_boot_sequence(uint8_t index);
 
 #ifdef __cplusplus
 }

@@ -61,7 +61,7 @@ static void write_cmd_data
 #define COREUARTAPB0_BASE_ADDR          0x60000000UL
 #define COREGPIO_BASE_ADDR              0x60001000UL
 #define CSS_PF_BASE_ADDRESS             0x60002000UL
-#define CORESPI_BASE_ADDR               0x40000100UL
+#define CORESPI_BASE_ADDR               0x4F000000UL
 #define COREGPIO_IN_BASE_ADDR           0x70002000UL
 #define CORETIMER0_BASE_ADDR            0x70003000UL
 #define CORETIMER1_BASE_ADDR            0x70004000UL
