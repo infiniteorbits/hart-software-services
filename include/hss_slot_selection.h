@@ -5,12 +5,10 @@
 extern "C" {
 #endif
 
-#define IGNORE_CRC 1
-
 enum memory_devices_id {
     EMMC_PRIMARY = 10,
     EMMC_SECONDARY = 20,
-    SPI_FLASH = 30,
+    SPI_FLASH = 255,
 };
 
 // Enumeration for **physical** SPI addresses
@@ -18,11 +16,11 @@ typedef enum {
     GLD_PADDR = 0x00000400,  // Address for GLD (0 MB)
     UPD_PADDR = 0x00A00000,  // Address for UPD (10 MB)
     IAP_PADDR = 0x01400000,  // Address for IAP (20 MB)
-    BOOT_PARAMS_PADDR = 0x01E3CFE0,  // Boot Params address (IAP + 10 MB)
+    BOOT_PARAMS_PADDR = 0x02000000,  // Boot Params address (IAP + 10 MB)
     SPI0_PADDR = 0x10000000, // Base address for SPI0 (256 MB)
-    SPI1_PADDR = 0x14000000, // Base address for SPI1 (320 MB)
-    SPI2_PADDR = 0x18000000, // Base address for SPI2 (384 MB)
-    SPI3_PADDR = 0x1C000000  // Base address for SPI3 (448 MB)
+    SPI1_PADDR = 0x16400000, // Base address for SPI1 (356 MB)
+    SPI2_PADDR = 0x1C800000, // Base address for SPI2 (456 MB)
+    SPI3_PADDR = 0x22C00000  // Base address for SPI3 (556 MB)
 } vmem_spi_PADDR_t;
 
 // Enumeration for **physical** EMMC addresses

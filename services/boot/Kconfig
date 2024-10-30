@@ -62,4 +62,11 @@ config SERVICE_BOOT_MMC_USE_GPT
                 parsing of a GUID Partition Table (GPT) in search of the boot image starting
                 sector..
 
+config SERVICE_IGNORE_CRC 
+    bool "Ignore CRC check" 
+    default n 
+    depends on SERVICE_BOOT 
+    help 
+        If SERVICE_IGNORE_CRC is enabled, then image boots without crc check 
+
 endmenu
