@@ -7,7 +7,6 @@
 *.sym
 *__pycache__
 
-.config
 .config.old
 config.h
 include/tool_versions.h
