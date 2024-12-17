@@ -43,17 +43,17 @@
 #define STREAM_GEN_BASE_ADDR    0x4A000000u
 
 typedef enum {
-    DDR_DIS = 1,
-    EMMPR_EN = 8,   // Bit 8
-    EMMSC_EN = 9,   // Bit 9
-    SW_EN = 10,     // Bit 10
-    SW_DIS = 11,    // Bit 11
-    SW_SEL0 = 12,   // Bit 12
-    SW_SEL1 = 13,   // Bit 13
-    P3V5_PG = 14,   // Bit 14
-    P2V0_PG = 15,   // Bit 15
-    P1V5_PG = 16,   // Bit 16
-    DDR_PG = 17     // Bit 17
+    DDR_DIS = (1 << 1),    // Bit 1
+    EMMPR_EN = (1 << 8),   // Bit 8
+    EMMSC_EN = (1 << 9),   // Bit 9
+    SW_EN = (1 << 10),     // Bit 10
+    SW_DIS = (1 << 11),    // Bit 11
+    SW_SEL0 = (1 << 12),   // Bit 12
+    SW_SEL1 = (1 << 13),   // Bit 13
+    P3V5_PG = (1 << 14),   // Bit 14
+    P2V0_PG = (1 << 15),   // Bit 15
+    P1V5_PG = (1 << 16),   // Bit 16
+    DDR_PG = (1 << 17),    // Bit 17
 } RegisterBits;
 
 typedef struct {
@@ -125,66 +125,19 @@ const char* getBootDeviceName(uint8_t id)
  */
 void set_register_bit(uint32_t* register_map_outputs, RegisterBits bit)
 {
-    uint32_t reg_value = *register_map_outputs; // Read the current value of the register
-
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"\n \r set bit %d of register_map_outputs = %08x", bit, *register_map_outputs);
-
-     switch (bit)
-    {
-        case EMMPR_EN:
-            reg_value &= ~(1 << EMMPR_EN);
-            break;
-        case EMMSC_EN:
-            reg_value &= ~(1 << EMMSC_EN);
-            break;
-        case SW_EN:
-            reg_value &= ~(1 << SW_EN);
-            break;
-        case SW_SEL0:
-            reg_value &= ~(1 << SW_SEL0);
-            break;
-        case SW_SEL1:
-            reg_value &= ~(1 << SW_SEL1);
-            break;
-        default:
-            return; // If the bit is not one of the defined ones, do nothing
-    }
-
-    *register_map_outputs = reg_value; // Write the new value to the register*/
+    //DEBUG_PRINT("\n\r - Setting bit %d in register %08x", bit, *register_map_outputs);
+    *register_map_outputs |= bit; // Set the bit
 }
 
 /**
- * @brief Function to clear a specific bit to 0
+ * @brief Function to clear a specific bit (with constraints)
  */
 void clear_register_bit(uint32_t* register_map_outputs, RegisterBits bit)
 {
-    uint32_t reg_value = *register_map_outputs; // Read the current value of the register
-
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"\n \r clear bit %d of register_map_outputs = %08x", bit, *register_map_outputs);
-
-    switch (bit)
-    {
-        case EMMPR_EN:
-            reg_value |= (1 << EMMPR_EN);
-            break;
-        case EMMSC_EN:
-            reg_value |= (1 << EMMSC_EN);
-            break;
-        case SW_EN:
-            reg_value |= (1 << SW_EN);
-            break;
-        case SW_SEL0:
-            reg_value |= (1 << SW_SEL0);
-            break;
-        case SW_SEL1:
-            reg_value |= (1 << SW_SEL1);
-            break;
-        default:
-            return; // If the bit is not one of the defined ones, do nothing
-    }
-
-    *register_map_outputs = reg_value; // Write the new value to the register
+    //DEBUG_PRINT("\n\r - Clearing bit %d in register %08x", bit, *register_map_outputs);
+    *register_map_outputs &= ~bit; // Clear the bit
 }
+
 
 /**
  * @brief Function to enable specific emmc
@@ -193,27 +146,30 @@ void enable_emmc(uint8_t emmc_id)
 {
     switch (emmc_id) {
         case EMMC_PRIMARY:
-            /*clear_register_bit(stream_gen_base_register, SW_SEL0);
+            clear_register_bit(stream_gen_base_register, SW_SEL0);
             clear_register_bit(stream_gen_base_register, SW_SEL1);
-            set_register_bit(stream_gen_base_register, EMMPR_EN);
-            clear_register_bit(stream_gen_base_register, EMMSC_EN);
-            set_register_bit(stream_gen_base_register, SW_EN);
-            mHSS_DEBUG_PRINTF(LOG_NORMAL,"Primary eMMC enabled\n");*/
+            clear_register_bit(stream_gen_base_register, EMMPR_EN);
+            set_register_bit(stream_gen_base_register, EMMSC_EN);
+            clear_register_bit(stream_gen_base_register, SW_EN);
+            mHSS_DEBUG_PRINTF(LOG_NORMAL,"Primary eMMC enabled\n");
             break;
 
         case EMMC_SECONDARY:
-            /*set_register_bit(stream_gen_base_register, SW_SEL0);
+            set_register_bit(stream_gen_base_register, SW_SEL0);
             set_register_bit(stream_gen_base_register, SW_SEL1);
-            clear_register_bit(stream_gen_base_register, EMMPR_EN);
-            set_register_bit(stream_gen_base_register, EMMSC_EN);
-            set_register_bit(stream_gen_base_register, SW_EN);
-            mHSS_DEBUG_PRINTF(LOG_NORMAL,"Secondary eMMC enabled \n");*/
+            set_register_bit(stream_gen_base_register, EMMPR_EN);
+            clear_register_bit(stream_gen_base_register, EMMSC_EN);
+            clear_register_bit(stream_gen_base_register, SW_EN);
+            mHSS_DEBUG_PRINTF(LOG_NORMAL,"Secondary eMMC enabled \n");
             break;
 
         default:
              //mHSS_DEBUG_PRINTF(LOG_ERROR,"Invalid eMMC ID \n");
             break;
     }
+
+
+
 }
 
 void delay1(volatile uint32_t n)
