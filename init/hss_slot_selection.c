@@ -278,6 +278,20 @@ bool spi_write(size_t dstOffset, void *pSrc, size_t byteCount)
     return true;
 }
 
+void HSS_slot_restore_boot_sequence(void)
+{
+    Params.BootSequence[0] = 0;
+    Params.CRC = 0;
+    uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
+    Params.CRC = crc;
+    memcpy(buff, &Params, sizeof(Params));
+
+    FLASH_init();
+    FLASH_global_unprotect();
+    FLASH_erase_4k_block(BOOT_PARAMS_PADDR);
+    delay1(500);
+    spi_write(BOOT_PARAMS_PADDR, buff, sizeof(Params));
+}
 
 void HSS_slot_update_boot_params(int index)
 {
