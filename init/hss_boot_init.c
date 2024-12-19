@@ -386,6 +386,7 @@ bool tryBootFunction_(struct HSS_Storage *pStorage, HSS_GetBootImageFnPtr_t cons
     } else {
         HSS_Register_Boot_Image(NULL);
     }
+    HSS_slot_restore_boot_sequence();
 
     return result;
 }

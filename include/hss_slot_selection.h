@@ -48,6 +48,7 @@ void erase_section(uint32_t address);
 bool get_ignore_crc(void);
 uint64_t get_offset(uint8_t slot);
 uint8_t get_boot_sequence(uint8_t index);
+void HSS_slot_restore_boot_sequence(void);
 
 #ifdef __cplusplus
 }
