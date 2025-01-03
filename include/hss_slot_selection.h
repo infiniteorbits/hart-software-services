@@ -13,14 +13,14 @@ enum memory_devices_id {
 
 // Enumeration for **physical** SPI addresses
 typedef enum {
-    GLD_PADDR = 0x00000400,  // Address for GLD (0 MB)
-    UPD_PADDR = 0x00A00000,  // Address for UPD (10 MB)
-    IAP_PADDR = 0x01400000,  // Address for IAP (20 MB)
-    BOOT_PARAMS_PADDR = 0x02000000,  // Boot Params address (IAP + 10 MB)
-    SPI0_PADDR = 0x10000000, // Base address for SPI0 (256 MB)
-    SPI1_PADDR = 0x16400000, // Base address for SPI1 (356 MB)
-    SPI2_PADDR = 0x1C800000, // Base address for SPI2 (456 MB)
-    SPI3_PADDR = 0x22C00000  // Base address for SPI3 (556 MB)
+    GLD_PADDR = 0x00000400,                         // 1 KB
+    UPD_PADDR = 0x00A00000,                         // 10 MB
+    IAP_PADDR = 0x01400000,                         // 20 MB
+    PARAM_PADDR = 0x02000000,                       // 32 MB
+    SPI0_PADDR = 0x03000000,                        // 48 MB
+    SPI1_PADDR = 0x04000000,                        // 64 MB
+    SPI2_PADDR = 0x05000000,                        // 80 MB
+    SPI3_PADDR = 0x06000000,                        // 96 MB
 } vmem_spi_PADDR_t;
 
 // Enumeration for **physical** EMMC addresses
