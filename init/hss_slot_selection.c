@@ -244,9 +244,9 @@ void HSS_slot_restore_boot_sequence(void)
 
     FLASH_init();
     FLASH_global_unprotect();
-    FLASH_erase_4k_block(BOOT_PARAMS_PADDR);
+    FLASH_erase_4k_block(PARAM_PADDR);
     delay1(500);
-    spi_write(BOOT_PARAMS_PADDR, buff, sizeof(Params));
+    spi_write(PARAM_PADDR, buff, sizeof(Params));
 }
 
 void HSS_slot_update_boot_params(int index)
@@ -273,9 +273,9 @@ void HSS_slot_update_boot_params(int index)
 
     FLASH_init();
     FLASH_global_unprotect();
-    FLASH_erase_4k_block(BOOT_PARAMS_PADDR);
+    FLASH_erase_4k_block(PARAM_PADDR);
     delay1(500);
-    spi_write(BOOT_PARAMS_PADDR, buff, sizeof(Params));
+    spi_write(PARAM_PADDR, buff, sizeof(Params));
     //mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot parameters update with crc %x\n", crc);
 }
 
@@ -299,7 +299,7 @@ void copyBufferToParamData(const uint8_t* buffer, ParamData* params)
 void HSS_slot_get_boot_params(void)
 {
     spi_init();
-    spi_read(&buff, BOOT_PARAMS_PADDR, sizeof(Params));
+    spi_read(&buff, PARAM_PADDR, sizeof(Params));
     copyBufferToParamData(buff, &Params);
     
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"read ignore CRC: %d\n",  Params.ignore_CRC);
