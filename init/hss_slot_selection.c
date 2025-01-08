@@ -126,7 +126,7 @@ const char* getBootDeviceName(uint8_t id)
 void set_register_bit(uint32_t* register_map_outputs, RegisterBits bit)
 {
     //DEBUG_PRINT("\n\r - Setting bit %d in register %08x", bit, *register_map_outputs);
-    //*register_map_outputs |= bit; // Set the bit
+    *register_map_outputs |= bit; // Set the bit
 }
 
 /**
@@ -135,7 +135,7 @@ void set_register_bit(uint32_t* register_map_outputs, RegisterBits bit)
 void clear_register_bit(uint32_t* register_map_outputs, RegisterBits bit)
 {
     //DEBUG_PRINT("\n\r - Clearing bit %d in register %08x", bit, *register_map_outputs);
-    //*register_map_outputs &= ~bit; // Clear the bit
+    *register_map_outputs &= ~bit; // Clear the bit
 }
 
 
