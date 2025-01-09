@@ -180,11 +180,13 @@ void delay1(volatile uint32_t n)
 
 void erase_section(uint32_t address) 
 {
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
     for (uint32_t index = 0; index < SPI_SLOT_SIZE; index += BLOCK_SIZE_SPI)
     {
         FLASH_erase_64k_block(address + index);
         delay1(500);
     }
+#endif
 }
 
 
@@ -204,9 +206,11 @@ bool spi_init(void)
     }
 
     uint8_t manufacturer_id = 0, device_id = 0;
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
     FLASH_init();
     FLASH_global_unprotect();
     FLASH_read_device_id(&manufacturer_id, &device_id);
+#endif
 
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "SPI Init: Device ID: %u, Manufacturer ID: %u\n", device_id, manufacturer_id);
 
@@ -217,6 +221,7 @@ bool spi_init(void)
 
 bool spi_read(void *pDest, size_t srcOffset, size_t byteCount)
 {
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
     uint8_t *pDestBytes = (uint8_t *)pDest;
     size_t totalRead = 0;
 
@@ -225,12 +230,15 @@ bool spi_read(void *pDest, size_t srcOffset, size_t byteCount)
         FLASH_read(srcOffset + totalRead, pDestBytes + totalRead, bytesToRead);
         totalRead += bytesToRead;
     }
+#endif
     return true;
 }
 
 bool spi_write(size_t dstOffset, void *pSrc, size_t byteCount)
 {
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
     FLASH_program(dstOffset, pSrc, byteCount);
+#endif
     return true;
 }
 
@@ -241,12 +249,13 @@ void HSS_slot_restore_boot_sequence(void)
     uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
     Params.CRC = crc;
     memcpy(buff, &Params, sizeof(Params));
-
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
     FLASH_init();
     FLASH_global_unprotect();
     FLASH_erase_4k_block(PARAM_PADDR);
     delay1(500);
     spi_write(PARAM_PADDR, buff, sizeof(Params));
+#endif
 }
 
 void HSS_slot_update_boot_params(int index)
@@ -270,13 +279,14 @@ void HSS_slot_update_boot_params(int index)
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"update LastSuccessful: %d\n", Params.LastSuccessful);
 
    // mHSS_DEBUG_PRINTF(LOG_NORMAL,"CRC: 0x%X\n", Params.CRC);
-
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
     FLASH_init();
     FLASH_global_unprotect();
     FLASH_erase_4k_block(PARAM_PADDR);
     delay1(500);
     spi_write(PARAM_PADDR, buff, sizeof(Params));
     //mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot parameters update with crc %x\n", crc);
+#endif
 }
 
 void copyBufferToParamData(const uint8_t* buffer, ParamData* params);
@@ -298,10 +308,11 @@ void copyBufferToParamData(const uint8_t* buffer, ParamData* params)
 
 void HSS_slot_get_boot_params(void)
 {
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
     spi_init();
     spi_read(&buff, PARAM_PADDR, sizeof(Params));
     copyBufferToParamData(buff, &Params);
-    
+#endif
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"read ignore CRC: %d\n",  Params.ignore_CRC);
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"read BootSequence: %d, %d, %d, %d\n",
            Params.BootSequence[0],
@@ -395,28 +406,32 @@ bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset)
     return result;
 }
 
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
 static uint8_t spi_checkCrc(uint32_t headerCrc_read, uint32_t headerCrc_calculated);
 static void spi_readCrc(uint32_t start_addr, uint32_t *headerCrc);
 static void spi_CalculateCrc(uint32_t start_addr, uint32_t bootImageLength, uint32_t *headerCrc);
 static void spi_readBootImageLength(uint32_t start_addr, uint32_t *bootImageLength);
-
+#endif
 bool validateCrc_custom_spi(struct HSS_BootImage *pImage)
 {
+    uint8_t status = 0;
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
    uint32_t headerCrc_read = 0;
    uint32_t headerCrc_calculated = 0;
    uint32_t bootImageLength = 0;
    uint32_t start_addr = SPI0_PADDR;
-   uint8_t status = 0;
+
 
     spi_readCrc(start_addr, &headerCrc_read);
     spi_readBootImageLength(start_addr, &bootImageLength);
     spi_CalculateCrc(start_addr, bootImageLength, &headerCrc_calculated);
     status = spi_checkCrc(headerCrc_read, headerCrc_calculated);
-    pImage->headerCrc = headerCrc_calculated;
 
+    pImage->headerCrc = headerCrc_calculated;
+#endif
     return status;
 }
-
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
 static uint8_t spi_checkCrc(uint32_t headerCrc_read, uint32_t headerCrc_calculated) {
 
     uint8_t status;
@@ -470,3 +485,4 @@ static void spi_CalculateCrc(uint32_t start_addr, uint32_t bootImageLength, uint
         block_offset= block_offset + BLOCK_SIZE_CRC;
     }
 }
+#endif
