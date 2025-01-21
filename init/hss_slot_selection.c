@@ -245,6 +245,7 @@ bool spi_write(size_t dstOffset, void *pSrc, size_t byteCount)
 void HSS_slot_restore_boot_sequence(void)
 {
     Params.BootSequence[0] = 0;
+    Params.ignore_CRC = 0;
     Params.CRC = 0;
     uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
     Params.CRC = crc;
@@ -255,6 +256,7 @@ void HSS_slot_restore_boot_sequence(void)
     FLASH_erase_4k_block(PARAM_PADDR);
     delay1(500);
     spi_write(PARAM_PADDR, buff, sizeof(Params));
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Params restored\n");
 #endif
 }
 
