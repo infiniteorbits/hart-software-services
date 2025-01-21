@@ -242,7 +242,7 @@ bool tryBootFromStorage(int storageIndex, const char* message, int emmcType) {
     }
 
     if (result) {
-        index_boot_image = storageIndex;
+        //index_boot_image = storageIndex;
         result = tryBootFunction_(pStorages[storageIndex], pStorages[storageIndex]->getBootImage);
     }
 
