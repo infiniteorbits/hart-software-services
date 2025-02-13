@@ -381,7 +381,7 @@ bool tryBootFunction_(struct HSS_Storage *pStorage, HSS_GetBootImageFnPtr_t cons
             pBootImage = NULL;
         }
     } else if (!result) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Failed to get boot image, cannot decompress\n");
+        //mHSS_DEBUG_PRINTF(LOG_ERROR, "Failed to get boot image, cannot decompress\n");
         result = false;
     } else if (!pBootImage) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot Image NULL, ignoring\n");
@@ -655,7 +655,7 @@ static bool getBootImageFromSpiFlash_(struct HSS_Storage *pStorage, struct HSS_B
         }
 
         if (result) {
-            mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot image passed CRC 0x%X\n", bootImage.headerCrc);
+            //mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot image passed CRC 0x%X\n", bootImage.headerCrc);
             result = copyBootImageToDDR_(&bootImage, (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR),
                 srcOffset, spi_read);
             *ppBootImage = (struct HSS_BootImage *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR);

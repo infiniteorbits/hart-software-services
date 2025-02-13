@@ -341,7 +341,7 @@ void HSS_slot_get_boot_params(void)
     uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
 
     if(crc != Params.CRC) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR,"Boot Params CRC check failed: calculated 0x%0X vs expected 0x%0X\n", crc, Params.CRC);
+        mHSS_DEBUG_PRINTF(LOG_ERROR,"Boot Params CRC check failed");
     }else{
         mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Params CRC check passed:  0x%X\n", crc);
     }
@@ -410,10 +410,9 @@ bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset)
 
     if (CRC_read == CRC_calculated) {
         result = true;
-        mHSS_DEBUG_PRINTF(LOG_STATUS, "Payload CRC check passed: 0x%0X\n", CRC_calculated);
+        mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot image passed CRC: 0x%0X\n", CRC_calculated);
     } else {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Payload CRC check failed: calculated 0x%0X vs expected 0x%0X\n",
-            CRC_calculated, CRC_read);
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC");
     }
 
     pImage->headerCrc = CRC_calculated;
@@ -453,11 +452,10 @@ static uint8_t spi_checkCrc(uint32_t headerCrc_read, uint32_t headerCrc_calculat
 
     if(headerCrc_read == headerCrc_calculated){
         status = true;
-        mHSS_DEBUG_PRINTF(LOG_STATUS, "Payload CRC check passed: 0x%0X\n", headerCrc_calculated);
+        mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot image passed CRC: 0x%0X\n", headerCrc_calculated);
     }else {
         status = false;
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Payload CRC check failed: calculated 0x%0X vs expected 0x%0X\n",
-                headerCrc_calculated, headerCrc_read);
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC");
     }
     return status;
 }
