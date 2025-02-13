@@ -454,10 +454,10 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
     } else {
        result = HSS_Boot_VerifyMagic(&bootImage);
         if (!result) {
-           mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot very magic failed \n");
+           mHSS_DEBUG_PRINTF(LOG_ERROR, "%s very magic failed \n", pStorage->name);
            HSS_slot_update_boot_params(index_boot_image, MAGIC_NUMBER);
         }else {
-           mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot very magic passed \n");
+           mHSS_DEBUG_PRINTF(LOG_STATUS, "%s very magic passed \n", pStorage->name);
 
             if(get_ignore_crc()){
                 result = true;
@@ -643,10 +643,10 @@ static bool getBootImageFromSpiFlash_(struct HSS_Storage *pStorage, struct HSS_B
    spi_read(&bootImage, srcOffset, sizeof(struct HSS_BootImage));
    result = HSS_Boot_VerifyMagic(&bootImage);
     if (!result) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot very magic failed \n");
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "SPI very magic failed \n");
         HSS_slot_update_boot_params(index_boot_image, MAGIC_NUMBER);
     }else {
-        mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot very magic passed \n");
+        mHSS_DEBUG_PRINTF(LOG_STATUS, "SPI very magic passed \n");
 
         if(get_ignore_crc()){
             result = true;
