@@ -383,7 +383,6 @@ bool tryBootFunction_(struct HSS_Storage *pStorage, HSS_GetBootImageFnPtr_t cons
     } else if (!result) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "Failed to get boot image, cannot decompress\n");
         result = false;
-        HSS_slot_update_boot_params(index_boot_image, DECOMPRESSION);
     } else if (!pBootImage) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot Image NULL, ignoring\n");
         HSS_slot_update_boot_params(index_boot_image, IMAGE_NULL);
