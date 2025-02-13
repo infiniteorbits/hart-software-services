@@ -49,7 +49,7 @@ typedef enum  {
 
 void HSS_slot_get_boot_params(void);
 void HSS_slot_update_boot_params(int index, boot_error_codes code);
-bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset);
+bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset, const char * name);
 bool validateCrc_custom_spi(struct HSS_BootImage *pImage);
 void enable_emmc(uint8_t emmc_id);
 bool spi_init(void);

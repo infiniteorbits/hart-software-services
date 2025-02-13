@@ -462,7 +462,7 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
             if(get_ignore_crc()){
                 result = true;
             }else{
-                result = validateCrc_custom_emmc(&bootImage, srcLBAOffset);
+                result = validateCrc_custom_emmc(&bootImage, srcLBAOffset, pStorage->name);
             }
 
             if (result) {

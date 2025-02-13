@@ -347,7 +347,7 @@ void HSS_slot_get_boot_params(void)
     }
 }
 
-bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset)
+bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset, const char * name)
 {
     uint8_t temp_buffer[BLOCK_SIZE_EMMC] = {0};
     uint8_t header_buffer[BLOCK_SIZE_EMMC] = {0};
@@ -410,9 +410,9 @@ bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset)
 
     if (CRC_read == CRC_calculated) {
         result = true;
-        mHSS_DEBUG_PRINTF(LOG_STATUS, "%s image passed CRC: 0x%0X\n",pImage->set_name, CRC_calculated);
+        mHSS_DEBUG_PRINTF(LOG_STATUS, "%s image passed CRC: 0x%0X\n",name, CRC_calculated);
     } else {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "%s image failed CRC: 0x%0X\n",pImage->set_name, CRC_calculated);
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "%s image failed CRC: 0x%0X\n",name, CRC_calculated);
     }
 
     pImage->headerCrc = CRC_calculated;
