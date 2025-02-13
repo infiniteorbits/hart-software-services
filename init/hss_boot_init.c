@@ -305,10 +305,6 @@ bool HSS_BootInit(void)
             HSS_slot_update_boot_params(index_boot_image, INVALID_BOOT_SEQUENCE);
             skip_boot_0 = true;
         }
-        if(!result || !skip_boot_0)
-        {
-            HSS_slot_update_boot_params(index_boot_image, INVALID_BOOT_SEQUENCE);
-        }
 
         if(!result || skip_boot_0)
         {

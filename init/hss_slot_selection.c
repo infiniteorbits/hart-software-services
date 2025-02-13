@@ -340,7 +340,7 @@ void HSS_slot_get_boot_params(void)
     if(crc != Params.CRC) {
         mHSS_DEBUG_PRINTF(LOG_ERROR,"Boot params failed CRC:  0x%X\n", crc);
     }else{
-        mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot params passed CRC:  0x%X\n", crc);
+        mHSS_DEBUG_PRINTF(LOG_STATUS,"Boot params passed CRC:  0x%X\n", crc);
     }
 }
 
@@ -374,7 +374,7 @@ bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset, const 
                                 (header_buffer[457] << 8)  |
                                 header_buffer[456];      
 
-            mHSS_DEBUG_PRINTF(LOG_STATUS, "%s image length read: 0x%0X (%d)\n",name, bootImageLength, bootImageLength);
+            mHSS_DEBUG_PRINTF(LOG_STATUS, "%s image length: 0x%0X (%d)\n",name, bootImageLength, bootImageLength);
             //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Calculating CRC...\n");
             for (uint32_t bytes_read = 0; bytes_read < bootImageLength ; bytes_read += BLOCK_SIZE_EMMC )
             {
@@ -472,7 +472,7 @@ static void spi_readBootImageLength(uint32_t start_addr, uint32_t *bootImageLeng
                        (header_buffer[458] << 16) |
                        (header_buffer[457] << 8)  |
                         header_buffer[456];
-    mHSS_DEBUG_PRINTF(LOG_STATUS, "SPI image length read: 0x%0X (%d)\n", *bootImageLength, *bootImageLength);
+    mHSS_DEBUG_PRINTF(LOG_STATUS, "SPI image length: 0x%0X (%d)\n", *bootImageLength, *bootImageLength);
 }
 
 static void spi_CalculateCrc(uint32_t start_addr, uint32_t bootImageLength, uint32_t *headerCrc) {
