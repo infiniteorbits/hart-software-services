@@ -259,7 +259,7 @@ bool HSS_BootInit(void)
     MSS_GPIO_set_output(GPIO1_LO, MSS_GPIO_7, 0u); //CAN0_EN
     MSS_GPIO_config(GPIO1_LO, MSS_GPIO_13, MSS_GPIO_OUTPUT_MODE);
     MSS_GPIO_set_output(GPIO1_LO, MSS_GPIO_13, 0u); //CAN1_EN
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"GPIO init\n");
+    //mHSS_DEBUG_PRINTF(LOG_NORMAL,"GPIO init\n");
 
     //PLIC_init();
     //(void)mss_config_clk_rst(MSS_PERIPH_I2C1, (uint8_t) 1, PERIPHERAL_ON);
@@ -276,7 +276,7 @@ bool HSS_BootInit(void)
     bool skip_boot_0 = false;
 #if IS_ENABLED(CONFIG_SERVICE_BOOT)
 
-    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Initializing Boot Image ...\n");
+    //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Initializing Boot Image ...\n");
 
     int perf_ctr_index = PERF_CTR_UNINITIALIZED;
     HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image Init");

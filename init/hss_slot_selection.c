@@ -322,13 +322,13 @@ void HSS_slot_get_boot_params(void)
     spi_read(&buff, PARAM_PADDR, sizeof(Params));
     copyBufferToParamData(buff, &Params);
 #endif
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"read ignore CRC:  %d\n",  Params.ignore_CRC);
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"read Boot Seqnce: %d, %d, %d, %d\n",
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Ignore CRC: %d\n",  Params.ignore_CRC);
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Sequence[]: %d, %d, %d, %d\n",
            Params.BootSequence[0],
            Params.BootSequence[1],
            Params.BootSequence[2],
            Params.BootSequence[3]);
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"read Boot Report: %d, %d, %d, %d\n",
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Report[]:   %d, %d, %d, %d\n",
             Params.BootReport[0],
             Params.BootReport[1],
             Params.BootReport[2],
@@ -341,7 +341,7 @@ void HSS_slot_get_boot_params(void)
     uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
 
     if(crc != Params.CRC) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR,"Boot Params CRC check failed\n");
+        mHSS_DEBUG_PRINTF(LOG_ERROR,"Boot Params CRC check failed:  0x%X\n", crc);
     }else{
         mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Params CRC check passed:  0x%X\n", crc);
     }
@@ -378,7 +378,7 @@ bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset)
                                 header_buffer[456];      
 
             mHSS_DEBUG_PRINTF(LOG_NORMAL, "BootImageLength: 0x%0X (%d)\n", bootImageLength, bootImageLength);
-            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Calculating CRC\n");
+            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Calculating CRC...\n");
             for (uint32_t bytes_read = 0; bytes_read < bootImageLength ; bytes_read += BLOCK_SIZE_EMMC )
             {
                 status = MSS_MMC_single_block_read(start_addr + block_offset, (uint32_t*)temp_buffer);
@@ -412,7 +412,7 @@ bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset)
         result = true;
         mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot image passed CRC: 0x%0X\n", CRC_calculated);
     } else {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC\n");
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC: 0x%0X\n", CRC_calculated);
     }
 
     pImage->headerCrc = CRC_calculated;
@@ -455,7 +455,7 @@ static uint8_t spi_checkCrc(uint32_t headerCrc_read, uint32_t headerCrc_calculat
         mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot image passed CRC: 0x%0X\n", headerCrc_calculated);
     }else {
         status = false;
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC\n");
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC: 0x%0X\n", headerCrc_calculated);
     }
     return status;
 }
