@@ -35,8 +35,20 @@ typedef enum {
     EMMC7_PADDR = 0x1C0000000, // 7GB
 } vmem_emmc_PADDR_t;
 
+typedef enum  {
+    NO_ERROR = 0,
+    INVALID_BOOT_SEQUENCE,
+    FAIL_INIT,
+    DECOMPRESSION,
+    IMAGE_NULL,
+    HEADER_READ,
+    MAGIC_NUMBER,
+    CRC_CALCULATION,
+    COPY_TO_DDR
+} boot_error_codes;
+
 void HSS_slot_get_boot_params(void);
-void HSS_slot_update_boot_params(int index);
+void HSS_slot_update_boot_params(int index, boot_error_codes code);
 bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset);
 bool validateCrc_custom_spi(struct HSS_BootImage *pImage);
 void enable_emmc(uint8_t emmc_id);

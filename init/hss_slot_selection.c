@@ -63,6 +63,7 @@ typedef struct {
     uint8_t BootSequence[4];
     uint32_t CRC;
     uint8_t ignore_CRC;
+    uint8_t BootReport[4];
 } ParamData;
 
 /*------------------------------Local Variables-----------------------------*/
@@ -98,7 +99,7 @@ uint64_t get_offset(uint8_t slot)
         case 13: case 23:
             return EMMC3_PADDR;
         default:
-            return 0;
+            return EMMC0_PADDR;
     }
 }
 
@@ -260,7 +261,7 @@ void HSS_slot_restore_boot_sequence(void)
 #endif
 }
 
-void HSS_slot_update_boot_params(int index)
+void HSS_slot_update_boot_params(int index, boot_error_codes code)
 {
     Params.LastFailed = index;
     Params.CurrentTry = index+1;
@@ -270,6 +271,7 @@ void HSS_slot_update_boot_params(int index)
     Params.BootSequence[2] = EMMC_SECONDARY;
     Params.BootSequence[3] = SPI_FLASH;
     //Params.ignore_CRC = 0xFF;
+    Params.BootReport[Params.LastFailed] = code;
 
     Params.CRC = 0;
     uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
@@ -279,6 +281,7 @@ void HSS_slot_update_boot_params(int index)
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"update LastFailed: %d\n", Params.LastFailed);
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"update CurrentTry: %d\n", Params.CurrentTry);
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"update LastSuccessful: %d\n", Params.LastSuccessful);
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"update BootReport[%d]: %d\n", Params.LastFailed, code);
 
    // mHSS_DEBUG_PRINTF(LOG_NORMAL,"CRC: 0x%X\n", Params.CRC);
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
@@ -306,6 +309,10 @@ void copyBufferToParamData(const uint8_t* buffer, ParamData* params)
                  (buffer[9] << 8)  |
                   buffer[8];
     params->ignore_CRC = buffer[12];
+    params->BootReport[0] = buffer[13];
+    params->BootReport[1] = buffer[14];
+    params->BootReport[2] = buffer[15];
+    params->BootReport[3] = buffer[16];
 }
 
 void HSS_slot_get_boot_params(void)
@@ -321,6 +328,11 @@ void HSS_slot_get_boot_params(void)
            Params.BootSequence[1],
            Params.BootSequence[2],
            Params.BootSequence[3]);
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"read BootReport: %d, %d, %d, %d\n",
+            Params.BootReport[0],
+            Params.BootReport[1],
+            Params.BootReport[2],
+            Params.BootReport[3]);
 
     buff[11] = 0;
     buff[10] = 0;
