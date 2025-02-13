@@ -152,7 +152,7 @@ void enable_emmc(uint8_t emmc_id)
             clear_register_bit(stream_gen_base_register, EMMPR_EN);
             set_register_bit(stream_gen_base_register, EMMSC_EN);
             clear_register_bit(stream_gen_base_register, SW_EN);
-            mHSS_DEBUG_PRINTF(LOG_NORMAL,"Primary eMMC enabled\n");
+            //mHSS_DEBUG_PRINTF(LOG_NORMAL,"Primary eMMC enabled\n");
             break;
 
         case EMMC_SECONDARY:
@@ -161,7 +161,7 @@ void enable_emmc(uint8_t emmc_id)
             set_register_bit(stream_gen_base_register, EMMPR_EN);
             clear_register_bit(stream_gen_base_register, EMMSC_EN);
             clear_register_bit(stream_gen_base_register, SW_EN);
-            mHSS_DEBUG_PRINTF(LOG_NORMAL,"Secondary eMMC enabled \n");
+            //mHSS_DEBUG_PRINTF(LOG_NORMAL,"Secondary eMMC enabled \n");
             break;
 
         default:
@@ -257,7 +257,7 @@ void HSS_slot_restore_boot_sequence(void)
     FLASH_erase_4k_block(PARAM_PADDR);
     delay1(500);
     spi_write(PARAM_PADDR, buff, sizeof(Params));
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Params restored\n");
+    //mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Params restored\n");
 #endif
 }
 
@@ -341,7 +341,7 @@ void HSS_slot_get_boot_params(void)
     uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
 
     if(crc != Params.CRC) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR,"Boot Params CRC check failed");
+        mHSS_DEBUG_PRINTF(LOG_ERROR,"Boot Params CRC check failed\n");
     }else{
         mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Params CRC check passed:  0x%X\n", crc);
     }
@@ -412,7 +412,7 @@ bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset)
         result = true;
         mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot image passed CRC: 0x%0X\n", CRC_calculated);
     } else {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC");
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC\n");
     }
 
     pImage->headerCrc = CRC_calculated;
@@ -455,7 +455,7 @@ static uint8_t spi_checkCrc(uint32_t headerCrc_read, uint32_t headerCrc_calculat
         mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot image passed CRC: 0x%0X\n", headerCrc_calculated);
     }else {
         status = false;
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC");
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot image failed CRC\n");
     }
     return status;
 }

@@ -239,9 +239,9 @@ bool HSS_MMCInit(void)
 #endif
 #if defined(CONFIG_SERVICE_MMC_MODE_EMMC)
     if ((!mmc_initialized) && ((mmc_selectedMedium == MMC_SELECT_EMMC_ONLY) || (mmc_selectedMedium == MMC_SELECT_SDCARD_FALLBACK_EMMC))) {
-        mHSS_DEBUG_PRINTF(LOG_STATUS, "Attempting to select eMMC ... ");
+        //mHSS_DEBUG_PRINTF(LOG_STATUS, "Attempting to select eMMC ... ");
         mmc_initialized = mmc_init_emmc();
-        mHSS_DEBUG_PRINTF_EX("%s\n", mmc_initialized ? "Passed" : "Failed");
+        //mHSS_DEBUG_PRINTF_EX("%s\n", mmc_initialized ? "Passed" : "Failed");
     }
 #endif
     HSS_PerfCtr_Lap(perf_ctr_index);

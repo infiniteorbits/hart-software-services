@@ -328,11 +328,11 @@ bool HSS_BootInit(void)
                 }
 
                 if (result) {
-                    
+                    mHSS_DEBUG_PRINTF(LOG_STATUS, "%s init passed\n", pStorages[i]->name);
                     result = tryBootFunction_(pStorages[i], pStorages[i]->getBootImage);
                     if (result) { break; }
                 } else{
-                    mHSS_DEBUG_PRINTF(LOG_ERROR, "Fail init\n", pStorages[i]->name);
+                    mHSS_DEBUG_PRINTF(LOG_ERROR, "%s init failed\n", pStorages[i]->name);
                     HSS_slot_update_boot_params(index_boot_image, FAIL_INIT);
                 }
                 HSS_SpinDelay_Secs(1);
@@ -445,7 +445,7 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
 
     srcLBAOffset = get_offset(get_boot_sequence(index_boot_image));
 
-    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to copy from EMMC 0x%lx to DDR ...\n", srcLBAOffset);  
+    //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to copy from EMMC 0x%lx to DDR ...\n", srcLBAOffset);  
     result = HSS_MMC_ReadBlock(&bootImage, srcLBAOffset, sizeof(struct HSS_BootImage));
 
     if (!result) {
@@ -457,7 +457,7 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
            mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot very magic failed \n");
            HSS_slot_update_boot_params(index_boot_image, MAGIC_NUMBER);
         }else {
-           mHSS_DEBUG_PRINTF(LOG_NORMAL, "Boot very magic passed \n");
+           mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot very magic passed \n");
 
             if(get_ignore_crc()){
                 result = true;
@@ -639,14 +639,14 @@ static bool getBootImageFromSpiFlash_(struct HSS_Storage *pStorage, struct HSS_B
     assert(ppBootImage);
 
    size_t srcOffset = SPI0_PADDR;
-   mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to copy from SPI Flash 0x%lx to DDR ...\n", srcOffset);
+   //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to copy from SPI Flash 0x%lx to DDR ...\n", srcOffset);
    spi_read(&bootImage, srcOffset, sizeof(struct HSS_BootImage));
    result = HSS_Boot_VerifyMagic(&bootImage);
     if (!result) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot very magic failed \n");
         HSS_slot_update_boot_params(index_boot_image, MAGIC_NUMBER);
     }else {
-        mHSS_DEBUG_PRINTF(LOG_NORMAL, "Boot very magic passed \n");
+        mHSS_DEBUG_PRINTF(LOG_STATUS, "Boot very magic passed \n");
 
         if(get_ignore_crc()){
             result = true;
