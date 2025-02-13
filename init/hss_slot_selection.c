@@ -377,7 +377,7 @@ bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset, const 
                                 (header_buffer[457] << 8)  |
                                 header_buffer[456];      
 
-            mHSS_DEBUG_PRINTF(LOG_STATUS, "%s image length read: 0x%0X (%d)\n",pImage->set_name, bootImageLength, bootImageLength);
+            mHSS_DEBUG_PRINTF(LOG_STATUS, "%s image length read: 0x%0X (%d)\n",name, bootImageLength, bootImageLength);
             //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Calculating CRC...\n");
             for (uint32_t bytes_read = 0; bytes_read < bootImageLength ; bytes_read += BLOCK_SIZE_EMMC )
             {

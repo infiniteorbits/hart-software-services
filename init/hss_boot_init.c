@@ -313,7 +313,7 @@ bool HSS_BootInit(void)
         if(!result || skip_boot_0)
         {
             for (int i = 0; i < ARRAY_SIZE(pStorages); i++) {
-                mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot image via %s ...\n", pStorages[i]->name);
+                //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot image via %s ...\n", pStorages[i]->name);
                 index_boot_image = i + 1;
                 if (pStorages[i]->init) {
                     HSS_slot_update_boot_params(index_boot_image, NO_ERROR);
