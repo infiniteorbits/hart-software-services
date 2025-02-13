@@ -230,9 +230,8 @@ int compare_strings(const char *str1, const char *str2) {
 }
 bool tryBootFromStorage(int storageIndex, const char* message, int emmcType);
 bool tryBootFromStorage(int storageIndex, const char* message, int emmcType) {
-    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot %s image via %s ...\n", message, pStorages[storageIndex]->name);
+   // mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot %s image via %s ...\n", message, pStorages[storageIndex]->name);
     enable_emmc(emmcType);
-
     bool result = false;
     if (pStorages[storageIndex]->init) {
         HSS_slot_update_boot_params(index_boot_image, NO_ERROR);
@@ -242,6 +241,7 @@ bool tryBootFromStorage(int storageIndex, const char* message, int emmcType) {
     }
 
     if (result) {
+        mHSS_DEBUG_PRINTF(LOG_STATUS, "%s init passed\n", message);
         result = tryBootFunction_(pStorages[storageIndex], pStorages[storageIndex]->getBootImage);
     }
     else{
@@ -295,11 +295,11 @@ bool HSS_BootInit(void)
         if (bootSeq == 0) {
             skip_boot_0 = true;
         } else if (bootSeq >= 10 && bootSeq <= 13) {
-            result = tryBootFromStorage(0, "primary", EMMC_PRIMARY);
+            result = tryBootFromStorage(0, "MMC1", EMMC_PRIMARY);
         } else if (bootSeq >= 20 && bootSeq <= 23) {
-            result = tryBootFromStorage(1, "secondary", EMMC_SECONDARY);
+            result = tryBootFromStorage(1, "MMC2", EMMC_SECONDARY);
         } else if (bootSeq >= 30u) {
-            result = tryBootFromStorage(2, "spi", 0);
+            result = tryBootFromStorage(2, "SPI", 0);
         } else {
             mHSS_DEBUG_PRINTF(LOG_ERROR, "Invalid boot sequence...\n");
             HSS_slot_update_boot_params(index_boot_image, INVALID_BOOT_SEQUENCE);

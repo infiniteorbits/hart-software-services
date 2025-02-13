@@ -168,9 +168,6 @@ void enable_emmc(uint8_t emmc_id)
              //mHSS_DEBUG_PRINTF(LOG_ERROR,"Invalid eMMC ID \n");
             break;
     }
-
-
-
 }
 
 void delay1(volatile uint32_t n)
@@ -397,8 +394,6 @@ bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset, const 
                     mHSS_DEBUG_PRINTF(LOG_ERROR, "error reading eMMC blocks\n");
                 }
             }
-
-            
 
         }else{
             mHSS_DEBUG_PRINTF(LOG_ERROR, "error reading bootImageLength\n");
