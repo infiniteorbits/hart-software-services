@@ -77,6 +77,8 @@ void delay1(volatile uint32_t n);
 void set_register_bit(uint32_t* register_map_outputs, RegisterBits bit);
 void clear_register_bit(uint32_t* register_map_outputs, RegisterBits bit);
 
+#define BLOCK_SIZE_BYTES 512
+size_t ParamRegionOffset = EMMC4_PADDR;
 
 bool get_ignore_crc(void)
 {
@@ -255,6 +257,8 @@ void HSS_slot_restore_boot_sequence(void)
     delay1(500);
     spi_write(PARAM_PADDR, buff, sizeof(Params));
     //mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Params restored\n");
+#else 
+    HSS_MMC_WriteBlock(ParamRegionOffset, buff, BLOCK_SIZE_BYTES);
 #endif
 }
 
@@ -288,6 +292,8 @@ void HSS_slot_update_boot_params(int index, boot_error_codes code)
     delay1(500);
     spi_write(PARAM_PADDR, buff, sizeof(Params));
     //mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot parameters update with crc %x\n", crc);
+#else 
+    HSS_MMC_WriteBlock(ParamRegionOffset, buff, BLOCK_SIZE_BYTES);
 #endif
 }
 
@@ -317,8 +323,11 @@ void HSS_slot_get_boot_params(void)
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
     spi_init();
     spi_read(&buff, PARAM_PADDR, sizeof(Params));
-    copyBufferToParamData(buff, &Params);
+#else
+    HSS_MMCInit();
+    HSS_MMC_ReadBlock(&buff, ParamRegionOffset, BLOCK_SIZE_BYTES);
 #endif
+    copyBufferToParamData(buff, &Params);
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Ignore CRC: %d\n",  Params.ignore_CRC);
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Sequence[]: %d, %d, %d, %d\n",
            Params.BootSequence[0],

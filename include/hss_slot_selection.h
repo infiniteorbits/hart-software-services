@@ -23,16 +23,24 @@ typedef enum {
     SPI3_PADDR = 0x06000000,                        // 96 MB
 } vmem_spi_PADDR_t;
 
-// Enumeration for **physical** EMMC addresses
+// Enumeration for eMMC **physical** addresses
 typedef enum {
-    EMMC0_PADDR = 0x00000000,
-    EMMC1_PADDR = 0x06400000,
-    EMMC2_PADDR = 0x0C800000,
-    EMMC3_PADDR = 0x12C00000,
-    EMMC4_PADDR = 0x100000000, // 4GB
-    EMMC5_PADDR = 0x140000000, // 5GB
-    EMMC6_PADDR = 0x180000000, // 6GB
-    EMMC7_PADDR = 0x1C0000000, // 7GB
+    EMMC0_PADDR = 0x00000000,                       // 0 MB
+    EMMC1_PADDR = 0x06400000,                       // 100MB
+    EMMC2_PADDR = 0x0C800000,                       // 200MB
+    EMMC3_PADDR = 0x12C00000,                       // 300MB
+    EMMC4_PADDR = 0x19800000,                       // 400MB
+    EMMC5_PADDR = 0x19E00000,                       // 500MB
+    RAW1_PADDR = 0xC0000000,                        // 3.0 GB
+    RAW2_PADDR = 0xC0A00000,                        // 3.01 GB
+    RAW3_PADDR = 0xC1400000,                        // 3.02 GB
+    RAW4_PADDR = 0xC1E00000,                        // 3.03 GB
+    RAW5_PADDR = 0xC2800000,                        // 3.04 GB
+    PRO1_PADDR = 0xC3200000,                        // 3.05 GB
+    PRO2_PADDR = 0xC3C00000,                        // 3.06 GB
+    PRO3_PADDR = 0xC4600000,                        // 3.07 GB
+    PRO4_PADDR = 0xC5000000,                        // 3.08 GB
+    PRO5_PADDR = 0xC5A00000                         // 3.09 GB WARNING: uint32 max (4GB)
 } vmem_emmc_PADDR_t;
 
 typedef enum  {
