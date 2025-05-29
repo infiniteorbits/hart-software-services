@@ -55,6 +55,8 @@ EXTRA_SRCS-y += \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_pmp.c \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/nwc/mss_sgmii.c \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/startup_gcc/system_startup.c \
+	baremetal/drivers/mt25ql01gbbb/micron1gflash.c \
+	baremetal/drivers/CoreSPI/core_spi.c \
 
 ifndef CONFIG_SKIP_DDR
 EXTRA_SRCS-y += \
@@ -83,6 +85,8 @@ INCLUDES += \
 	-Ibaremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common \
 	-Ibaremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/nwc \
 	-Ibaremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/startup_gcc \
+	-Ibaremetal/drivers/mt25ql01gbbb \
+	-Ibaremetal/drivers/CoreSPI \
 
 $(BINDIR)/baremetal/polarfire-soc-bare-metal-library/src/platform/drivers/mss/mss_mmc/mss_mmc.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/baremetal/polarfire-soc-bare-metal-library/src/platform/drivers/mss/mss_qspi/mss_qspi.o: CFLAGS=$(CFLAGS_GCCEXT)
@@ -105,6 +109,8 @@ $(BINDIR)/baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/commo
 $(BINDIR)/baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_peripherals.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_plic.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_pmp.o: CFLAGS=$(CFLAGS_GCCEXT)
+$(BINDIR)/baremetal/drivers/mt25ql01gbbb/micron1gflash.o: CFLAGS=$(CFLAGS_GCCEXT)
+$(BINDIR)/baremetal/drivers/CoreSPI/core_spi.o: CFLAGS=$(CFLAGS_GCCEXT)
 
 #################################################################################################
 #
