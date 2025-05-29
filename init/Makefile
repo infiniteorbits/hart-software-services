@@ -30,6 +30,7 @@ EXTRA_SRCS-y += \
 	init/hss_ddr_init.c \
 	init/hss_boot_init.c \
 	init/hss_sys_setup.c \
+	init/hss_slot_selection.c \
 
 EXTRA_SRCS-y += \
 	init/hss_usb_init.c
@@ -61,3 +62,5 @@ $(BINDIR)/init/hss_pcie_init.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/init/hss_tamper_init.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/init/hss_usb_init.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/init/hss_ihc_init.o: CFLAGS=$(CFLAGS_GCCEXT)
+$(BINDIR)/init/hss_slot_selection.o: CFLAGS=$(CFLAGS_GCCEXT)
+
