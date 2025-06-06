@@ -355,16 +355,27 @@ int sbi_snprintf(char *out, u32 out_sz, const char *format, ...)
 	return retval;
 }
 
+#include "hss_log_buffer.h"
+
 int sbi_printf(const char *format, ...)
 {
 	va_list args;
 	int retval;
+	char log_temp[512];
+	char *log_temp_ptr = log_temp;
+	u32 log_temp_len = sizeof(log_temp);
 
 	spin_lock(&console_out_lock);
 	va_start(args, format);
 	retval = print(NULL, NULL, format, args);
 	va_end(args);
 	spin_unlock(&console_out_lock);
+
+	// save log
+	va_start(args, format);
+	retval = print(&log_temp_ptr, &log_temp_len, format, args);
+	log_append(log_temp, retval);
+	va_end(args);
 
 	return retval;
 }

@@ -1035,6 +1035,7 @@ static bool validateCrc_(struct HSS_BootImage *pImageHdr)
 
     return result;
 }
+#include "hss_log_buffer.h"
 
 bool HSS_Boot_ValidateImage(struct HSS_BootImage *pImage)
 {
@@ -1079,6 +1080,8 @@ bool HSS_Boot_ValidateImage(struct HSS_BootImage *pImage)
     }
 #endif
 
+    log_save_to_emmc();
+    
     return result;
 }
 

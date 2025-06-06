@@ -28,6 +28,7 @@
 #include "mss_mmc.h"
 #include "hss_crc32.h"
 #include "hss_debug.h"
+#include "hss_md5.h"
 #include <string.h>
 #include <assert.h>
 #include "drivers/CoreSPI/core_spi.h"
@@ -93,15 +94,11 @@ uint64_t get_offset(uint8_t slot)
 {
     switch (slot) {
         case 10: case 20:
-            return EMMC0_PADDR;
+            return PAYLOAD_1;
         case 11: case 21:
-            return EMMC1_PADDR;
-        case 12: case 22:
-            return EMMC2_PADDR;
-        case 13: case 23:
-            return EMMC3_PADDR;
+            return PAYLOAD_2;
         default:
-            return EMMC0_PADDR;
+            return PAYLOAD_1;
     }
 }
 
@@ -352,74 +349,64 @@ void HSS_slot_get_boot_params(void)
         mHSS_DEBUG_PRINTF(LOG_STATUS,"Boot params passed CRC:  0x%X\n", crc);
     }
 }
+void print_md5(const char *label, const uint8_t *hash);
+void print_md5(const char *label, const uint8_t *hash) {
+    mHSS_DEBUG_PRINTF(LOG_STATUS, "%s: ", label);
+    for (int i = 0; i < 16; i++) {
+        mHSS_PRINTF("%02x", hash[i]);
+    }
+    mHSS_PRINTF("\n");
+}
+bool compare_md5(const uint8_t *a, const uint8_t *b);
+bool compare_md5(const uint8_t *a, const uint8_t *b) {
+    for (int i = 0; i < 16; i++) {
+        if (a[i] != b[i]) {
+            mHSS_DEBUG_PRINTF(LOG_ERROR, "Error: MD5 mismatch\n");
+            return false;
+        }
+    }
+    return true;
+}
 
 bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset, const char * name)
 {
     uint8_t temp_buffer[BLOCK_SIZE_EMMC] = {0};
-    uint8_t header_buffer[BLOCK_SIZE_EMMC] = {0};
     uint32_t block_offset = 0;
-    uint32_t CRC_read = 0;
-    uint32_t CRC_calculated = 0;
-    uint32_t bootImageLength = 0;
-    int8_t status = 0;
-    bool result = false;
-    uint32_t start_addr = offset / BLOCK_SIZE_EMMC;
+    int8_t status = MSS_MMC_TRANSFER_SUCCESS;
+    bool result = true;
+    uint32_t start_addr = offset;
+    MD5Context ctx;
+    uint16_t digest_absolute_offset = 1488;
+    uint16_t md5_index = digest_absolute_offset / BLOCK_SIZE_EMMC;
+    uint16_t md5_offset = digest_absolute_offset % BLOCK_SIZE_EMMC;
 
-    //mHSS_DEBUG_PRINTF(LOG_NORMAL, "reading CRC\n");
-    status = MSS_MMC_single_block_read(start_addr, (uint32_t*)header_buffer);
-    if (status == MSS_MMC_TRANSFER_SUCCESS)
+    md5Init(&ctx);
+    mHSS_DEBUG_PRINTF(LOG_STATUS, "%s image length: 0x%0X (%d)\n",name, pImage->bootImageLength, pImage->bootImageLength);
+    for (uint32_t bytes_read = 0; bytes_read < pImage->bootImageLength; bytes_read += BLOCK_SIZE_EMMC)
     {
-        CRC_read =  (header_buffer[19] << 24) |
-                    (header_buffer[18] << 16) |
-                    (header_buffer[17] << 8)  |
-                    header_buffer[16];     
-
-        status = MSS_MMC_single_block_read((start_addr + 2), (uint32_t*)header_buffer);
-
+        status = MSS_MMC_single_block_read(start_addr + block_offset, (uint32_t *)temp_buffer);
         if (status == MSS_MMC_TRANSFER_SUCCESS)
-        {                
-            bootImageLength =   (header_buffer[459] << 24) |
-                                (header_buffer[458] << 16) |
-                                (header_buffer[457] << 8)  |
-                                header_buffer[456];      
-
-            mHSS_DEBUG_PRINTF(LOG_STATUS, "%s image length: 0x%0X (%d)\n",name, bootImageLength, bootImageLength);
-            //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Calculating CRC...\n");
-            for (uint32_t bytes_read = 0; bytes_read < bootImageLength ; bytes_read += BLOCK_SIZE_EMMC )
-            {
-                status = MSS_MMC_single_block_read(start_addr + block_offset, (uint32_t*)temp_buffer);
-                if (status == MSS_MMC_TRANSFER_SUCCESS)
-                { 
-                    if(block_offset == 0)
-                    {
-                        temp_buffer[19] = 0;
-                        temp_buffer[18] = 0;
-                        temp_buffer[17] = 0;
-                        temp_buffer[16] = 0;
-                    }
-                    CRC_calculated = CRC32_calculate_ex(CRC_calculated, (const uint8_t *)&temp_buffer, BLOCK_SIZE_EMMC);
-                    block_offset++;
-                }else {
-                    mHSS_DEBUG_PRINTF(LOG_ERROR, "error reading eMMC blocks\n");
-                }
+        {
+            if (block_offset == md5_index) {
+                memset(&temp_buffer[md5_offset], 0, 16);
             }
 
-        }else{
-            mHSS_DEBUG_PRINTF(LOG_ERROR, "error reading bootImageLength\n");
-        }               
-    
-    } else{
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "error reading header\n");
-    }    
+            size_t remaining = pImage->bootImageLength - bytes_read;
+            size_t chunk_size = (remaining < BLOCK_SIZE_EMMC) ? remaining : BLOCK_SIZE_EMMC;
 
-    if (CRC_read == CRC_calculated) {
-        result = true;
-        mHSS_DEBUG_PRINTF(LOG_STATUS, "%s image passed CRC: 0x%0X\n",name, CRC_calculated);
-    } else {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "%s image failed CRC: 0x%0X\n",name, CRC_calculated);
+            md5Update(&ctx, temp_buffer, chunk_size);
+            block_offset++;
+        }
+        else
+        {
+            mHSS_DEBUG_PRINTF(LOG_ERROR, "error reading eMMC blocks\n");
+        }
     }
-
-    pImage->headerCrc = CRC_calculated;
+    
+    md5Finalize(&ctx);
+    print_md5("MD5 read", pImage->signature.digest);
+    print_md5("MD5 calc", ctx.digest);
+    result = compare_md5(ctx.digest, pImage->signature.digest);
 
     return result;
 }

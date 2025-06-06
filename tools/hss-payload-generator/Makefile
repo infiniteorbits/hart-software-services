@@ -76,6 +76,7 @@ SRCS=\
 	dump_payload.c \
 	debug_printf.c \
 	verify_payload.c \
+	hss_md5.c \
 
 OBJS := $(patsubst %.c,$(build_dir)/%.o,$(SRCS))
 

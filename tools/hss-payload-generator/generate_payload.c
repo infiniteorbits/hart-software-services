@@ -36,6 +36,7 @@
 #include "crc32.h"
 #include "debug_printf.h"
 #include "verify_payload.h"
+#include "hss_md5.h"
 
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
@@ -119,6 +120,7 @@ static void generate_header(FILE *pFileOut, struct HSS_BootImage *pBootImage) __
 static void generate_chunks(FILE *pFileOut) __attribute__((nonnull));
 static void generate_ziChunks(FILE *pFileOut) __attribute__((nonnull));
 static void generate_blobs(FILE *pFileOut) __attribute__((nonnull));
+void generate_MD5(char const * const filename_output);
 static void sign_payload(FILE *pFileOut, char const * const private_key_filename,
 	char const * const public_key_filename) __attribute__((nonnull(1)));
 
@@ -432,6 +434,7 @@ static void sign_payload(FILE *pFileOut, char const * const private_key_filename
 		BN_bn2bin(pS, pSignatureBuffer + 96 - sBytes);
 		//
 
+		memset(digest, 0, 16u);
 		memcpy(bootImage.signature.digest, digest, 48u);
 		memcpy(bootImage.signature.ecdsaSig, pSignatureBuffer, 48u);
 		memcpy(bootImage.signature.ecdsaSig + 48u, pSignatureBuffer + 48u, 48u);
@@ -511,6 +514,64 @@ void generate_payload(char const * const filename_output, char const * const pri
 		perror("fclose()");
 		exit(EXIT_FAILURE);
 	}
+	generate_MD5(filename_output);
+}
+
+void generate_MD5(char const * const filename_output)
+{
+	size_t Length = bootImage.bootImageLength;
+	
+	// 1. Abrir archivo ya existente para lectura
+	FILE *fp = fopen(filename_output, "rb");
+	if (!fp) {
+		perror("fopen()");
+		exit(EXIT_FAILURE);
+	}
+
+	// 2. Reservar memoria
+	uint8_t *buffer = malloc(Length);
+	if (!buffer) {
+		perror("malloc");
+		fclose(fp);
+		exit(EXIT_FAILURE);
+	}
+
+	// 3. Leer contenido
+	if (fread(buffer, 1, Length, fp) != Length) {
+		perror("fread");
+		free(buffer);
+		fclose(fp);
+		exit(EXIT_FAILURE);
+	}
+	fclose(fp);  // Cerramos tras leer
+
+	// 4. Calcular MD5
+	MD5Context ctx;
+	md5Init(&ctx);
+	md5Update(&ctx, buffer, Length);
+	md5Finalize(&ctx);
+	memcpy(bootImage.signature.digest, ctx.digest, 16u);
+
+	// 5. Reabrir para sobrescribir el header
+	FILE *fp_out = fopen(filename_output, "r+b");
+	if (!fp_out) {
+		perror("fopen rewrite");
+		free(buffer);
+		exit(EXIT_FAILURE);
+	}
+	generate_header(fp_out, &bootImage);
+	fclose(fp_out);
+	free(buffer);
+
+	// 6. Debug
+	printf("BootImageLength is: %zu\n", Length);
+	printf("MD5 digest is: ");
+	for (int i = 0; i < 16; i++) {
+		printf("%02x", ctx.digest[i]);
+	}
+	printf("\n");
+
+
 }
 
 size_t generate_add_chunk(struct HSS_BootChunkDesc chunk, void *pBuffer)
