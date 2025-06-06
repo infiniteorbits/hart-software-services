@@ -79,7 +79,7 @@ void set_register_bit(uint32_t* register_map_outputs, RegisterBits bit);
 void clear_register_bit(uint32_t* register_map_outputs, RegisterBits bit);
 
 #define BLOCK_SIZE_BYTES 512
-size_t ParamRegionOffset = EMMC4_PADDR;
+size_t ParamRegionOffset = PARAM_REGION;
 
 bool get_ignore_crc(void)
 {
