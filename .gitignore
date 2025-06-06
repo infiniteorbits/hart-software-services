@@ -7,9 +7,7 @@
 *.sym
 *__pycache__
 
-.config
 .config.old
-config.h
 include/tool_versions.h
 services/opensbi/opensbi_ecall_exts.c
 compile_commands.json
