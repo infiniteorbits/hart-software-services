@@ -231,6 +231,7 @@ bool tryBootFromStorage(int storageIndex, const char* message, int emmcType) {
         result = pStorages[storageIndex]->init();
     } else {
         HSS_slot_update_boot_params(index_boot_image, FAIL_INIT);
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "%s init failed\n", message);
     }
 
     if (result) {
@@ -267,16 +268,16 @@ bool HSS_BootInit(void)
         if (bootSeq == 0) {
             skip_boot_0 = true;
         } else if (bootSeq >= 10 && bootSeq <= 11) {
-            mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot image via %s slot %d...\n", "MMC1", bootSeq);
+            mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot[0] image via %s slot %d...\n", "MMC1", bootSeq);
             result = tryBootFromStorage(0, "MMC1", EMMC_PRIMARY);
         } else if (bootSeq >= 20 && bootSeq <= 21) {
-            mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot image via %s slot %d...\n", "MMC2", bootSeq);
+            mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot[0] image via %s slot %d...\n", "MMC2", bootSeq);
             result = tryBootFromStorage(1, "MMC2", EMMC_SECONDARY);
         } else if (bootSeq == 30u) {
-            mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot image via %s slot %d...\n", "SPI", bootSeq);
+            mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot[0] image via %s slot %d...\n", "SPI", bootSeq);
             result = tryBootFromStorage(2, "SPI", 0);
         } else if (bootSeq >= 40u) {
-            mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot image via %s slot %d...\n", "QSPI", bootSeq);
+            mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot[0] image via %s slot %d...\n", "QSPI", bootSeq);
             result = tryBootFromStorage(2, "QSPI", 0);
         }else {
             mHSS_DEBUG_PRINTF(LOG_ERROR, "Invalid boot sequence...\n");
@@ -287,7 +288,7 @@ bool HSS_BootInit(void)
         if(!result || skip_boot_0)
         {
             for (int i = 0; i < ARRAY_SIZE(pStorages); i++) {
-                mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot image via %s slot %d...\n", pStorages[i]->name, get_boot_sequence(i+1));
+                mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot[%d] image via %s slot %d...\n",i+1, pStorages[i]->name, get_boot_sequence(i+1));
                 index_boot_image = i + 1;
                 if (pStorages[i]->init) {
                     HSS_slot_update_boot_params(index_boot_image, NO_ERROR);
