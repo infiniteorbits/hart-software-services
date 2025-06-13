@@ -5,11 +5,12 @@
 extern "C" {
 #endif
 
-enum memory_devices_id {
+typedef enum {
     EMMC_PRIMARY = 10,
     EMMC_SECONDARY = 20,
-    SPI_FLASH = 255,
-};
+    SPI_FLASH = 30,
+    QSPI = 40,
+} memory_type_t;
 
 // Enumeration for **physical** SPI addresses
 typedef enum {
@@ -46,15 +47,14 @@ typedef enum  {
 
 void HSS_slot_get_boot_params(void);
 void HSS_slot_update_boot_params(int index, boot_error_codes code);
-bool validateCrc_custom_emmc(struct HSS_BootImage *pImage, size_t offset, const char * name);
-bool validateCrc_custom_spi(struct HSS_BootImage *pImage);
+bool validateMd5_custom(struct HSS_BootImage *pImage, size_t offset, memory_type_t mem_type);
 void enable_emmc(uint8_t emmc_id);
 bool spi_init(void);
 bool spi_read(void *pDest, size_t srcOffset, size_t byteCount);
 bool spi_write(size_t dstOffset, void *pSrc, size_t byteCount);
 void spi_GetInfo(uint32_t *pBlockSize, uint32_t *pEraseSize, uint32_t *pBlockCount);
-void erase_section(uint32_t address);
-bool get_ignore_crc(void);
+void spi_erase_section(uint32_t address);
+bool get_verify_payload(void);
 uint64_t get_offset(uint8_t slot);
 uint8_t get_boot_sequence(uint8_t index);
 void HSS_slot_restore_boot_sequence(void);
