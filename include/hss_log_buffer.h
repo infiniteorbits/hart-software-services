@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 /// Tamaño total del buffer de logs (definido en .c)
-#define LOG_BUFFER_SIZE 4096  // Tamaño total del log
+#define LOG_BUFFER_SIZE 8192  // Tamaño total del log
 #define LOG_LINE_MAX_LEN 256  // Máximo por línea
 #define  ADDRESS_6GB  0x180000000
 #define SIZE_512B      512
