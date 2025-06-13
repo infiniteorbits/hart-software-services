@@ -383,12 +383,12 @@ __attribute__((nonnull)) bool HSS_QSPI_ReadBlock(void *pDest, size_t srcOffset, 
     bool result = true;
     const uint32_t read_addr = logical_to_physical_address_((uint32_t)srcOffset);
 
-    Flash_init(MSS_QSPI_QUAD_FULL);
+    //Flash_init(MSS_QSPI_QUAD_FULL);
     Flash_read((uint8_t *)pDest, read_addr, (uint32_t) byteCount);
     /* Configure the QSPI and Flash back to default values, so that
      * rest of the applications will access the flash with defaults.
      */
-    Flash_init(MSS_QSPI_NORMAL);
+    //Flash_init(MSS_QSPI_NORMAL);
 
     return result;
 }
