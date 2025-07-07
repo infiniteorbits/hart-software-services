@@ -1,0 +1,22 @@
+jira = "https://infiniteorbits-tls.atlassian.net"
+
+[[scenario]]
+name = "[Auto Boot] Primary Payload (Default Path)"
+file = "boot_sw/BSW_01_Auto_boot/BSW_01_01_ABPP.puml"
+
+[[scenario]]
+name = "[Auto Boot] Fallback to Redundant Payload"
+file = "boot_sw/BSW_01_Auto_boot/BSW_01_02_ABRP.puml"
+
+[[scenario]]
+name = "[Auto Boot] Fallback to Golden Payload"
+file = "boot_sw/BSW_01_Auto_boot/BSW_01_03_ABGP.puml"
+
+[[scenario]]
+name = "[Manual Boot] Select Redundant Payload"
+file = "boot_sw/BSW_02_Manual_boot/BSW_02_01_MBRP.puml"
+
+[[scenario]]
+name = "[Manual Boot] Select Golden Payload"
+file = "boot_sw/BSW_02_Manual_boot/BSW_02_02_MBGP.puml"
+

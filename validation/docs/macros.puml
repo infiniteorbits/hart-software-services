@@ -1,0 +1,56 @@
+
+!function $simAction()
+!if ($HIGHLIGTH_SIM == true)
+!return "#DeepPink"
+!else 
+!return ""
+!endif
+!endfunction
+
+!function $simCheck()
+!if ($HIGHLIGTH_SIM == true)
+!return "#LightPink"
+!else 
+!return ""
+!endif
+!endfunction
+
+!procedure $req($arg)
+!if ($SHOW_TRACA == true)
+note: $arg
+!endif
+!endprocedure
+
+!function $tc($service, $subservice)
+!return "**//TC[" + $service + ", " + $subservice+ "]//**"
+!endfunction
+
+!function $atc($service, $subservice)
+!return "**//@TC[" + $service + ", " + $subservice+ "]//**"
+!endfunction
+
+!function $tm($service, $subservice)
+!return "**//TM[" + $service + ", " + $subservice + "]//**"
+!endfunction
+
+!function $g($arg)
+!return "**//$(" + $arg + ")//**"
+!endfunction
+
+!function $c($arg)
+!return "**//§" + $arg + "//**"
+!endfunction
+
+!function $p($arg)
+!local $var_name="$" + $arg
+!if %variable_exists($var_name)
+    !if $SHOW_VALUE == true
+        !return "**//" + %get_variable_value($var_name) + "//**"
+    !else
+        !return "**//$(" + $arg + ")//**"
+    !endif
+!else 
+    !log Using unknown test parameter $arg !
+    !return "UNDEFINED"
+!endif
+!endfunction
