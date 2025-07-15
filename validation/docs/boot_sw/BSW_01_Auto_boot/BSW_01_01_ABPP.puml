@@ -15,7 +15,8 @@ Covered requirements:
 - ORB-15: The boot SW interface requirement
 - ORB-101: Payload integrity validation (MD5)
 - ORB-104: Payload composition (FreeRTOS + U-Boot)
-- ORB-105: FreeRTOS–Linux Synchronization via Heartbeats
+- ORB-106: Boot Report on Linux
+- ORB-85: Heartbeat Feature
 '/
 
 @startuml ORB-95: [Auto Boot] Primary Payload (Default Path)
@@ -29,15 +30,12 @@ title
 end title
 
 :Flash a payload with valid MD5 hash with FreeRTOS, U-Boot payload and Linux image to primary eMMC;
-:Power-on or reset the system;
+:Reboot the system;
 :Wait 20 seconds for boot to complete;
 
 $simAction():Start monitoring CAN bus;
-
-$simCheck():* Software image boot in less than 20 seconds}
-$req("ORB-13")
 fork
-:Request boot report from NVM;
+:Download boot report from Linux;
 $simCheck():* HSS selects primary payload slot
 * MD5 hash check passes
 * Primary Payload is loaded into DDR
@@ -50,6 +48,7 @@ $req("ORB-8")
 $req("ORB-15 (partially)")
 $req("ORB-101")
 $req("ORB-104")
+$req("ORB-106")
 fork again
 :Observe CAN activity from FreeRTOS;
 $simCheck():* Software image boot in less than 20 seconds
@@ -58,7 +57,7 @@ $simCheck():* Software image boot in less than 20 seconds
 $req("ORB-12")
 $req("ORB-13")
 $req("ORB-104")
-$req("ORB-105")
+$req("ORB-85")
 end fork
 $simAction(): Stop monitoring CAN bus;
 
