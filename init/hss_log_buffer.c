@@ -10,6 +10,9 @@
 #include <string.h>
 #include <assert.h>
 
+#define LOG_BUFFER_SIZE 8192
+#define LOG_LINE_MAX_LEN 512
+#define SIZE_512B      512
 #define LOG_SAVE_BASE_BLOCK (LOG_REGION / SIZE_512B)
 
 static char log_buffer[LOG_BUFFER_SIZE];
@@ -51,12 +54,12 @@ void log_store(const char *msg) {
 
 void log_save_to_emmc(void)
 {
-    /*static bool log_saved = false;
+    static bool log_saved = false;
     if (log_saved) {
-        mHSS_DEBUG_PRINTF(LOG_FUNCTION, "log_save_to_emmc(): already saved, skipping\n");
+        //mHSS_DEBUG_PRINTF(LOG_FUNCTION, "log_save_to_emmc(): already saved, skipping\n");
         return;
     }
-    log_saved = true;*/
+    log_saved = true;
 
     const char *log = log_get_buffer();
     size_t log_size = log_get_size();
@@ -78,7 +81,7 @@ void log_save_to_emmc(void)
 
         int result = MSS_MMC_single_block_write((uint32_t *)tx_buffer, start_block);
         if (result != MSS_MMC_TRANSFER_SUCCESS) {
-            mHSS_DEBUG_PRINTF(LOG_ERROR, "EMMC write failed at block %u (offset %u)\n", start_block, offset);
+            mHSS_DEBUG_PRINTF(LOG_ERROR, "EMMC write failed at block %u (offset %u), result %d\n", start_block, offset, result);
             break;
         }
 

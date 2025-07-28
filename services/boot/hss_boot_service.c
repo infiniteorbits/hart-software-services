@@ -29,6 +29,7 @@
 #include "u54_state.h"
 #include "hss_trigger.h"
 #include "hss_boot_init.h"
+#include "hss_log_buffer.h"
 
 #include <assert.h>
 #include <string.h>
@@ -815,6 +816,7 @@ static void boot_complete_onEntry(struct StateMachine * const pMyMachine)
 {
     struct HSS_Boot_LocalData const * const pInstanceData = pMyMachine->pInstanceData;
     enum HSSHartId const hartId = pInstanceData->target;
+    log_save_to_emmc();
     atomic_write(&bootComplete[hartId], 1);
 }
 
@@ -1035,7 +1037,6 @@ static bool validateCrc_(struct HSS_BootImage *pImageHdr)
 
     return result;
 }
-#include "hss_log_buffer.h"
 
 bool HSS_Boot_ValidateImage(struct HSS_BootImage *pImage)
 {
@@ -1080,7 +1081,7 @@ bool HSS_Boot_ValidateImage(struct HSS_BootImage *pImage)
     }
 #endif
 
-    log_save_to_emmc();
+    
     
     return result;
 }
