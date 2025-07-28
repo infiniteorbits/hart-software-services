@@ -1,9 +1,9 @@
-/' ORB-100 – [Auto Boot] Boot from valid payload with fallback
+/' ORB-99 – [Manual Boot] Select Golden Payload
 
 This scenario validates that, upon power-up or reset, the OrbSight V2 platform 
-automatically selects the correct slot containing a valid payload (with correct MD5),
-falling back as needed. The system must load both FreeRTOS (hart4) and 
-U-Boot (hart1–3). FreeRTOS must emit a heartbeat, and Linux should boot into userspace.
+successfully boots from the golden payload stored in the QSPI 
+after setting the slot selection parameter. The system must load both FreeRTOS (hart4) 
+and U-Boot (hart1–3). FreeRTOS must emit a heartbeat, and Linux should boot into userspace.
 
 Covered requirements:
 - ORB-BSW-BOOT-0001: Boot Sequence with Fallbacks
@@ -12,33 +12,37 @@ Covered requirements:
 - ORB-BSW-BOOT-0004: Boot report accessibility
 - ORB-BSW-BOOT-0008: Independent execution of Linux and FreeRTOS
 - ORB-BSW-BOOT-0009: Execution time of software image
+- ORB-BSW-BOOT-0011: The boot SW interface requirement
 - ORB-BSW-BOOT-0010: Payload integrity validation (MD5)
-- ORB-BSW-BOOT-0012: Fallback to QSPI
-- ORB-BSW-BOOT-0013: Payload composition (FreeRTOS + U-Boot)
+- ORB-BSW-BOOT-0014: Payload composition (FreeRTOS + U-Boot)
 - ORB-BSW-BOOT-0015: Boot Report on Linux
 - ORB-BSW-HBM-0001: Heartbeat Feature
 '/
 
-@startuml ORB-100: [Auto Boot] Fallback to valid slot
+@startuml ORB-99: [Manual Boot] Select Golden Payload
 !include ../../params.puml
 !include ../../conf.puml
 !include ../../macros.puml
 
 title
-  |= Auto Boot Fallback Cases |= $c(ID) |= $c(ExpectedBootLog1)  |= $c(ExpectedBootLog2)     |= $c(Time) |= $c(FallbackRequirement)   |
-  | Fallback to eMMC0          | 10     | "MMC1 slot 10..."      | "MMC1 very magic passed"  | 10s       | ORB-BSW-BOOT-0016          |
-  | Fallback to eMMC1          | 20     | "MMC2 slot 20..."      | "MMC2 very magic passed"  | 10s       | ORB-BSW-BOOT-0017          |
-  | Fallback to SPI-FLASH      | 30     | "SPI-FLASH slot 30..." | "SPI very magic passed"   | 15s       | ORB-BSW-BOOT-0018          |
-  | Fallback to QSPI-FLASH     | 40     | "QSPI slot 40..."      | "QSPI very magic passed"  | 20s       | ORB-BSW-BOOT-0012          |
+  |= Auto Boot Fallback Cases |= $c(ID) |= $c(ExpectedBootLog1)  |= $c(ExpectedBootLog2)     |= $c(Time) |
+  | Fallback to eMMC0          | 10     | "MMC1 slot 10..."      | "MMC1 very magic passed"  | 10s       |
+  | Fallback to eMMC1          | 20     | "MMC2 slot 20..."      | "MMC2 very magic passed"  | 10s       |
+  | Fallback to SPI-FLASH      | 30     | "SPI-FLASH slot 30..." | "SPI very magic passed"   | 15s       |
+  | Fallback to QSPI-FLASH     | 40     | "QSPI slot 40..."      | "QSPI very magic passed"  | 20s       |
 end title
 
-:Flash a valid payload (correct MD5) to slot $c(ID);
-:Flash an invalid payload (wrong MD5) to the **immediate fallback-preceding slot**;
+:Flash valid payloads (FreeRTOS + U-Boot + Linux with MD5) into all slots;
 $simAction():Start monitoring CAN bus;
 
-while ($c(Case) in //"Auto Boot Fallback Cases"//)
+while ($c(Case) in //"Boot Source Cases"//)
 
-  :Reboot the system **without setting boot_selection**;
+  :Set boot slot selection parameter to $c(ID);
+  $simCheck():* Read `boot_selection` parameter via CAN or Ethernet
+  * Confirm that the value matches $c(ID)}
+  $req("ORB-BSW-BOOT-0011")
+
+  :Reboot the system;
   :Wait $c(Time) for system to boot;
 
   :Ping the system over Ethernet until response is received;
@@ -61,12 +65,11 @@ while ($c(Case) in //"Auto Boot Fallback Cases"//)
     - $c(ExpectedBootLog2)
     * Confirms boot sequence and slot selection}
     $req("ORB-BSW-BOOT-0001, ORB-BSW-BOOT-0003")
-    $req("$c(SlotRequirement)")
 
     $simCheck():* Verify payload integrity check using MD5:
      - "MD5 read: ..."
      - "MD5 calc: ..."
-     - "MD5 passed"}
+     - MD5 passed"}
     $req("ORB-BSW-BOOT-0010")
 
     $simCheck():* Confirm both FreeRTOS and U-Boot images are loaded:
