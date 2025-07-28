@@ -1,9 +1,7 @@
-/' ORB-99 – [Manual Boot] Select Golden Payload
+/' ORB-99 – [Manual Boot] Validate Boot From All Slots
 
-This scenario validates that, upon power-up or reset, the OrbSight V2 platform 
-successfully boots from the golden payload stored in the QSPI 
-after setting the slot selection parameter. The system must load both FreeRTOS (hart4) 
-and U-Boot (hart1–3). FreeRTOS must emit a heartbeat, and Linux should boot into userspace.
+This test iterates over all supported boot slots and validates that
+the system successfully boots from each one when selected manually.
 
 Covered requirements:
 - ORB-BSW-BOOT-0001: Boot Sequence with Fallbacks
