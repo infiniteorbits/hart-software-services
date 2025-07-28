@@ -57,24 +57,26 @@ typedef enum {
 } RegisterBits;
 
 typedef struct {
-    uint8_t LastFailed;
-    uint8_t CurrentTry;
-    uint8_t current_sw;
-    uint8_t boot_seq_rtos[5];
-    uint32_t CRC;
-    uint8_t verify_payload;
-    uint8_t payload_ver_status[5];
-} ParamData;
+    uint8_t linux_LastFailed;
+    uint8_t linux_CurrentTry;
+    uint8_t linux_current_sw;
+    uint8_t linux_boot_sequence;
+    uint8_t linux_verify_payload;
+    uint8_t freertos_LastFailed;
+    uint8_t freertos_CurrentTry;
+    uint8_t freertos_current_sw;
+    uint8_t freertos_boot_sequence;
+    uint8_t freertos_verify_payload;
+} BootSoftwareParams;
 
 /*------------------------------Local Variables-----------------------------*/
-static ParamData Params;
-static uint8_t buff[sizeof(ParamData)];
+static BootSoftwareParams Params;
+static uint8_t buff[sizeof(BootSoftwareParams)];
 static uint32_t* const stream_gen_base_register = (uint32_t*)(STREAM_GEN_BASE_ADDR + 0x10);
 
 /*-----------------------------Local Functions------------------------------*/
 static void set_register_bit(uint32_t* reg, RegisterBits bit);
 static void clear_register_bit(uint32_t* reg, RegisterBits bit);
-static void copyBufferToParamData(const uint8_t* buffer, ParamData* params);
 static void print_md5(const char *label, const uint8_t *hash);
 static bool compare_md5(const uint8_t *a, const uint8_t *b);
 
@@ -106,7 +108,21 @@ static bool compare_md5(const uint8_t *a, const uint8_t *b) {
 }
 
 uint8_t get_boot_sequence(uint8_t index) {
-    return Params.boot_seq_rtos[index];
+    switch(index)
+    {
+        case 0:
+            return Params.freertos_boot_sequence;
+        case 1:
+            return EMMC_PRIMARY;
+        case 2:
+            return EMMC_SECONDARY;
+        case 3:
+            return SPI_FLASH;
+        case 4:
+            return QSPI;
+        default:
+            return QSPI;
+    }
 }
 
 bool get_verify_payload(void)
@@ -114,7 +130,7 @@ bool get_verify_payload(void)
 #if IS_ENABLED(CONFIG_SERVICE_verify_payload) 
     return true;
 #else
-    return (Params.verify_payload == 0xFF);
+    return (Params.freertos_verify_payload == 0xFF);
 #endif
 }
 
@@ -159,111 +175,28 @@ void enable_emmc(uint8_t emmc_id)
 
 void HSS_slot_restore_boot_sequence(void)
 {
-    Params.boot_seq_rtos[0] = 0;
-    Params.verify_payload = 0;
-    Params.CRC = 0;
-    uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
-    Params.CRC = crc;
+    Params.freertos_boot_sequence = 0;
+    Params.freertos_verify_payload = 0;
     memcpy(buff, &Params, sizeof(Params));
-#if IS_ENABLED(CONFIG_SERVICE_SPI)
-    FLASH_init();
-    FLASH_global_unprotect();
-    FLASH_erase_4k_block(PARAM_PADDR);
-    spi_write(PARAM_PADDR, buff, sizeof(Params));
-    //mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Params restored\n");
-#else 
     HSS_MMC_WriteBlock((size_t)(PARAM_REGION), buff, BLOCK_SIZE);
-#endif
 }
 
 void HSS_slot_update_boot_params(int index, boot_error_codes code)
 {
-    Params.LastFailed = index;
-    Params.CurrentTry = index+1;
-    Params.current_sw = 0;
-   // Params.boot_seq_rtos[0] = 10;
-    Params.boot_seq_rtos[1] = EMMC_PRIMARY;
-    Params.boot_seq_rtos[2] = EMMC_SECONDARY;
-    Params.boot_seq_rtos[3] = SPI_FLASH;
-    Params.boot_seq_rtos[4] = QSPI;
-    //Params.verify_payload = 0xFF;
-    Params.payload_ver_status[Params.LastFailed] = code;
-
-    Params.CRC = 0;
-    uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
-    Params.CRC = crc;
+    Params.freertos_LastFailed = index;
+    Params.freertos_CurrentTry = index+1;
+    Params.freertos_current_sw = 0;
     memcpy(buff, &Params, sizeof(Params));
-
-    /*mHSS_DEBUG_PRINTF(LOG_NORMAL,"update LastFailed: %d\n", Params.LastFailed);
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"update CurrentTry: %d\n", Params.CurrentTry);
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"update current_sw: %d\n", Params.current_sw);
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"update payload_ver_status[%d]: %d\n", Params.LastFailed, code);*/
-
-   // mHSS_DEBUG_PRINTF(LOG_NORMAL,"CRC: 0x%X\n", Params.CRC);
-#if IS_ENABLED(CONFIG_SERVICE_SPI)
-    FLASH_init();
-    FLASH_global_unprotect();
-    FLASH_erase_4k_block(PARAM_PADDR);
-    spi_write(PARAM_PADDR, buff, sizeof(Params));
-    //mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot parameters update with crc %x\n", crc);
-#else 
     HSS_MMC_WriteBlock((size_t)(PARAM_REGION), buff, BLOCK_SIZE);
-#endif
-}
-
-static void copyBufferToParamData(const uint8_t* buffer, ParamData* params)
-{
-    params->LastFailed = buffer[0];
-    params->CurrentTry = buffer[1];
-    params->current_sw = buffer[2];
-    params->boot_seq_rtos[0] = buffer[3];
-    params->boot_seq_rtos[1] = EMMC_PRIMARY;
-    params->boot_seq_rtos[2] = EMMC_SECONDARY;
-    params->boot_seq_rtos[3] = SPI_FLASH;
-    params->boot_seq_rtos[4] = QSPI;
-    params->CRC = (buffer[12] << 24) |
-                 (buffer[11] << 16) |
-                 (buffer[10] << 8)  |
-                  buffer[9];
-    params->verify_payload = buffer[13];
-    memcpy(params->payload_ver_status, &buffer[14], sizeof(params->payload_ver_status));
 }
 
 void HSS_slot_get_boot_params(void)
 {
-#if IS_ENABLED(CONFIG_SERVICE_SPI)
-    spi_init();
-    spi_read(&buff, PARAM_PADDR, sizeof(Params));
-#else
     HSS_MMCInit();
     HSS_MMC_ReadBlock(&buff, (size_t)(PARAM_REGION), BLOCK_SIZE);
-#endif
-    copyBufferToParamData(buff, &Params);
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Ignore CRC: %d\n",  Params.verify_payload);
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Sequence[]: %d, %d, %d, %d, %d\n",
-           Params.boot_seq_rtos[0],
-           Params.boot_seq_rtos[1],
-           Params.boot_seq_rtos[2],
-           Params.boot_seq_rtos[3],
-           Params.boot_seq_rtos[4]);
-    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Report[]:   %d, %d, %d, %d, %d\n",
-            Params.payload_ver_status[0],
-            Params.payload_ver_status[1],
-            Params.payload_ver_status[2],
-            Params.payload_ver_status[3],
-            Params.payload_ver_status[4]);
-
-    buff[12] = 0;
-    buff[11] = 0;
-    buff[10] = 0;
-    buff[9] = 0;
-    uint32_t crc = CRC32_calculate((const uint8_t *)&buff, sizeof(Params));
-
-    if(crc != Params.CRC) {
-        mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot params failed CRC:  0x%X\n", crc);
-    }else{
-        mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot params passed CRC:  0x%X\n", crc);
-    }
+    memcpy(&Params, buff, sizeof(BootSoftwareParams));
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Ignore CRC: %d\n",  Params.freertos_verify_payload);
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Sequence[]: %d, 10, 20, 30, 40\n", Params.freertos_boot_sequence);
 }
 
 bool validateMd5_custom(struct HSS_BootImage *pImage, size_t offset, memory_type_t mem_type)
