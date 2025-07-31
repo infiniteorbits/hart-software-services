@@ -226,12 +226,17 @@ bool tryBootFromStorage(int storageIndex, const char* message, int emmcType) {
    // mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot %s image via %s ...\n", message, pStorages[storageIndex]->name);
     enable_emmc(emmcType);
     bool result = false;
-    if (pStorages[storageIndex]->init) {
-        HSS_slot_update_boot_params(index_boot_image, NO_ERROR);
-        result = pStorages[storageIndex]->init();
-    } else {
-        HSS_slot_update_boot_params(index_boot_image, FAIL_INIT);
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "%s init failed\n", message);
+
+    if (compare_strings(pStorages[storageIndex]->name, "MMC1")) {
+        result = true;
+    } else{
+        if (pStorages[storageIndex]->init) {
+            HSS_slot_update_boot_params(index_boot_image, NO_ERROR);
+            result = pStorages[storageIndex]->init();
+        } else {
+            HSS_slot_update_boot_params(index_boot_image, FAIL_INIT);
+            mHSS_DEBUG_PRINTF(LOG_ERROR, "%s init failed\n", message);
+        }
     }
 
     if (result) {
@@ -278,7 +283,7 @@ bool HSS_BootInit(void)
             result = tryBootFromStorage(2, "SPI", 0);
         } else if (bootSeq >= 40u) {
             mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot[0] image via %s slot %d...\n", "QSPI", bootSeq);
-            result = tryBootFromStorage(2, "QSPI", 0);
+            result = tryBootFromStorage(3, "QSPI", 0);
         }else {
             mHSS_DEBUG_PRINTF(LOG_ERROR, "Invalid boot sequence...\n");
             HSS_slot_update_boot_params(index_boot_image, INVALID_BOOT_SEQUENCE);
