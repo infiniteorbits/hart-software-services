@@ -1080,8 +1080,6 @@ bool HSS_Boot_ValidateImage(struct HSS_BootImage *pImage)
         }
     }
 #endif
-
-    
     
     return result;
 }
