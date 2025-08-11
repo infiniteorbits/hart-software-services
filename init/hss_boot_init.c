@@ -8,7 +8,7 @@
  */
 
 /**
- * \file HSS Boot Initalization
+ * \file HSS Boot Initialization
  * \brief Boot Initialization
  */
 
@@ -200,6 +200,7 @@ void HSS_BootHarts(void)
 
         for (int i = HSS_HART_U54_1; i < HSS_HART_NUM_PEERS; i++) {
             //mHSS_DEBUG_PRINTF(LOG_ERROR, "%s(): checking u54_%d\n", __func__, i);
+            // MME: What do we do if a hart is not Idle?
             if (HSS_U54_GetState_Ex(i) == HSS_State_Idle) {
                 //mHSS_DEBUG_PRINTF(LOG_ERROR, "%s(): => rebooting u54_%d\n", __func__, i);
                 restartHartBitmask.uint |= BIT(i);
@@ -224,6 +225,7 @@ int compare_strings(const char *str1, const char *str2) {
 bool tryBootFromStorage(int storageIndex, const char* message, int emmcType);
 bool tryBootFromStorage(int storageIndex, const char* message, int emmcType) {
    // mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot %s image via %s ...\n", message, pStorages[storageIndex]->name);
+   // MME: Enabling emmc cannot fail? 
     enable_emmc(emmcType);
     bool result = false;
 
@@ -335,6 +337,8 @@ bool tryBootFunction_(struct HSS_Storage *pStorage, HSS_GetBootImageFnPtr_t cons
     struct HSS_BootImage *pBootImage = NULL;
     bool decompressedFlag = false;
 
+    // MME: A comment explaining this is done to prevent a warning if CONFIG_COMPRESSION is false
+    //      would be welcomed. Or, you could declared that variable in the if block itself, as it is already done elsewhere I believe 
     (void)decompressedFlag;
 
 
@@ -345,7 +349,9 @@ bool tryBootFunction_(struct HSS_Storage *pStorage, HSS_GetBootImageFnPtr_t cons
     //
     // for now, compression only works with a source already in DDR
 #  if IS_ENABLED(CONFIG_COMPRESSION)
+    // MME: I would explicit values here to better document what conditions you are testing against
     if (result && pBootImage && (pBootImage->magic == mHSS_COMPRESSED_MAGIC)) {
+        // MME: You are not using that value it seems
         decompressedFlag = true;
 
         mHSS_DEBUG_PRINTF(LOG_NORMAL, "Preparing to decompress to DDR ...\n");

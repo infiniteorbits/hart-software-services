@@ -26,23 +26,16 @@
 bool HSS_UARTInit(void)
 {
     // initialise debug UART
+    enum HSSHartId currHart;
 
-    MSS_UART_init(HSS_UART_GetInstance(HSS_HART_E51), MSS_UART_115200_BAUD,
-        MSS_UART_DATA_8_BITS | MSS_UART_NO_PARITY | MSS_UART_ONE_STOP_BIT);
-
-    // default all UARTs to 115200 for now
-    // subsequent OS loads can change these if needed...
-    MSS_UART_init(HSS_UART_GetInstance(HSS_HART_U54_1), MSS_UART_115200_BAUD,
-        MSS_UART_DATA_8_BITS | MSS_UART_NO_PARITY | MSS_UART_ONE_STOP_BIT);
-
-    MSS_UART_init(HSS_UART_GetInstance(HSS_HART_U54_2), MSS_UART_115200_BAUD,
-        MSS_UART_DATA_8_BITS | MSS_UART_NO_PARITY | MSS_UART_ONE_STOP_BIT);
-
-    MSS_UART_init(HSS_UART_GetInstance(HSS_HART_U54_3), MSS_UART_115200_BAUD,
-        MSS_UART_DATA_8_BITS | MSS_UART_NO_PARITY | MSS_UART_ONE_STOP_BIT);
-
-    MSS_UART_init(HSS_UART_GetInstance(HSS_HART_U54_4), MSS_UART_115200_BAUD,
-        MSS_UART_DATA_8_BITS | MSS_UART_NO_PARITY | MSS_UART_ONE_STOP_BIT);
+    // MME: An alternative impl that avoid code duplication?
+    for (currHart =HSS_HART_E51; currHart < HSS_HART_NUM_PEERS; currHart++) {
+        // default all UARTs to 115200 for now
+        // subsequent OS loads can change these if needed...
+        MSS_UART_init(HSS_UART_GetInstance(currHart), MSS_UART_115200_BAUD,
+            MSS_UART_DATA_8_BITS | MSS_UART_NO_PARITY | MSS_UART_ONE_STOP_BIT);
+    
+    }
 
     return true;
 }

@@ -149,6 +149,8 @@ void RunStateMachines(const size_t spanOfPStateMachines, struct StateMachine *co
         const union HSSHartBitmask hartBitmask = { .uint = mHSS_BITMASK_ALL_U54 };
         bool status = IPI_PollReceive(hartBitmask);
         if (status) {
+            // MME: This is misleading, according to my analysis, this code can only run on HART 0
+            // Which use current_hartid()?
             enum HSSHartId const myHartId = current_hartid();
             size_t i;
 

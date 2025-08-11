@@ -8,6 +8,7 @@
  */
 
 /**
+// MME: This is not Debug UART?
  * \file HSS Debug UART Initalization
  * \brief Debug UART Initialization
  */

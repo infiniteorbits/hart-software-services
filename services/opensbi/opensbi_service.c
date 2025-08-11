@@ -176,10 +176,14 @@ void HSS_OpenSBI_Setup(void)
 
         opensbi_scratch_setup(hartid);
 
+        // MME: Why define it here and not at the top of the file?
         int sbi_console_init(struct sbi_scratch *scratch);
-	int rc = sbi_console_init(&(pScratches[hartid].scratch));
-	if (rc)
-		sbi_hart_hang();
+        // MME: Indentation is *VERY* misleading here!
+        int rc = sbi_console_init(&(pScratches[hartid].scratch));
+        if (rc)
+        	sbi_hart_hang();
+
+    // MME: Indentation is *VERY* misleading here!
     } else {
         ;
     }
@@ -203,7 +207,7 @@ void __noreturn HSS_OpenSBI_DoBoot(enum HSSHartId hartid)
     };
 }
 
-enum IPIStatusCode HSS_OpenSBI_IPIHandler(TxId_t transaction_id, enum HSSHartId source, uint32_t immediate_arg, void *p_extended_buffer, void *p_ancilliary_buffer_in_ddr)
+enum IPIStatusCode HSS_OpenSBI_IPIHandler(TxId_t transaction_id, enum HSSHartId source, uint32_t immediate_arg, void *p_extended_buffer, void *p_ancillary_buffer_in_ddr)
 {
     enum IPIStatusCode result = IPI_FAIL;
 
@@ -214,7 +218,9 @@ enum IPIStatusCode HSS_OpenSBI_IPIHandler(TxId_t transaction_id, enum HSSHartId 
     } else if (hartid == HSS_HART_E51) { // prohibited by policy
         mHSS_DEBUG_PRINTF(LOG_ERROR, "u54_%d: request prohibited by policy\n", HSS_HART_E51);
     } else {
+        // MME: NO RV check!
         IPI_Send(source, IPI_MSG_ACK_COMPLETE, transaction_id, IPI_SUCCESS, NULL, NULL);
+        // MME: NO RV check!
         IPI_MessageUpdateStatus(transaction_id, IPI_IDLE); // free the IPI
 
 #if IS_ENABLED(CONFIG_HSS_USE_IHC)
@@ -222,9 +228,11 @@ enum IPIStatusCode HSS_OpenSBI_IPIHandler(TxId_t transaction_id, enum HSSHartId 
 
         // small delay to ensure that IHC message has been sent before jumping into OpenSBI
         // without this, HSS never receives ACK from U54 that OPENSBI_INIT was successful
+        // MME: Can we document a rationale for picking that value?
         HSS_SpinDelay_MilliSecs(250u);
 #endif
 
+        // MME: Can pMsg be NULL? There is no check!
         struct IPI_Outbox_Msg *pMsg = IPI_DirectionToFirstMsgInQueue(source, hartid);
         size_t i;
 
@@ -248,9 +256,10 @@ enum IPIStatusCode HSS_OpenSBI_IPIHandler(TxId_t transaction_id, enum HSSHartId 
             pScratches[hartid].scratch.next_mode = (unsigned long)immediate_arg;
 
             // set arg1 (A1) to point to override device tree blob, if provided
-            if (p_ancilliary_buffer_in_ddr) {
-                // use ancilliary data if provided in boot image, assuming it is a DTB
-                scratches[hartid].scratch.next_arg1 = (uintptr_t)p_ancilliary_buffer_in_ddr;
+            // MME: I would prefer an actual boolean check here!
+            if (p_ancillary_buffer_in_ddr) {
+                // use ancillary data if provided in boot image, assuming it is a DTB
+                scratches[hartid].scratch.next_arg1 = (uintptr_t)p_ancillary_buffer_in_ddr;
             } else {
 #if IS_ENABLED(CONFIG_PROVIDE_DTB)
                 extern unsigned long _binary_build_services_opensbi_mpfs_dtb_start;
@@ -271,6 +280,9 @@ void HSS_OpenSBI_Reboot(void)
 {
     uint32_t index;
 
+    // MME: NO RV check!
     IPI_MessageAlloc(&index);
+
+    // MME: NO RV check!
     IPI_MessageDeliver(index, HSS_HART_E51, IPI_MSG_BOOT_REQUEST, 0u, NULL, NULL);
 }

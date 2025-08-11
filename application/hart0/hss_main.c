@@ -76,6 +76,7 @@ int main(int argc, char **argv)
 
     HSS_Init();
 
+    // MME HSS_HART_E51?
     if (current_hartid() != 0) {
         sbi_hart_hang();
     }
