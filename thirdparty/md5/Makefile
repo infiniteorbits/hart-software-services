@@ -1,0 +1,5 @@
+EXTRA_SRCS-y += md5/md5.c
+INCLUDES     += -Imd5
+$(BINDIR)/md5.o: CFLAGS=$(CFLAGS_GCCEXT)
+
+
