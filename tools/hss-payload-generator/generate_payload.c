@@ -521,14 +521,14 @@ void generate_MD5(char const * const filename_output)
 {
 	size_t Length = bootImage.bootImageLength;
 	
-	// 1. Abrir archivo ya existente para lectura
+	// 1. Open the file to read
 	FILE *fp = fopen(filename_output, "rb");
 	if (!fp) {
 		perror("fopen()");
 		exit(EXIT_FAILURE);
 	}
 
-	// 2. Reservar memoria
+	// 2. Allocate buffer to hold the entire file content
 	uint8_t *buffer = malloc(Length);
 	if (!buffer) {
 		perror("malloc");
@@ -536,23 +536,23 @@ void generate_MD5(char const * const filename_output)
 		exit(EXIT_FAILURE);
 	}
 
-	// 3. Leer contenido
+	// 3. Read the entire file into the buffer
 	if (fread(buffer, 1, Length, fp) != Length) {
 		perror("fread");
 		free(buffer);
 		fclose(fp);
 		exit(EXIT_FAILURE);
 	}
-	fclose(fp);  // Cerramos tras leer
+	fclose(fp);  // Closing the file after reading
 
-	// 4. Calcular MD5
+	// 4. Calculate MD5
 	MD5Context ctx;
 	md5Init(&ctx);
 	md5Update(&ctx, buffer, Length);
 	md5Finalize(&ctx);
 	memcpy(bootImage.signature.digest, ctx.digest, 16u);
 
-	// 5. Reabrir para sobrescribir el header
+	// 5. Reopen to overwrite the header
 	FILE *fp_out = fopen(filename_output, "r+b");
 	if (!fp_out) {
 		perror("fopen rewrite");

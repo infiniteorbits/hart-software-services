@@ -50,7 +50,7 @@ bool HSS_slot_spi_get_info(uint32_t *pBlockSize, uint32_t *pEraseSize, uint32_t 
 bool HSS_slot_spi_erase_section(uint32_t address);
 
 uint64_t HSS_slot_get_offset(uint8_t slot);
-uint8_t HSS_slot_get_boot_sequence(uint8_t index);
+memory_type_t HSS_slot_get_boot_sequence(uint8_t index);
 
 #ifdef __cplusplus
 }

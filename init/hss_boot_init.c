@@ -213,15 +213,24 @@ void HSS_BootHarts(void)
 #endif
 }
 static uint8_t index_boot_image = 0;
-int compare_strings(const char *str1, const char *str2);
+static inline bool strings_equal(const char *a, const char *b);
 
-int compare_strings(const char *str1, const char *str2) {
-    while (*str1 && (*str1 == *str2)) {
-        str1++;
-        str2++;
-    }
-    return (*str1 == '\0' && *str2 == '\0');
-}
+/**
+ * @brief Check if two C-strings are equal.
+ * @return true if equal, false otherwise. NULL-safe.
+ */
+ static inline bool strings_equal(const char *a, const char *b)
+ {
+     if (a == b) return true;          /* same pointer or both NULL */
+     if (!a || !b) return false;       /* one is NULL, the other not */
+ 
+     /* Walk until first difference or NUL */
+     while (*a && (*a == *b)) { ++a; ++b; }
+ 
+     /* Cast to unsigned char to avoid sign issues with char */
+     return (unsigned char)*a == (unsigned char)*b;
+ }
+
 bool tryBootFromStorage(int storageIndex, const char* message, int emmcType);
 bool tryBootFromStorage(int storageIndex, const char* message, int emmcType) {
    // mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot %s image via %s ...\n", message, pStorages[storageIndex]->name);
@@ -229,7 +238,7 @@ bool tryBootFromStorage(int storageIndex, const char* message, int emmcType) {
     HSS_slot_enable_emmc(emmcType);
     bool result = false;
 
-    if (compare_strings(pStorages[storageIndex]->name, "MMC1")) {
+    if (strings_equal(pStorages[storageIndex]->name, "MMC1")) {
         result = true;
     } else{
         if (pStorages[storageIndex]->init) {
@@ -271,24 +280,23 @@ bool HSS_BootInit(void)
             result = tryBootFunction_(pDefaultStorage, pDefaultStorage->getBootImage);
         }
     } else {
-        uint8_t bootSeq = HSS_slot_get_boot_sequence(0);
+        memory_type_t bootSeq = HSS_slot_get_boot_sequence(0);
         if (bootSeq == 0) {
             skip_boot_0 = true;
-        } else if (bootSeq >= 10 && bootSeq <= 11) {
+        } else if (bootSeq == EMMC_PRIMARY) {
             mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot[0] image via %s slot %d...\n", "MMC1", bootSeq);
             result = tryBootFromStorage(0, "MMC1", EMMC_PRIMARY);
-        } else if (bootSeq >= 20 && bootSeq <= 21) {
+        } else if (bootSeq == EMMC_SECONDARY) {
             mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot[0] image via %s slot %d...\n", "MMC2", bootSeq);
             result = tryBootFromStorage(1, "MMC2", EMMC_SECONDARY);
-        } else if (bootSeq == 30u) {
+        } else if (bootSeq == SPI_FLASH) {
             mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot[0] image via %s slot %d...\n", "SPI", bootSeq);
             result = tryBootFromStorage(2, "SPI", 0);
-        } else if (bootSeq >= 40u) {
+        } else if (bootSeq >= QSPI) {
             mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot[0] image via %s slot %d...\n", "QSPI", bootSeq);
             result = tryBootFromStorage(3, "QSPI", 0);
         }else {
             mHSS_DEBUG_PRINTF(LOG_ERROR, "Invalid boot sequence...\n");
-            HSS_slot_update_boot_params(index_boot_image);
             skip_boot_0 = true;
         }
 
@@ -299,9 +307,9 @@ bool HSS_BootInit(void)
                 index_boot_image = i + 1;
                 if (pStorages[i]->init) {
                     HSS_slot_update_boot_params(index_boot_image);
-                    if (compare_strings(pStorages[i]->name, "MMC1")) {
+                    if (strings_equal(pStorages[i]->name, "MMC1")) {
                         HSS_slot_enable_emmc(EMMC_PRIMARY);
-                    }else if (compare_strings(pStorages[i]->name, "MMC2")) {
+                    }else if (strings_equal(pStorages[i]->name, "MMC2")) {
                         HSS_slot_enable_emmc(EMMC_SECONDARY);
                     }
                     result = pStorages[i]->init();

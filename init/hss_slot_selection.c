@@ -255,6 +255,21 @@ static hss_status_t md5_compute_over_backend(const struct HSS_BootImage *image,
 
 /*------------------------------SPI helpers----------------------------*/
 
+#if IS_ENABLED(CONFIG_SERVICE_SPI)
+/* Maps flash_status_t to hsss_status_t depending on I/O context */
+static hss_status_t map_flash_status(flash_status_t st, hss_status_t io_err)
+{
+    switch (st) {
+    case FLASH_OK:               return HSSS_OK;
+    case FLASH_ERR_INVALID_ARG:  return HSSS_ERR_INVALID_ARG;
+    case FLASH_ERR_UNSUPPORTED:  return HSSS_ERR_UNSUPPORTED;
+    case FLASH_ERR_TIMEOUT:      /* fallthrough */
+    case FLASH_ERR_SPI:          /* fallthrough */
+    default:                     return io_err;
+    }
+}
+#endif
+
 static hss_status_t spi_backend_init_once(void)
 {
     static bool initialized = false;
@@ -263,11 +278,35 @@ static hss_status_t spi_backend_init_once(void)
 
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
     uint8_t manufacturer_id = 0u, device_id = 0u;
-    FLASH_init();
-    FLASH_global_unprotect();
-    FLASH_read_device_id(&manufacturer_id, &device_id);
-    mHSS_DEBUG_PRINTF(LOG_NORMAL, "SPI Init: Device ID=%u, Manufacturer ID=%u\n",
+
+    /* Init SPI core/driver */
+    flash_status_t fst = FLASH_init();
+    if (fst != FLASH_OK) {
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "SPI init failed (%d)\n", (int)fst);
+        return map_flash_status(fst, HSSS_ERR_BACKEND);
+    }
+
+    /*
+     * Intentional: leave SPI flash globally unprotected after init.
+     * See rationale in code comments where this is called.
+     */
+    fst = FLASH_global_unprotect();
+    if (fst != FLASH_OK) {
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "SPI global unprotect failed (%d)\n", (int)fst);
+        return map_flash_status(fst, HSSS_ERR_BACKEND);
+    }
+
+    /* Read IDs (not strictly required to proceed, but useful to sanity-check) */
+    fst = FLASH_read_device_id(&manufacturer_id, &device_id);
+    if (fst != FLASH_OK) {
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "SPI read device ID failed (%d)\n", (int)fst);
+        return map_flash_status(fst, HSSS_ERR_BACKEND);
+    }
+
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,
+                      "SPI Init OK: Device ID=%u, Manufacturer ID=%u\n",
                       device_id, manufacturer_id);
+
     initialized = true;
     return HSSS_OK;
 #else
@@ -284,9 +323,16 @@ static hss_status_t spi_backend_read(void *dest, size_t src_offset, size_t len)
     size_t done = 0u;
 
     while (done < len) {
-        size_t chunk = (len - done) < SPI_MAX_XFER_BYTES ?
-                       (len - done) : SPI_MAX_XFER_BYTES;
-        FLASH_read(src_offset + done, dst + done, chunk);
+        const size_t remaining = (len - done);
+        const size_t chunk = (remaining < SPI_MAX_XFER_BYTES) ? remaining : SPI_MAX_XFER_BYTES;
+
+        flash_status_t fst = FLASH_read((uint32_t)(src_offset + done), dst + done, chunk);
+        if (fst != FLASH_OK) {
+            mHSS_DEBUG_PRINTF(LOG_ERROR,
+                              "SPI read failed at +0x%zx (chunk=%zu, st=%d)\n",
+                              done, chunk, (int)fst);
+            return map_flash_status(fst, HSSS_ERR_READ);
+        }
         done += chunk;
     }
     return HSSS_OK;
@@ -299,19 +345,31 @@ static hss_status_t spi_backend_read(void *dest, size_t src_offset, size_t len)
 static hss_status_t spi_backend_write(size_t dst_offset, const void *src, size_t len)
 {
     if (!src || len == 0u) { return HSSS_ERR_INVALID_ARG; }
+
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
-    /* Assumes caller aligns to erase size as needed. */
-    FLASH_program(dst_offset, (void *)src, len);
+    /*
+     * Assumes caller has handled any necessary erase/alignment policy.
+     * FLASH_program_st() handles page boundaries internally.
+     */
+    const uint8_t *p = (const uint8_t *)src;
+    flash_status_t fst = FLASH_program((uint32_t)dst_offset, p, len);
+    if (fst != FLASH_OK) {
+        mHSS_DEBUG_PRINTF(LOG_ERROR,
+                          "SPI program failed at 0x%zx (len=%zu, st=%d)\n",
+                          dst_offset, len, (int)fst);
+        return map_flash_status(fst, HSSS_ERR_WRITE);
+    }
     return HSSS_OK;
 #else
-    (void)dst_offset; (void)src;
+    (void)dst_offset; (void)src; (void)len;
     return HSSS_ERR_UNSUPPORTED;
 #endif
 }
 
+
 /*-------------------------------Public API---------------------------------*/
 
-uint8_t HSS_slot_get_boot_sequence(uint8_t index)
+memory_type_t HSS_slot_get_boot_sequence(uint8_t index)
 {
     switch (index) {
     case 0:  return g_params.freertos_boot_sequence;
@@ -373,7 +431,8 @@ bool HSS_slot_enable_emmc(memory_type_t emmc_id)
 }
 
 /**
- * @brief Reset/clear boot sequence and verification flags in parameter region.
+ * @brief Reset/clear boot sequence and verification flags in parameter region 
+ * to break the retry loop after a failure and prevent repeatedly booting the same slot.
  * @return true on success, false on write error.
  */
 bool HSS_slot_restore_boot_sequence(void)
