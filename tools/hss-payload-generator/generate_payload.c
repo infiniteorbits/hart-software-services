@@ -36,7 +36,7 @@
 #include "crc32.h"
 #include "debug_printf.h"
 #include "verify_payload.h"
-#include "hss_md5.h"
+#include "thirdparty/md5/md5.h"
 
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
