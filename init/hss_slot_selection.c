@@ -28,7 +28,7 @@
 #include "mss_mmc.h"
 #include "hss_crc32.h"
 #include "hss_debug.h"
-#include "hss_md5.h"
+#include "thirdparty/md5/md5.h"
 #include <string.h>
 #include <assert.h>
 #include "drivers/CoreSPI/core_spi.h"
@@ -75,20 +75,20 @@ static uint8_t buff[sizeof(BootSoftwareParams)];
 static uint32_t* const stream_gen_base_register = (uint32_t*)(STREAM_GEN_BASE_ADDR + 0x10);
 
 /*-----------------------------Local Functions------------------------------*/
-static void set_register_bit(uint32_t* reg, RegisterBits bit);
-static void clear_register_bit(uint32_t* reg, RegisterBits bit);
-static void print_md5(const char *label, const uint8_t *hash);
-static bool compare_md5(const uint8_t *a, const uint8_t *b);
+static void HSS_slot_set_register_bit(uint32_t* reg, RegisterBits bit);
+static void HSS_slot_clear_register_bit(uint32_t* reg, RegisterBits bit);
+static void HSS_slot_print_md5(const char *label, const uint8_t *hash);
+static bool HSS_slot_compare_md5(const uint8_t *a, const uint8_t *b);
 
-static void set_register_bit(uint32_t* reg, RegisterBits bit) {
+static void HSS_slot_set_register_bit(uint32_t* reg, RegisterBits bit) {
     *reg |= bit;
 }
 
-static void clear_register_bit(uint32_t* reg, RegisterBits bit) {
+static void HSS_slot_clear_register_bit(uint32_t* reg, RegisterBits bit) {
     *reg &= ~bit;
 }
 
-static void print_md5(const char *label, const uint8_t *hash) {
+static void HSS_slot_print_md5(const char *label, const uint8_t *hash) {
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s: ", label);
     for (int i = 0; i < 16; i++) {
         mHSS_PRINTF("%02x", hash[i]);
@@ -96,7 +96,7 @@ static void print_md5(const char *label, const uint8_t *hash) {
     mHSS_PRINTF("\n");
 }
 
-static bool compare_md5(const uint8_t *a, const uint8_t *b) {
+static bool HSS_slot_compare_md5(const uint8_t *a, const uint8_t *b) {
     for (int i = 0; i < 16; i++) {
         if (a[i] != b[i]) {
             mHSS_DEBUG_PRINTF(LOG_ERROR, "MD5 mismatch\n");
@@ -107,7 +107,7 @@ static bool compare_md5(const uint8_t *a, const uint8_t *b) {
     return true;
 }
 
-uint8_t get_boot_sequence(uint8_t index) {
+uint8_t HSS_slot_get_boot_sequence(uint8_t index) {
     switch(index)
     {
         case 0:
@@ -125,7 +125,7 @@ uint8_t get_boot_sequence(uint8_t index) {
     }
 }
 
-bool get_verify_payload(void)
+bool HSS_slot_get_verify_payload(void)
 {
 #if IS_ENABLED(CONFIG_SERVICE_verify_payload) 
     return true;
@@ -134,7 +134,7 @@ bool get_verify_payload(void)
 #endif
 }
 
-uint64_t get_offset(uint8_t slot) 
+uint64_t HSS_slot_get_offset(uint8_t slot) 
 {
     switch (slot) {
         case 10: case 20:
@@ -146,24 +146,24 @@ uint64_t get_offset(uint8_t slot)
     }
 }
 
-void enable_emmc(uint8_t emmc_id)
+void HSS_slot_enable_emmc(uint8_t emmc_id)
 {
     switch (emmc_id) {
         case EMMC_PRIMARY:
-            clear_register_bit(stream_gen_base_register, SW_SEL0);
-            clear_register_bit(stream_gen_base_register, SW_SEL1);
-            clear_register_bit(stream_gen_base_register, EMMPR_EN);
-            set_register_bit(stream_gen_base_register, EMMSC_EN);
-            clear_register_bit(stream_gen_base_register, SW_EN);
+            HSS_slot_clear_register_bit(stream_gen_base_register, SW_SEL0);
+            HSS_slot_clear_register_bit(stream_gen_base_register, SW_SEL1);
+            HSS_slot_clear_register_bit(stream_gen_base_register, EMMPR_EN);
+            HSS_slot_set_register_bit(stream_gen_base_register, EMMSC_EN);
+            HSS_slot_clear_register_bit(stream_gen_base_register, SW_EN);
             //mHSS_DEBUG_PRINTF(LOG_NORMAL,"Primary eMMC enabled\n");
             break;
 
         case EMMC_SECONDARY:
-            set_register_bit(stream_gen_base_register, SW_SEL0);
-            set_register_bit(stream_gen_base_register, SW_SEL1);
-            set_register_bit(stream_gen_base_register, EMMPR_EN);
-            clear_register_bit(stream_gen_base_register, EMMSC_EN);
-            clear_register_bit(stream_gen_base_register, SW_EN);
+            HSS_slot_set_register_bit(stream_gen_base_register, SW_SEL0);
+            HSS_slot_set_register_bit(stream_gen_base_register, SW_SEL1);
+            HSS_slot_set_register_bit(stream_gen_base_register, EMMPR_EN);
+            HSS_slot_clear_register_bit(stream_gen_base_register, EMMSC_EN);
+            HSS_slot_clear_register_bit(stream_gen_base_register, SW_EN);
             //mHSS_DEBUG_PRINTF(LOG_NORMAL,"Secondary eMMC enabled \n");
             break;
 
@@ -199,7 +199,7 @@ void HSS_slot_get_boot_params(void)
     mHSS_DEBUG_PRINTF(LOG_NORMAL,"Boot Sequence[]: %d, 10, 20, 30, 40\n", Params.freertos_boot_sequence);
 }
 
-bool validateMd5_custom(struct HSS_BootImage *pImage, size_t offset, memory_type_t mem_type)
+bool HSS_slot_validate_md5(struct HSS_BootImage *pImage, size_t offset, memory_type_t mem_type)
 {
     uint8_t temp_buffer[BLOCK_SIZE] = {0};
     uint32_t block_offset = 0;
@@ -210,7 +210,7 @@ bool validateMd5_custom(struct HSS_BootImage *pImage, size_t offset, memory_type
     uint16_t md5_index = digest_absolute_offset / BLOCK_SIZE;
     uint16_t md5_offset = digest_absolute_offset % BLOCK_SIZE;
 
-    md5Init(&ctx);
+    md5_init(&ctx);
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "Bootimage length: 0x%0X (%d)\n", pImage->bootImageLength, pImage->bootImageLength);
 
     for (uint32_t bytes_read = 0; bytes_read < pImage->bootImageLength; bytes_read += BLOCK_SIZE)
@@ -243,7 +243,7 @@ bool validateMd5_custom(struct HSS_BootImage *pImage, size_t offset, memory_type
             size_t remaining = pImage->bootImageLength - bytes_read;
             size_t chunk_size = (remaining < BLOCK_SIZE) ? remaining : BLOCK_SIZE;
 
-            md5Update(&ctx, temp_buffer, chunk_size);
+            md5_update(&ctx, temp_buffer, chunk_size);
             block_offset++;
         } else {
             mHSS_DEBUG_PRINTF(LOG_ERROR, "Error reading block at offset 0x%X\n", start_addr + block_offset);
@@ -251,21 +251,21 @@ bool validateMd5_custom(struct HSS_BootImage *pImage, size_t offset, memory_type
         }
     }
 
-    md5Finalize(&ctx);
-    print_md5("MD5 read", pImage->signature.digest);
-    print_md5("MD5 calc", ctx.digest);
-    result = compare_md5(ctx.digest, pImage->signature.digest);
+    md5_finalize(&ctx);
+    HSS_slot_print_md5("MD5 read", pImage->signature.digest);
+    HSS_slot_print_md5("MD5 calc", ctx.digest);
+    result = HSS_slot_compare_md5(ctx.digest, pImage->signature.digest);
 
     return result;
 }
 
 
-void spi_GetInfo(uint32_t *pBlockSize, uint32_t *pEraseSize, uint32_t *pBlockCount) {
+void HSS_slot_spi_get_info(uint32_t *pBlockSize, uint32_t *pEraseSize, uint32_t *pBlockCount) {
     uint32_t sectorSize = 0x10000; //64KB
     *pEraseSize = *pBlockSize = sectorSize;
 }
 
-bool spi_init(void)
+bool HSS_slot_spi_init(void)
 {
     static bool initialized = false;
 
@@ -287,7 +287,7 @@ bool spi_init(void)
     return true;
 }
 
-bool spi_read(void *pDest, size_t srcOffset, size_t byteCount)
+bool HSS_slot_spi_read(void *pDest, size_t srcOffset, size_t byteCount)
 {
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
     uint8_t *pDestBytes = (uint8_t *)pDest;
@@ -302,7 +302,7 @@ bool spi_read(void *pDest, size_t srcOffset, size_t byteCount)
     return true;
 }
 
-bool spi_write(size_t dstOffset, void *pSrc, size_t byteCount)
+bool HSS_slot_spi_write(size_t dstOffset, void *pSrc, size_t byteCount)
 {
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
     FLASH_program(dstOffset, pSrc, byteCount);

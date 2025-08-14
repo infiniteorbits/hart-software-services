@@ -226,7 +226,7 @@ bool tryBootFromStorage(int storageIndex, const char* message, int emmcType);
 bool tryBootFromStorage(int storageIndex, const char* message, int emmcType) {
    // mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot %s image via %s ...\n", message, pStorages[storageIndex]->name);
    // MME: Enabling emmc cannot fail? 
-    enable_emmc(emmcType);
+    HSS_slot_enable_emmc(emmcType);
     bool result = false;
 
     if (compare_strings(pStorages[storageIndex]->name, "MMC1")) {
@@ -271,7 +271,7 @@ bool HSS_BootInit(void)
             result = tryBootFunction_(pDefaultStorage, pDefaultStorage->getBootImage);
         }
     } else {
-        uint8_t bootSeq = get_boot_sequence(0);
+        uint8_t bootSeq = HSS_slot_get_boot_sequence(0);
         if (bootSeq == 0) {
             skip_boot_0 = true;
         } else if (bootSeq >= 10 && bootSeq <= 11) {
@@ -295,14 +295,14 @@ bool HSS_BootInit(void)
         if(!result || skip_boot_0)
         {
             for (int i = 0; i < ARRAY_SIZE(pStorages); i++) {
-                mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot[%d] image via %s slot %d...\n",i+1, pStorages[i]->name, get_boot_sequence(i+1));
+                mHSS_DEBUG_PRINTF(LOG_WARN, "Trying to get boot[%d] image via %s slot %d...\n",i+1, pStorages[i]->name, HSS_slot_get_boot_sequence(i+1));
                 index_boot_image = i + 1;
                 if (pStorages[i]->init) {
                     HSS_slot_update_boot_params(index_boot_image, NO_ERROR);
                     if (compare_strings(pStorages[i]->name, "MMC1")) {
-                        enable_emmc(EMMC_PRIMARY);
+                        HSS_slot_enable_emmc(EMMC_PRIMARY);
                     }else if (compare_strings(pStorages[i]->name, "MMC2")) {
-                        enable_emmc(EMMC_SECONDARY);
+                        HSS_slot_enable_emmc(EMMC_SECONDARY);
                     }
                     result = pStorages[i]->init();
                 } else {
@@ -467,7 +467,7 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
         mHSS_DEBUG_PRINTF(LOG_NORMAL, "GPT_PartitionIdToLBAOffset() returned %lu\n", srcLBAOffset);
     }
 #else
-    srcLBAOffset = (get_offset(get_boot_sequence(index_boot_image))/ blockSize);
+    srcLBAOffset = (HSS_slot_get_offset(HSS_slot_get_boot_sequence(index_boot_image))/ blockSize);
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "GPT_PartitionIdToLBAOffset() returned %lu\n", srcLBAOffset);
 #endif
 
@@ -492,10 +492,10 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
             }else {
                 mHSS_DEBUG_PRINTF(LOG_STATUS, "%s very magic passed \n", pStorage->name);
 
-                if(get_verify_payload()){
+                if(HSS_slot_get_verify_payload()){
                     result = true;
                 }else{
-                    result = validateMd5_custom(&bootImage, srcLBAOffset, EMMC_PRIMARY);
+                    result = HSS_slot_validate_md5(&bootImage, srcLBAOffset, EMMC_PRIMARY);
                 }
 
                 if(result) {
@@ -596,10 +596,10 @@ static bool getBootImageFromQSPI_(struct HSS_Storage *pStorage, struct HSS_BootI
             HSS_slot_update_boot_params(index_boot_image, MAGIC_NUMBER);
         } else {
             mHSS_DEBUG_PRINTF(LOG_STATUS, "QSPI very magic passed \n");
-            if(get_verify_payload()){
+            if(HSS_slot_get_verify_payload()){
                 result = true;
             }else{
-                result = validateMd5_custom(&bootImage, srcLBAOffset, QSPI);
+                result = HSS_slot_validate_md5(&bootImage, srcLBAOffset, QSPI);
             }
 
             if (result) {

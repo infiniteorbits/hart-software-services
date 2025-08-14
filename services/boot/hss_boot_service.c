@@ -816,7 +816,7 @@ static void boot_complete_onEntry(struct StateMachine * const pMyMachine)
 {
     struct HSS_Boot_LocalData const * const pInstanceData = pMyMachine->pInstanceData;
     enum HSSHartId const hartId = pInstanceData->target;
-    log_save_to_emmc();
+    HSS_log_save_to_emmc();
     atomic_write(&bootComplete[hartId], 1);
 }
 

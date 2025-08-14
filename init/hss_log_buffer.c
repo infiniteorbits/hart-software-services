@@ -1,12 +1,11 @@
 #include "hss_log_buffer.h"
 #include "hss_debug.h"
 #include <string.h>
-#include <stdbool.h>
+#include "hss_types.h"
 #include "hss_slot_selection.h"
 
 #include "config.h"
-#include "hss_types.h"
-#include "hss_init.h"
+#include "mss_mmc.h"
 #include <string.h>
 #include <assert.h>
 
@@ -18,12 +17,11 @@
 static char log_buffer[LOG_BUFFER_SIZE];
 static size_t log_buffer_index = 0;
 
-void log_reset(void);
+void HSS_log_reset(void);
 
 
-void log_append(const char *data, size_t len) {
+void HSS_log_append(const char *data, size_t len) {
     if (log_buffer_index + len >= LOG_BUFFER_SIZE) {
-        // Opcional: truncar, sobrescribir o ignorar
         return;
     }
 
@@ -31,19 +29,19 @@ void log_append(const char *data, size_t len) {
     log_buffer_index += len;
 }
 
-const char *log_get_buffer(void) {
+const char *HSS_log_get_buffer(void) {
     return log_buffer;
 }
 
-size_t log_get_size(void) {
+size_t HSS_log_get_size(void) {
     return log_buffer_index;
 }
 
-void log_reset(void) {
+void HSS_log_reset(void) {
     log_buffer_index = 0;
 }
 
-void log_store(const char *msg) {
+void HSS_log_store(const char *msg) {
     size_t len = strlen(msg);
     if (len + log_buffer_index >= LOG_BUFFER_SIZE) {
         log_buffer_index = 0; // sobreescribimos desde el inicio (buffer circular simple)
@@ -52,7 +50,7 @@ void log_store(const char *msg) {
     log_buffer_index += len;
 }
 
-void log_save_to_emmc(void)
+void HSS_log_save_to_emmc(void)
 {
     static bool log_saved = false;
     if (log_saved) {
@@ -61,8 +59,8 @@ void log_save_to_emmc(void)
     }
     log_saved = true;
 
-    const char *log = log_get_buffer();
-    size_t log_size = log_get_size();
+    const char *log = HSS_log_get_buffer();
+    size_t log_size = HSS_log_get_size();
 
     mHSS_DEBUG_PRINTF(LOG_FUNCTION, "%s(): log size = %u bytes\n", __func__, log_size);
 

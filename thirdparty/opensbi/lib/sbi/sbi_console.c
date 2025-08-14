@@ -374,7 +374,7 @@ int sbi_printf(const char *format, ...)
 	// save log
 	va_start(args, format);
 	retval = print(&log_temp_ptr, &log_temp_len, format, args);
-	log_append(log_temp, retval);
+	HSS_log_append(log_temp, retval);
 	va_end(args);
 
 	return retval;

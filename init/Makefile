@@ -32,7 +32,7 @@ EXTRA_SRCS-y += \
 	init/hss_sys_setup.c \
 	init/hss_slot_selection.c \
 	init/hss_log_buffer.c \
-	init/hss_md5.c \
+	thirdparty/md5/md5.c \
 
 EXTRA_SRCS-y += \
 	init/hss_usb_init.c
@@ -66,6 +66,6 @@ $(BINDIR)/init/hss_usb_init.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/init/hss_ihc_init.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/init/hss_slot_selection.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/init/hss_log_buffer.o: CFLAGS=$(CFLAGS_GCCEXT)
-$(BINDIR)/init/hss_md5.o: CFLAGS=$(CFLAGS_GCCEXT)
+$(BINDIR)/thirdparty/md5/md5.o: CFLAGS=$(CFLAGS_GCCEXT)
 
 

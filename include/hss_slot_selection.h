@@ -1,9 +1,14 @@
 #ifndef HSS_SLOT_SELECTION_H
 #define HSS_SLOT_SELECTION_H
 
+#include "hss_types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// Forward declaration of HSS_BootImage structure
+struct HSS_BootImage;
 
 typedef enum {
     EMMC_PRIMARY = 10,
@@ -32,7 +37,6 @@ typedef enum {
     PAYLOAD_2       = 0x1C0000000         // 7 GiB
 } vmem_emmc_PADDR_t;
 
-
 typedef enum  {
     NO_ERROR = 0,
     INVALID_BOOT_SEQUENCE,
@@ -47,16 +51,16 @@ typedef enum  {
 
 void HSS_slot_get_boot_params(void);
 void HSS_slot_update_boot_params(int index, boot_error_codes code);
-bool validateMd5_custom(struct HSS_BootImage *pImage, size_t offset, memory_type_t mem_type);
-void enable_emmc(uint8_t emmc_id);
-bool spi_init(void);
-bool spi_read(void *pDest, size_t srcOffset, size_t byteCount);
-bool spi_write(size_t dstOffset, void *pSrc, size_t byteCount);
-void spi_GetInfo(uint32_t *pBlockSize, uint32_t *pEraseSize, uint32_t *pBlockCount);
-void spi_erase_section(uint32_t address);
-bool get_verify_payload(void);
-uint64_t get_offset(uint8_t slot);
-uint8_t get_boot_sequence(uint8_t index);
+bool HSS_slot_validate_md5(struct HSS_BootImage *pImage, size_t offset, memory_type_t mem_type);
+void HSS_slot_enable_emmc(uint8_t emmc_id);
+bool HSS_slot_spi_init(void);
+bool HSS_slot_spi_read(void *pDest, size_t srcOffset, size_t byteCount);
+bool HSS_slot_spi_write(size_t dstOffset, void *pSrc, size_t byteCount);
+void HSS_slot_spi_get_info(uint32_t *pBlockSize, uint32_t *pEraseSize, uint32_t *pBlockCount);
+void HSS_slot_spi_erase_section(uint32_t address);
+bool HSS_slot_get_verify_payload(void);
+uint64_t HSS_slot_get_offset(uint8_t slot);
+uint8_t HSS_slot_get_boot_sequence(uint8_t index);
 void HSS_slot_restore_boot_sequence(void);
 
 #ifdef __cplusplus
