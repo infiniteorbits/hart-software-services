@@ -37,31 +37,20 @@ typedef enum {
     PAYLOAD_2       = 0x1C0000000         // 7 GiB
 } vmem_emmc_PADDR_t;
 
-typedef enum  {
-    NO_ERROR = 0,
-    INVALID_BOOT_SEQUENCE,
-    FAIL_INIT,
-    DECOMPRESSION,
-    IMAGE_NULL,
-    HEADER_READ,
-    MAGIC_NUMBER,
-    CRC_CALCULATION,
-    COPY_TO_DDR
-} boot_error_codes;
-
-void HSS_slot_get_boot_params(void);
-void HSS_slot_update_boot_params(int index, boot_error_codes code);
+bool HSS_slot_get_boot_params(void);
+bool HSS_slot_update_boot_params(int index);
+bool HSS_slot_get_verify_payload(void);
+bool HSS_slot_restore_boot_sequence(void);
 bool HSS_slot_validate_md5(struct HSS_BootImage *pImage, size_t offset, memory_type_t mem_type);
-void HSS_slot_enable_emmc(uint8_t emmc_id);
+bool HSS_slot_enable_emmc(memory_type_t emmc_id);
 bool HSS_slot_spi_init(void);
 bool HSS_slot_spi_read(void *pDest, size_t srcOffset, size_t byteCount);
 bool HSS_slot_spi_write(size_t dstOffset, void *pSrc, size_t byteCount);
-void HSS_slot_spi_get_info(uint32_t *pBlockSize, uint32_t *pEraseSize, uint32_t *pBlockCount);
-void HSS_slot_spi_erase_section(uint32_t address);
-bool HSS_slot_get_verify_payload(void);
+bool HSS_slot_spi_get_info(uint32_t *pBlockSize, uint32_t *pEraseSize, uint32_t *pBlockCount);
+bool HSS_slot_spi_erase_section(uint32_t address);
+
 uint64_t HSS_slot_get_offset(uint8_t slot);
 uint8_t HSS_slot_get_boot_sequence(uint8_t index);
-void HSS_slot_restore_boot_sequence(void);
 
 #ifdef __cplusplus
 }
