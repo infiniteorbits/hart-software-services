@@ -40,9 +40,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "drivers/CoreSPI/core_spi.h"
+#include "drivers/mss/CoreSPI/core_spi.h"
 #include "drivers/mss/mss_sys_services/mss_sys_services.h"
-#include "drivers/mt25ql01gbbb/micron1gflash.h"
+#include "drivers/mss/mt25ql01gbbb/micron1gflash.h"
 
 /*----------------------------Constant Definitions--------------------------*/
 

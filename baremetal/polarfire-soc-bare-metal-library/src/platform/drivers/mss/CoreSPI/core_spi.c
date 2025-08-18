@@ -11,12 +11,12 @@
  * SVN $Date: 2018-01-16 16:43:50 +0530 (Tue, 16 Jan 2018) $
  */
 
-#include "core_spi.h"
-#include "corespi_regs.h"
-#include "../baremetal/polarfire-soc-bare-metal-library/src/platform/hal/hal_assert.h"
-#include "../baremetal/polarfire-soc-bare-metal-library/src/platform/hal/hal.h"
-#include <string.h>
-
+ #include "core_spi.h"
+ #include "corespi_regs.h"
+ #include "../../../hal/hal.h"
+ #include "../../../hal/hal_assert.h"
+ #include <string.h>
+ 
 /*******************************************************************************
  * Null parameters with appropriate type definitions
  */
