@@ -9,8 +9,8 @@
 
 /**
 // MME: This is not Debug UART?
- * \file HSS Debug UART Initalization
- * \brief Debug UART Initialization
+ * \file HSS Inter Hart communication Initalization
+ * \brief Debug Inter Hart communication Initialization
  */
 
 #include "config.h"

@@ -233,10 +233,15 @@ static inline bool strings_equal(const char *a, const char *b);
 
 bool tryBootFromStorage(int storageIndex, const char* message, int emmcType);
 bool tryBootFromStorage(int storageIndex, const char* message, int emmcType) {
+    bool result = false;
    // mHSS_DEBUG_PRINTF(LOG_NORMAL, "Trying to get boot %s image via %s ...\n", message, pStorages[storageIndex]->name);
    // MME: Enabling emmc cannot fail? 
-    HSS_slot_enable_emmc(emmcType);
-    bool result = false;
+    result = HSS_slot_enable_emmc(emmcType);
+
+    if (!result) {
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "Failed to enable %s slot %d\n", message, emmcType);
+        return false;
+    }
 
     if (strings_equal(pStorages[storageIndex]->name, "MMC1")) {
         result = true;
@@ -280,6 +285,12 @@ bool HSS_BootInit(void)
             result = tryBootFunction_(pDefaultStorage, pDefaultStorage->getBootImage);
         }
     } else {
+        /*
+        * Rationale for using if/else-if instead of switch:
+        *  - We want explicit, ordered guards including range checks (e.g., '>= QSPI')
+        *    which are not as natural in a switch.
+        *  - This adds single-bit flip tolerance, for safety and robustness.
+        */
         memory_type_t bootSeq = HSS_slot_get_boot_sequence(0);
         if (bootSeq == 0) {
             skip_boot_0 = true;
