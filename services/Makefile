@@ -30,13 +30,11 @@ include services/beu/Makefile
 include services/boot/Makefile
 include services/ddr/Makefile
 include services/goto/Makefile
-include services/healthmon/Makefile
 include services/ipi_poll/Makefile
 include services/mmc/Makefile
 include services/opensbi/Makefile
 include services/qspi/Makefile
 include services/reboot/Makefile
-include services/scrub/Makefile
 include services/sgdma/Makefile
 include services/spi/Makefile
 include services/startup/Makefile
@@ -44,4 +42,3 @@ include services/tinycli/Makefile
 include services/uart/Makefile
 include services/usbdmsc/Makefile
 include services/wdog/Makefile
-include services/ymodem/Makefile
