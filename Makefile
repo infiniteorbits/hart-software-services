@@ -63,6 +63,13 @@ endif
 #  #$(shell mkdir -p $(BINDIR))
 #endif
 
+# Include Conan generated dependency makefile
+CONAN_INCLUDE_DIR_FLAG = -I 
+CONAN_LIB_DIR_FLAG = -L
+CONAN_BIN_DIR_FLAG = 
+CONAN_LIB_FLAG = -l
+include $(BIN_DIR)/conandeps.mk
+
 CORE_CFLAGS+=-DBOARD=${BOARD}
 
 MCMODEL=-mcmodel=medany
