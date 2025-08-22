@@ -39,11 +39,10 @@ LINKER_SCRIPT-l2scratch=boards/${BOARD}/hss-l2scratch.ld
 BOARD_DIR=boards/mpfs-icicle-kit-es
 
 INCLUDES += \
-	-I$(BOARD_DIR)/mpfs_hal_config/ \
 	$(CONAN_INCLUDE_DIRS_ICICLE_KIT_REF_DESIGN)
-	-I$(BINDIR)/$(BOARD_DIR)/ \
-	-I$(BOARD_DIR)/ \
-	$(CONAN_INCLUDE_DIRS_POLARFIRE_SOC_PLATFORM) \
+	# -I$(BINDIR)/$(BOARD_DIR)/ \
+	# -I$(BOARD_DIR)/ \
+	$(CONAN_INCLUDE_DIRS_ORBSIGHT2_PLATFORM) \
 
 EXTRA_SRCS-y += \
 	$(BOARD_DIR)/hss_uart_init.c \
@@ -64,34 +63,6 @@ EXTRA_OBJS-$(CONFIG_SERVICE_BOOT_USE_PAYLOAD) += $(BOARD_DIR)/payload.o
 $(BOARD_DIR)/payload.o: $(BOARD_DIR)/payload.bin
 	$(LD) -r -b binary $< -o $@
 else
-endif
-
-################################################################################################
-#
-# Extra hardware dependency rules for QSPI
-#
-
-INCLUDES += \
-	-Ibaremetal/ \
-
-ifdef CONFIG_SERVICE_QSPI_WINBOND_W25N01GV
-INCLUDES += \
-	-Ibaremetal/drivers/winbond_w25n01gv \
-
-EXTRA_SRCS-$(CONFIG_SERVICE_QSPI) += \
-	baremetal/drivers/winbond_w25n01gv/winbond_w25n01gv.c
-
-$(BINDIR)/baremetal/drivers/winbond_w25n01gv/winbond_w25n01gv.o: CFLAGS=$(CFLAGS_GCCEXT)
-endif
-
-ifdef CONFIG_SERVICE_QSPI_MICRON_MQ25T
-INCLUDES += \
-	-Ibaremetal/drivers/micron_mt25q \
-
-EXTRA_SRCS-$(CONFIG_SERVICE_QSPI) += \
-	baremetal/drivers/micron_mt25q/micron_mt25q.c
-
-$(BINDIR)/baremetal/drivers/micron_mt25q/micron_mt25q.o: CFLAGS=$(CFLAGS_GCCEXT)
 endif
 
 

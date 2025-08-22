@@ -25,7 +25,7 @@
 #include "hss_slot_selection.h"
 
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
-#  include <mss_sys_services.h>
+#  include "drivers/mss/mss_sys_services/mss_sys_services.h"
 #  define SPI_FLASH_BOOT_ENABLED (CONFIG_SERVICE_BOOT_SPI_FLASH_OFFSET != 0xFFFFFFFF)
 #else
 #  define SPI_FLASH_BOOT_ENABLED 0
@@ -45,7 +45,7 @@
 #endif
 
 #if (SPI_FLASH_BOOT_ENABLED)
-#  include "mss_sys_services.h"
+#  include "drivers/mss/mss_sys_services/mss_sys_services.h"
 #endif
 
 #include "hss_state_machine.h"

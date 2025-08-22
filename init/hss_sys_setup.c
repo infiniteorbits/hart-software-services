@@ -38,21 +38,21 @@
 
 #define RISCV_CSR_ENCODING_H
 #define RISCV_ENCODING_H
-#include "mss_sysreg.h"
-#include "mss_plic.h"
-#include "mss_util.h"
-#include "mss_mpu.h"
-#include "mss_l2_cache.h"
-#include "nwc/mss_io_config.h"
-#include "system_startup.h"
+#include "mpfs_hal/common/mss_sysreg.h"
+#include "mpfs_hal/common/mss_plic.h"
+#include "mpfs_hal/common/mss_util.h"
+#include "mpfs_hal/common/mss_mpu.h"
+#include "mpfs_hal/common/mss_l2_cache.h"
+#include "mpfs_hal/common/nwc/mss_io_config.h"
+#include "mpfs_hal/startup_gcc/system_startup.h"
 #include "hss_memcpy_via_pdma.h"
 
 #include "mpfs_reg_map.h"
 #include "hss_sys_setup.h"
 
-#include "mss_beu_def.h"
-#include "mss_beu.h"
-#include "mss_peripherals.h"
+#include "mpfs_hal/common/mss_beu_def.h"
+#include "mpfs_hal/common/mss_beu.h"
+#include "mpfs_hal/common/mss_peripherals.h"
 
 /******************************************************************************/
 

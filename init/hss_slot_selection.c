@@ -33,14 +33,14 @@
 #include "hss_init.h"
 #include "hss_slot_selection.h"
 #include "mmc_service.h"
-#include "mss_mmc.h"
+#include "drivers/mss/mss_mmc/mss_mmc.h"
 #include "hss_crc32.h"
 #include "hss_debug.h"
 #include "thirdparty/md5/md5.h"
 #include <stdint.h>
 #include <string.h>
 
-#include "drivers/mss/CoreSPI/core_spi.h"
+// #include "drivers/mss/CoreSPI/core_spi.h"
 #include "drivers/mss/mss_sys_services/mss_sys_services.h"
 #include "drivers/mss/mt25ql01gbbb/micron1gflash.h"
 

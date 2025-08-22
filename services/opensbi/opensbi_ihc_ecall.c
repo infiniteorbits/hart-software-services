@@ -28,7 +28,7 @@
 #include <sbi/riscv_asm.h>
 #include <sbi/riscv_barrier.h>
 
-#include "miv_ihc.h"
+#include "drivers/fpga_ip/miv_ihc/miv_ihc.h"
 #include "opensbi_ecall.h"
 #include "opensbi_ihc_ecall.h"
 

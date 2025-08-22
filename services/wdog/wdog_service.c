@@ -28,8 +28,8 @@
 #include "sbi/sbi_ecall_interface.h"
 #include "csr_helper.h"
 
-#include "mss_watchdog.h"
-#include "mss_sysreg.h"
+#include "drivers/mss/mss_watchdog/mss_watchdog.h"
+#include "mpfs_hal/common/mss_sysreg.h"
 
 #include "mpfs_reg_map.h"
 

@@ -14,15 +14,15 @@
 
 // undefine OPENSBI as we want to use MPFS_HAL types in this module
 #undef CONFIG_OPENSBI
-#include "mss_plic.h"
-#include "mss_clint.h"
+#include "mpfs_hal/common/mss_plic.h"
+#include "mpfs_hal/common/mss_clint.h"
 #include <stdbool.h>
 #include "flash_drive_app.h"
 #include "drivers/mss/mss_usb/mss_usb_device.h"
 #include "drivers/mss/mss_usb/mss_usb_device_msd.h"
 #include "hal/hal.h"
-#include "mss_hal.h"
-#include "mss_mpu.h"
+#include "mpfs_hal/mss_hal.h"
+#include "mpfs_hal/common/mss_mpu.h"
 #include "drivers/mss/mss_mmc/mss_mmc.h"
 
 #include "hss_types.h"

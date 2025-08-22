@@ -67,7 +67,7 @@
 #include "mpfs_reg_map.h"
 
 #include "reboot_service.h"
-#include "clocks/hw_mss_clks.h"    // LIBERO_SETTING_MSS_RTC_TOGGLE_CLK
+#include "fpga_design_config/clocks/hw_mss_clks.h"
 
 #define MPFS_HART_COUNT            5
 #define MPFS_HART_STACK_SIZE       8192

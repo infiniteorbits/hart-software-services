@@ -39,7 +39,7 @@ extern "C" {
 //#  define TICKS_PER_SEC 50000llu // This is about 1 sec on RENODE
 //#  define TICKS_PER_MILLISEC 5llu // This is about 1 millisec on RENODE
 
-#include "clocks/hw_mss_clks.h"
+#include "fpga_design_config/clocks/hw_mss_clks.h"
 #define TICKS_PER_SEC         ((unsigned long long)LIBERO_SETTING_MSS_RTC_TOGGLE_CLK)
 #define TICKS_PER_MILLISEC    (TICKS_PER_SEC/1000llu)
 #define ONE_SEC               (1llu * TICKS_PER_SEC)

@@ -5,7 +5,7 @@
 #include "hss_slot_selection.h"
 
 #include "config.h"
-#include "mss_mmc.h"
+#include "drivers/mss/mss_mmc/mss_mmc.h"
 #include <string.h>
 #include <assert.h>
 

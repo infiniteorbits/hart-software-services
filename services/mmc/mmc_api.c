@@ -24,16 +24,16 @@
 #include <string.h>
 
 #include "mmc_service.h"
-#include "encoding.h"
+#include "mpfs_hal/common/encoding.h"
 #ifdef CONFIG_MODULE_M100PFS
 #include "mss_gpio.h"
 #endif
-#include "mss_mmc.h"
+#include "drivers/mss/mss_mmc/mss_mmc.h"
 #include "hal/hw_macros.h"
 #ifndef __IO
 #  define __IO volatile
 #endif
-#include "mss_io_config.h"
+#include "mpfs_hal/common/nwc/mss_io_config.h"
 #include "hss_memcpy_via_pdma.h"
 
 /*
@@ -52,7 +52,7 @@
 
 // ---------------------------------------------------------------------------------------------
 
-#include "mss_sysreg.h"
+#include "mpfs_hal/common/mss_sysreg.h"
 
 extern uint8_t PLIC_mmc_main_IRQHandler(void);
 

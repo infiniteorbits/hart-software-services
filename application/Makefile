@@ -35,8 +35,8 @@ SRCS-y += \
     application/hart0/hss_registry.c \
 
 INCLUDES +=\
-    -I./include \
-    -I$(BINDIR) \
+    -Iinclude \
+    # -I$(BINDIR) \
     -I.
 
 ASM_SRCS += \

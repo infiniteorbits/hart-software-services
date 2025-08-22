@@ -28,9 +28,9 @@
 #include "sbi/riscv_encoding.h"
 #include "sbi/sbi_ecall_interface.h"
 
-#include "mss_watchdog.h"
-#include "mss_sysreg.h"
-#include "mss_sys_services.h"
+#include "drivers/mss/mss_watchdog/mss_watchdog.h"
+#include "mpfs_hal/common/mss_sysreg.h"
+#include "drivers/mss/mss_sys_services/mss_sys_services.h"
 
 #include "mpfs_fabric_reg_map.h"
 

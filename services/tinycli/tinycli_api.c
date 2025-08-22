@@ -45,7 +45,7 @@
 #include "hss_registry.h"
 #include "assert.h"
 
-#include "clocks/hw_mss_clks.h" // LIBERO_SETTING_MSS_RTC_TOGGLE_CLK
+#include "fpga_design_config/clocks/hw_mss_clks.h"
 
 #if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
 #    include "usbdmsc_service.h"

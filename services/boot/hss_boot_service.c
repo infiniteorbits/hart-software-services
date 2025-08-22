@@ -24,7 +24,7 @@
 #include "hss_clock.h"
 #include "hss_debug.h"
 #include "hss_perfctr.h"
-#include "common/mss_peripherals.h"
+#include "mpfs_hal/common/mss_peripherals.h"
 #include "hss_crc32.h"
 #include "u54_state.h"
 #include "hss_trigger.h"
@@ -58,10 +58,10 @@
 
 #include "hss_atomic.h"
 
-#include "mss_sysreg.h"
+#include "mpfs_hal/common/mss_sysreg.h"
 
 #include "hss_memcpy_via_pdma.h"
-#include "system_startup.h"
+#include "mpfs_hal/startup_gcc/system_startup.h"
 #include "fpga_design_config/fpga_design_config.h"
 
 #if IS_ENABLED(CONFIG_CRYPTO_SIGNING)

@@ -24,8 +24,8 @@
 #include "hss_types.h"
 #include "ssmb_ipi.h"
 
-#include "mss_plic.h"
-#include "miv_ihc.h"
+#include "mpfs_hal/common/mss_plic.h"
+#include "drivers/fpga_ip/miv_ihc/miv_ihc.h"
 
 #if IS_ENABLED(CONFIG_HSS_USE_IHC)
 static uint32_t hss_ihc_incoming_(uint32_t remote_hartid, uint32_t *p_message_in, uint32_t message_size, bool is_ack_required, uint32_t *p_message_storage)

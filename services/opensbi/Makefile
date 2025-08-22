@@ -127,7 +127,8 @@ INCLUDES += \
 	-I./services/opensbi \
 	-I./$(OPENSBI_SRC_DIR)/include/sbi \
 	-I./$(OPENSBI_SRC_DIR)/include \
-	-I./$(OPENSBI_SRC_DIR)/lib/utils/libfdt
+	-I./$(OPENSBI_SRC_DIR)/lib/utils/libfdt \
+	$(CONAN_INCLUDE_DIRS_ORBSIGHT2_PLATFORM) 
 endif
 
 ifdef CONFIG_PROVIDE_DTB

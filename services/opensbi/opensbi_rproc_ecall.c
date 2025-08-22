@@ -29,7 +29,7 @@
 #endif
 
 
-#include "miv_ihc.h"
+#include "drivers/fpga_ip/miv_ihc/miv_ihc.h"
 #include "opensbi_ecall.h"
 #include "opensbi_rproc_ecall.h"
 #include "hss_boot_service.h"

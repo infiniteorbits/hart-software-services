@@ -21,7 +21,7 @@
 #include <assert.h>
 #include "csr_helper.h"
 
-#include "mss_plic.h"
+#include "mpfs_hal/common/mss_plic.h"
 #include "mpfs_reg_map.h"
 
 // Register Defintions

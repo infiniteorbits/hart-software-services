@@ -26,8 +26,8 @@
 #include "beu_service.h"
 #include "sbi_bitops.h"
 
-#include "mss_beu_def.h"
-#include "mss_beu.h"
+#include "mpfs_hal/common/mss_beu_def.h"
+#include "mpfs_hal/common/mss_beu.h"
 
 static void beu_init_handler(struct StateMachine * const pMyMachine);
 static void beu_monitoring_handler(struct StateMachine * const pMyMachine);

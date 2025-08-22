@@ -23,10 +23,10 @@
 #include <assert.h>
 #include <string.h>
 
-#include "ddr/hw_ddr_segs.h"
-#include "nwc/mss_nwc_init.h"
-#include "mss_hal.h"
-#include "mss_l2_cache.h"
+#include "fpga_design_config/ddr/hw_ddr_segs.h"
+#include "mpfs_hal/common/nwc/mss_nwc_init.h"
+#include "mpfs_hal/mss_hal.h"
+#include "mpfs_hal/common/mss_l2_cache.h"
 
 #include "hss_init.h"
 

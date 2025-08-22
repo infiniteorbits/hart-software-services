@@ -46,10 +46,10 @@
 #include "mpfs_reg_map.h"
 
 #include "hss_memcpy_via_pdma.h"
-#include "mpfs_hal_version.h"
-#include "miv_ihc_version.h"
-#include "mss_sys_services.h"
-#include "mss_sysreg.h"
+#include "mpfs_hal/mpfs_hal_version.h"
+#include "drivers/fpga_ip/miv_ihc/miv_ihc_version.h"
+#include "drivers/mss/mss_sys_services/mss_sys_services.h"
+#include "mpfs_hal/common/mss_sysreg.h"
 
 /**
  * \brief Main Initialization Function
@@ -102,7 +102,8 @@ extern const uint64_t hss_init_ddrhi_start, hss_init_ddrhi_end;
 #define DDRHI_START          (&hss_init_ddrhi_start)
 #define DDRHI_END            (&hss_init_ddrhi_end)
 
-#include "mss_sysreg.h"
+// TODO MME: Why do we include it a second time
+#include "mpfs_hal/common/mss_sysreg.h"
 
 bool HSS_ZeroDDR(void)
 {
@@ -121,7 +122,7 @@ bool HSS_ZeroDDR(void)
 }
 
 /* Init memories.. */
-#include "system_startup.h"
+#include "mpfs_hal/startup_gcc/system_startup.h"
 bool HSS_ZeroTIMs(void)
 {
 #if IS_ENABLED(CONFIG_INITIALIZE_MEMORIES)

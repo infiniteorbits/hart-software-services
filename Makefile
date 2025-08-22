@@ -29,7 +29,9 @@
 
 SHELL=/bin/sh
 
-BINDIR=build
+ifndef BINDIR
+	BINDIR=build
+endif
 DOT_CONFIG=.config
 CONFIG_H=config.h
 
@@ -68,11 +70,13 @@ CONAN_INCLUDE_DIR_FLAG = -I
 CONAN_LIB_DIR_FLAG = -L
 CONAN_BIN_DIR_FLAG = 
 CONAN_LIB_FLAG = -l
-include $(BIN_DIR)/conandeps.mk
+include $(BINDIR)/conandeps.mk
 
 CORE_CFLAGS+=-DBOARD=${BOARD}
 
 MCMODEL=-mcmodel=medany
+# Project wide include relies on the FPGA design 
+INCLUDES = -I. -I$(shell pwd)/include $(CONAN_INCLUDE_DIRS_ICICLE_KIT_REF_DESIGN)
 
 include application/rules.mk
 include application/targets.mk
