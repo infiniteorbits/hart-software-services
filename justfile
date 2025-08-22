@@ -1,18 +1,16 @@
 set dotenv-load
 
 
-BUILD_ROOT    := "build"
-
+export BINDIR    := "build"
 COMPILE_DB     := "compile_commands.json"
-
-
-
 
 build:
     #!/usr/bin/env bash
     source .env
-    bear -- make
+    conan install . --profile io-sw-pld --output-folder={{BINDIR}}
+    # TODO Forward board value from profile
+    bear --append -- make
 
 clean:
-    rm -fR {{BUILD_ROOT}} {{COMPILE_DB}}
+    rm -fR {{BINDIR}} {{COMPILE_DB}}
 
