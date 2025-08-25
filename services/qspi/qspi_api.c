@@ -23,16 +23,16 @@
 #include <string.h>
 
 #include "qspi_service.h"
-#include "encoding.h"
-#include "mss_qspi.h"
-#include "mss_sys_services.h"
+#include "mpfs_hal/common/encoding.h"
+#include "drivers/mss/mss_qspi/mss_qspi.h"
+#include "drivers/mss/mss_sys_services/mss_sys_services.h"
 
 #include "mss_peripherals.h"
 #if IS_ENABLED(CONFIG_SERVICE_QSPI_WINBOND_W25N01GV)
-#  include "winbond_w25n01gv.h"
+#  include "drivers/winbond_w25n01gv/winbond_w25n01gv.h"
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_QSPI_MICRON_MQ25T)
-#  include "micron_mt25q.h"
+#  include "drivers/micron_mt25q/micron_mt25q.h"
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_WDOG)
 #  include "wdog_service.h"

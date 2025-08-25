@@ -66,6 +66,7 @@ endif
 #endif
 
 # Include Conan generated dependency makefile
+CONAN_DEFINE_FLAG = -D
 CONAN_INCLUDE_DIR_FLAG = -I 
 CONAN_LIB_DIR_FLAG = -L
 CONAN_BIN_DIR_FLAG = 
@@ -76,12 +77,12 @@ CORE_CFLAGS+=-DBOARD=${BOARD}
 
 MCMODEL=-mcmodel=medany
 # Project wide include relies on the FPGA design 
-INCLUDES = -I. -I$(shell pwd)/include $(CONAN_INCLUDE_DIRS_ICICLE_KIT_REF_DESIGN)
+INCLUDES = -I. -I$(shell pwd)/include $(CONAN_INCLUDE_DIRS_POLARFIRE_FPGA_DESIGN)
 
 include application/rules.mk
 include application/targets.mk
 include init/Makefile
-include baremetal/Makefile
+# include baremetal/Makefile
 include services/Makefile
 include modules/Makefile
 
@@ -127,7 +128,7 @@ define main-build-target
 	$(CC) -T $(LINKER_SCRIPT-$(1)) $(CFLAGS_GCCEXT) $(OPT-y) \
 		 -static -nostdlib -nostartfiles -nodefaultlibs \
 		 -Wl,--build-id -Wl,-Map=$(BINDIR)/output-$(1).map -Wl,--gc-sections \
-		 -o $(BINDIR)/$@ $(OBJS-$(1)) $(EXTRA_OBJS-$(1)) $(LIBS) $(LIBS-y)
+		 -o $(BINDIR)/$@ $(OBJS-$(1)) $(EXTRA_OBJS-$(1)) $(LIBS) $(LIBS-y) $(CONAN_LIB_DIRS_ORBSIGHT2_HSS_PLATFORM) $(CONAN_LIBS_ORBSIGHT2_HSS_PLATFORM)
 	$(ECHO) " NM        `basename $@ .elf`.sym";
 	$(NM) -n $(BINDIR)/$@ > $(BINDIR)/`basename $@ .elf`.sym
 endef

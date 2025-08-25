@@ -22,7 +22,7 @@
 #include "csr_helper.h"
 
 #include "device_serial_number.h"
-#include "mss_sys_services.h"
+#include "drivers/mss/mss_sys_services/mss_sys_services.h"
 
 /****************************************************************************/
 

@@ -31,5 +31,6 @@ EXTRA_SRCS-$(CONFIG_SERVICE_QSPI) += \
 
 INCLUDES +=\
 	-I./services/qspi \
+	$(CONAN_INCLUDE_DIRS_ORBSIGHT2_HSS_PLATFORM)/mpfs_hal/common  # TODO Create patch for platform code
 
 $(BINDIR)/services/qspi/qspi_api.o: CFLAGS=$(CFLAGS_GCCEXT)
