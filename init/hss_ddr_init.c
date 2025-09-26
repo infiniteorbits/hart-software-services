@@ -170,7 +170,7 @@ bool HSS_DDRPrintL2CacheWayMasks(void)
  */
 
 static size_t ddr_training_progress = 0;
-#define TYPICAL_DDR_TRAINING_ITERATIONS 5u
+#define TYPICAL_DDR_TRAINING_ITERATIONS 50u
 
 bool HSS_DDRInit(void)
 {
@@ -212,9 +212,7 @@ bool HSS_DDRInit(void)
 
 void ddr_report_progress(void) // override weak symbol to report training progress...
 {
-    HSS_ShowProgress(TYPICAL_DDR_TRAINING_ITERATIONS,
-        (ddr_training_progress < TYPICAL_DDR_TRAINING_ITERATIONS) ?
-            TYPICAL_DDR_TRAINING_ITERATIONS - ddr_training_progress : 1);
+    HSS_ShowProgress(TYPICAL_DDR_TRAINING_ITERATIONS, TYPICAL_DDR_TRAINING_ITERATIONS - (ddr_training_progress % TYPICAL_DDR_TRAINING_ITERATIONS));
 
     ++ddr_training_progress;
 

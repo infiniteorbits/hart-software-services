@@ -32,17 +32,18 @@ void HSS_ShowProgress(const size_t totalNumTasks, const size_t numTasksRemaining
     if (progressPercent == 100u) {
         mHSS_PUTS("                                                                \r");
     } else if (oldProgressPercent != progressPercent) {
-        mHSS_PRINTF("  % 3u%%", progressPercent);
+        mHSS_PUTS("  Training in progress ");
 
         mHSS_PUTS(" [");
 
-        const uint8_t scale = 2u;
+        const uint8_t scale = 3u;
         uint8_t done = progressPercent/scale;
         uint8_t toDo = (100u)/scale - done;
 
         for (uint8_t i = 0u; i < done; i++) {
-            mHSS_PUTS("\033[48;5;11m \033[0m");
+            mHSS_PUTC('.');
         }
+        mHSS_PUTS("\033[48;5;11m \033[0m");
         for (uint8_t i = 0u; i < toDo; i++) {
             mHSS_PUTC('.');
         }
