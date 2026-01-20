@@ -273,8 +273,8 @@ bool HSS_MMC_ReadBlock(void *pDest, size_t srcOffset, size_t byteCount)
         result = PLIC_mmc_main_IRQHandler();
     } while (MSS_MMC_TRANSFER_IN_PROGRESS == result);
 
-    //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Calling MSS_MMC_sdma_read(%lu, %p) "
-    //    "(%lu bytes remaining)\n", src_sector_num, pCDest, sectorByteCount);
+    /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "Calling MSS_MMC_sdma_read(%lu, %p) "
+    ///    "(%lu bytes remaining)\n", src_sector_num, pCDest, sectorByteCount);
     result = MSS_MMC_sdma_read(src_sector_num, (uint8_t *)pCDest, sectorByteCount);
 
     while (result == MSS_MMC_TRANSFER_IN_PROGRESS) {
@@ -288,9 +288,9 @@ bool HSS_MMC_ReadBlock(void *pDest, size_t srcOffset, size_t byteCount)
 
         src_sector_num += (uint32_t)(sectorByteCount / HSS_MMC_SECTOR_SIZE);
 
-        //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Dealing with remainder (less that full sector)\n");
-        //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Calling MSS_MMC_single_block_read(%lu, %p) "
-        //    "(%lu bytes remaining)\n", src_sector_num, runtBuffer, byteCount);
+        /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "Dealing with remainder (less that full sector)\n");
+        /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "Calling MSS_MMC_single_block_read(%lu, %p) "
+        ///    "(%lu bytes remaining)\n", src_sector_num, runtBuffer, byteCount);
         result = MSS_MMC_sdma_read(src_sector_num, (uint8_t *)runtBuffer, HSS_MMC_SECTOR_SIZE);
 
         while (result == MSS_MMC_TRANSFER_IN_PROGRESS) {

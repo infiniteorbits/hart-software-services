@@ -64,7 +64,7 @@ bool HSS_UARTInit(void);
 bool HSS_LogoInit(void);
 #endif
 
-#if IS_ENABLED(CONFIG_USE_IHC)
+#if IS_ENABLED(CONFIG_USE_IHC) || IS_ENABLED(CONFIG_USE_IHC_V2)
 bool HSS_IHCInit(void);
 void HSS_IHCInit_U54(void);
 #endif

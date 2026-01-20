@@ -63,7 +63,7 @@ PROVIDE(HEAP_SIZE = 64k);
 PROVIDE(STACK_SIZE_PER_HART = 16k);
 MEMORY
 {
-    envm (rx) :		ORIGIN = 0x20220100,	LENGTH = (128k-256)
+    envm (rx) :		ORIGIN = 0x20220100,	LENGTH = 280k
     dtim (rwx) :	ORIGIN = 0x01000000,	LENGTH = 8k
     e51_itim (rwx) :	ORIGIN = 0x01800000,	LENGTH = 28k
     u54_1_itim (rwx) :	ORIGIN = 0x01808000,	LENGTH = 28k

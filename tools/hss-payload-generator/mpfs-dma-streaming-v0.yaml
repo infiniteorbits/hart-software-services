@@ -1,0 +1,17 @@
+# HSS Payload Configuration
+set-name: 'DMA-Streaming'
+
+set-name: 'DMA-Streaming'
+
+# This block is sometimes required at the TOP level in 0.99.44
+hart-entry-points:
+  u54_1: '0x80000000'
+  u54_2: '0x80000000'
+
+payloads:
+  /home/trajce-nikolov/Git/hart-software-services/tools/hss-payload-generator/bin/mpfs-dma-streaming-v0.elf: {
+    exec-addr: '0x80000000',
+    owner-hart: u54_1,
+    priv-mode: prv_m,
+    skip-opensbi: true
+  }

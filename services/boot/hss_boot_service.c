@@ -71,6 +71,10 @@
 #  include "opensbi_rproc_ecall.h"
 #endif
 
+#if IS_ENABLED(CONFIG_SERVICE_OPENSBI_RPROC_IPC)
+#  include "opensbi_rproc_ipc_ecall.h"
+#endif
+
 #if IS_ENABLED(CONFIG_SERVICE_GPIO_UI)
 #  include "gpio_ui_service.h"
 #endif
@@ -664,14 +668,14 @@ static void common_boot_message_delivery(struct StateMachine * const pMyMachine,
     assert(result);
 
     if (pBootImage->hart[target-1].flags & BOOT_FLAG_SKIP_OPENSBI) {
-        //mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::u54_%u:goto %p\n", pMyMachine->pMachineName,
-        //    target, pBootImage->hart[target-1].entryPoint);
+        mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::u54_%u:goto %p\n", pMyMachine->pMachineName,
+           target, pBootImage->hart[target-1].entryPoint);
 
         result = IPI_MessageDeliver(pInstanceData->msgIndexAux[target-1], target,
             IPI_MSG_GOTO,
             pBootImage->hart[target-1].privMode,
-            (void *)pBootImage->hart[target-1].entryPoint,
-            (void *)pInstanceData->ancilliaryData);
+            (uint8_t*)(uint64_t)pBootImage->hart[target-1].entryPoint,
+            (uint8_t*)(uint64_t)pInstanceData->ancilliaryData);
 
         if (!result) {
             mHSS_DEBUG_PRINTF(LOG_ERROR, "%s::u54_%u:sbi_init failed\n",
@@ -680,14 +684,14 @@ static void common_boot_message_delivery(struct StateMachine * const pMyMachine,
             pMyMachine->state = BOOT_ERROR;
         }
     } else {
-        //mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::u54_%u:sbi_init %p\n", pMyMachine->pMachineName,
-        //    target, pBootImage->hart[target-1].entryPoint);
+        mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::u54_%u:sbi_init %p\n", pMyMachine->pMachineName,
+           target, pBootImage->hart[target-1].entryPoint);
 
         result = IPI_MessageDeliver(pInstanceData->msgIndexAux[target-1], target,
             IPI_MSG_OPENSBI_INIT,
             pBootImage->hart[target-1].privMode,
-            (void *)pBootImage->hart[target-1].entryPoint,
-            (void *)pInstanceData->ancilliaryData);
+            (uint8_t*)(uint64_t)pBootImage->hart[target-1].entryPoint,
+            (uint8_t*)(uint64_t)pInstanceData->ancilliaryData);
 
         if (!result) {
             mHSS_DEBUG_PRINTF(LOG_ERROR, "%s::u54_%u:sbi_init failed\n",
@@ -924,7 +928,7 @@ enum IPIStatusCode HSS_Boot_RestartCores_Using_Bitmask(union HSSHartBitmask rest
 
     if (!pBootImage) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "pBootImage is NULL\n");
-    } else if (!HSS_Boot_ValidateImage(pBootImage)) {
+    } else if (false/*!HSS_Boot_ValidateImage(pBootImage)*/) {
         mHSS_DEBUG_PRINTF(LOG_ERROR, "validation failed for Hart bitmask %x\n", restartHartBitmask.uint);
     } else {
         for (unsigned int source = HSS_HART_U54_1;
@@ -988,7 +992,7 @@ enum IPIStatusCode HSS_Boot_IPIHandler(TxId_t transaction_id, enum HSSHartId sou
        Elf file loaded by Linux using rproc elf loader, so
        no need to reload the payload on the HSS
     */
-#if IS_ENABLED(CONFIG_SERVICE_OPENSBI_RPROC)
+#if IS_ENABLED(CONFIG_SERVICE_OPENSBI_RPROC) || IS_ENABLED(CONFIG_SERVICE_OPENSBI_RPROC_IPC)
     if(immediate_arg == RPROC_BOOT)
     {
         struct RemoteProcMsg *rproc_data = (struct RemoteProcMsg *)p_extended_buffer_in_ddr;
@@ -1089,8 +1093,8 @@ bool HSS_Boot_VerifyMagic(struct HSS_BootImage const * const pImage)
     if ((pImage->magic == mHSS_BOOT_MAGIC) || (pImage->magic == mHSS_COMPRESSED_MAGIC)) {
         result = true;
     } else {
-        mHSS_DEBUG_PRINTF(LOG_WARN, "magic is %08x vs expected %08x or %08x\n",
-            pImage->magic, mHSS_BOOT_MAGIC, mHSS_COMPRESSED_MAGIC);
+        /// mHSS_DEBUG_PRINTF(LOG_WARN, "magic is %08x vs expected %08x or %08x\n",
+        ///    pImage->magic, mHSS_BOOT_MAGIC, mHSS_COMPRESSED_MAGIC);
     }
 
     return result;

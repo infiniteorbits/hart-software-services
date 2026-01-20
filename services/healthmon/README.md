@@ -11,4 +11,4 @@ The intention is that the board subdirectory selected will provide an implementa
 provided, weakly bound versions will ensure the system links, but no health monitoring will be performed.
 
 `monitors` is specific to each board/design, and `monitor_status` and `monitors_array_size` are derived from monitors.
-As an example of use, please see `boards/mpfs-icicle-kit-es/healthmon_monitors.c`
+As an example of use, please see `boards/mpfs-orbsight-2/healthmon_monitors.c`

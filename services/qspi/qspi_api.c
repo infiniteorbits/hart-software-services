@@ -62,6 +62,7 @@ struct FlashDescriptor
 } qspiFlashes[] = {
     { 0xEFAA21u, 2048u, 64u, 1024u, SPI_NAND, "Winbond W25N01GV" }, // EFh => Winbond, AA21h => W25N01GV
     { 0x20BA19u, 256u, 256u, 512u, SPI_NOR, "Micron N25Q256A" }, // 20h => Micron, BA91h => N25Q256A, and using sector as block
+    { 0x016019u, 256u, 1u, 256u, SPI_NOR, "Infineon S25FL256LAGNFV013" },
 };
 
 static uint32_t pageSize, blockSize, dieSize, eraseSize, pageCount, blockCount;
@@ -291,7 +292,7 @@ bool HSS_QSPIInit(void)
 
         uint8_t rd_buf[10] __attribute__ ((aligned(4)));
 
-        Flash_init(MSS_QSPI_QUAD_FULL);
+        Flash_init(MSS_QSPI_NORMAL);
         Flash_readid(rd_buf);
 
         uint32_t jedec_id = ((rd_buf[0] << 16) | (rd_buf[1] <<8) | (rd_buf[2]));
@@ -311,7 +312,7 @@ bool HSS_QSPIInit(void)
                * to overcome this, tweak the pageSize and other parameters of the
                * flash so that the block device is recognized on the host PC.
                */
-                pageSize = QSPI_MIN_BYTE_SECTOR_SIZE;
+                pageSize = 256u; /// QSPI_MIN_BYTE_SECTOR_SIZE;
                 blockSize = pageSize * qspiFlashes[qspiIndex].pagesPerBlock;
                 blockCount = pageSize / 2;
             }
@@ -322,12 +323,12 @@ bool HSS_QSPIInit(void)
             dieSize = blockSize * blockCount;
             spi_type = qspiFlashes[qspiIndex].type;
 
-            // mHSS_DEBUG_PRINTF(LOG_NORMAL, "pageSize: %u\n", pageSize);
-            // mHSS_DEBUG_PRINTF(LOG_NORMAL, "blockSize: %u\n", blockSize);
-            // mHSS_DEBUG_PRINTF(LOG_NORMAL, "eraseSize: %u\n", eraseSize);
-            // mHSS_DEBUG_PRINTF(LOG_NORMAL, "pageCount: %u\n", pageCount);
-            // mHSS_DEBUG_PRINTF(LOG_NORMAL, "blockCount: %u\n", blockCount);
-            // mHSS_DEBUG_PRINTF(LOG_NORMAL, "dieSize: %u\n", dieSize);
+            /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "pageSize: %u\n", pageSize);
+            /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "blockSize: %u\n", blockSize);
+            /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "eraseSize: %u\n", eraseSize);
+            /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "pageCount: %u\n", pageCount);
+            /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "blockCount: %u\n", blockCount);
+            /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "dieSize: %u\n", dieSize);
 
             //
             // we're going to place buffers in DDR for
@@ -383,7 +384,7 @@ __attribute__((nonnull)) bool HSS_QSPI_ReadBlock(void *pDest, size_t srcOffset, 
     bool result = true;
     const uint32_t read_addr = logical_to_physical_address_((uint32_t)srcOffset);
 
-    Flash_init(MSS_QSPI_QUAD_FULL);
+    Flash_init(MSS_QSPI_NORMAL);
     Flash_read((uint8_t *)pDest, read_addr, (uint32_t) byteCount);
     /* Configure the QSPI and Flash back to default values, so that
      * rest of the applications will access the flash with defaults.
@@ -408,7 +409,8 @@ __attribute__((nonnull)) void HSS_QSPI_GetInfo(uint32_t *pBlockSize, uint32_t *p
     *pEraseSize = eraseSize;
     *pBlockCount = pageCount;
 
-    mHSS_DEBUG_PRINTF(LOG_NORMAL, "QSPI: %s - %u byte pages, %u byte blocks, %u pages per block\n",  qspiFlashes[qspiIndex].name, qspiFlashes[qspiIndex].pageSize, qspiFlashes[qspiIndex].blocksPerDie, qspiFlashes[qspiIndex].pagesPerBlock);
+    /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "QSPI: %s - %u byte pages, %u byte blocks, %u pages per block\n",  qspiFlashes[qspiIndex].name, qspiFlashes[qspiIndex].pageSize, qspiFlashes[qspiIndex].blocksPerDie, qspiFlashes[qspiIndex].pagesPerBlock);
+    /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "QSPI: %s\n",  qspiFlashes[qspiIndex].name);
 }
 
 void HSS_QSPI_FlushWriteBuffer(void)

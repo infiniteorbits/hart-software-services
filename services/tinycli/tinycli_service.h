@@ -52,6 +52,7 @@ void HSS_TinyCLI_WaitForUSBMSCDDone(void);
 void HSS_TinyCLI_SurrenderUART(void);
 
 extern struct StateMachine tinycli_service;
+extern void tinyCLI_Reset_(void);
 
 #ifdef __cplusplus
 }

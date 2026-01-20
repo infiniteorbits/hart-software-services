@@ -29,7 +29,7 @@
 #include <string.h>
 
 static uint8_t design_info_[76];
-bool Design_Version_Info_Init(void)
+__attribute__((weak)) bool Design_Version_Info_Init(void)
 {
     bool result = false;
 
@@ -57,7 +57,7 @@ bool Design_Version_Info_Init(void)
     return result;
 }
 
-bool Get_Design_Version_Info(uint8_t **ppBuffer, size_t* pLen)
+__attribute__((weak)) bool Get_Design_Version_Info(uint8_t **ppBuffer, size_t* pLen)
 {
     bool result = false;
     assert(ppBuffer);

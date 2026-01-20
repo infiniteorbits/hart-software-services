@@ -158,10 +158,18 @@ bool GPT_ValidateHeader(HSS_GPT_t *pGpt)
     assert(pGpt != NULL);
 
     HSS_GPT_Header_t * const pGptHeader = &(pGpt->h.header);
-
+#ifdef GPT_DEBUG
+    /// mHSS_DEBUG_PRINTF(LOG_WARN, "GPT signature found: \n");
+    for (uint16_t i = 0; i < 8; ++i)
+    {
+        uint32_t in = pGptHeader->s.u[i];
+        mHSS_DEBUG_PRINTF(LOG_WARN, "%d\n", in);
+    }
+    /// mHSS_DEBUG_PRINTF(LOG_WARN, " \n");
+#endif
     result = (!strncmp(pGptHeader->s.c, (char *)GPT_EXPECTED_SIGNATURE, 8));
     if (!result) {
-        //mHSS_DEBUG_PRINTF(LOG_ERROR, "GPT signature not as expected\n");
+        /// mHSS_DEBUG_PRINTF(LOG_ERROR, "GPT signature not as expected\n");
     } else {
         result = (pGptHeader->revision == GPT_EXPECTED_REVISION);
 

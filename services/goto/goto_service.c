@@ -84,112 +84,147 @@ static void goto_init_handler(struct StateMachine * const pMyMachine)
     pMyMachine->state++;
 }
 
-/////////////////
+
+#include "hss_types.h"
+#include "ssmb_ipi.h"
+#include "goto_service.h"
+
+void GOTO_ReleaseHarts(uintptr_t entry_point,TxId_t transaction_id);
+
+
+// This function is called by the E51 to release the U54 harts
+void GOTO_ReleaseHarts(uintptr_t entry_point,TxId_t transaction_id)
+{
+    mHSS_DEBUG_PRINTF(LOG_NORMAL, "GOTO: Releasing U54_1 to 0x%p\n", entry_point);
+    enum IPIStatusCode status = IPI_Send(HSS_HART_U54_1, IPI_MSG_OPENSBI_INIT, 0, PRV_M, (void*)0x80000000u, 0);
+
+
+    if (status != IPI_SUCCESS) {
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "E51: IPI_Send FAILED with code %d\n", status);
+    } else {
+        mHSS_DEBUG_PRINTF(LOG_NORMAL, "E51: IPI_Send SUCCESSFUL\n");
+    }
+}
+
+////////////////
 static void goto_idle_handler(struct StateMachine * const pMyMachine)
 {
     (void)pMyMachine; // unused
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "called\n");
-}
 
+}
+#if 0
 
 /////////////////
+static __attribute__((naked))
+void hss_final_transition(unsigned long hartid, void* dtb, uintptr_t entry, unsigned long status) ;
+static __attribute__((naked))
+void hss_final_transition(unsigned long hartid, void* dtb, uintptr_t entry, unsigned long status) {
+    __asm__ volatile (
+        "csrw mepc, a2\n\t"
+        "csrw mstatus, a3\n\t"
+        "mret\n\t"
+        : : "r"(hartid), "r"(dtb), "r"(entry), "r"(status) : "memory"
+    );
+}
 
-enum IPIStatusCode HSS_GOTO_IPIHandler(TxId_t transaction_id, enum HSSHartId source, uint32_t immediate_arg, void *p_extended_buffer, void *p_ancilliary_buffer_in_ddr)
-{
-    enum IPIStatusCode result = IPI_FAIL;
-    (void)p_ancilliary_buffer_in_ddr;
+#endif
+#if 1
+void examine_payload(uintptr_t addr, size_t bytes);
+void examine_payload(uintptr_t addr, size_t bytes) {
+    uint32_t *p = (uint32_t *)addr;
+    mHSS_DEBUG_PRINTF(LOG_NORMAL, "--- Payload Hex Dump at 0x%p ---\n", addr);
+    for (int i = 0; i < (bytes / 4); i++) {
+        mHSS_DEBUG_PRINTF(LOG_NORMAL, "%08x ", p[i]);
+        if ((i + 1) % 4 == 0) mHSS_DEBUG_PRINTF(LOG_NORMAL, "\n");
+    }
+    mHSS_DEBUG_PRINTF(LOG_NORMAL, "----------------------------------\n");
+}
 
-    const int hartid = current_hartid();
-
-    if (source != HSS_HART_E51) {
-        mHSS_DEBUG_PRINTF(LOG_NORMAL, "security policy prevented GOTO request from u54_%d\n", source);
-    } else if (hartid == HSS_HART_E51) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "u54_%d: request prohibited by policy\n", HSS_HART_E51);
-    } else {
-        // the following should always be true if we have consumed intents for GOTO...
-        assert(p_extended_buffer != NULL);
-
-        // we ain't coming back from the GOTO, so need to ACK here...
-        IPI_Send(source, IPI_MSG_ACK_COMPLETE, transaction_id, IPI_SUCCESS, NULL, NULL);
-        IPI_MessageUpdateStatus(transaction_id, IPI_IDLE); // free the IPI
-
-        struct IPI_Outbox_Msg *pMsg = IPI_DirectionToFirstMsgInQueue(source, hartid);
-        size_t i;
-
-        for (i = 0u; i < IPI_MAX_NUM_QUEUE_MESSAGES; i++) {
-            if (pMsg->transaction_id == transaction_id) { break; }
-            pMsg++;
-        }
-
-        // if message found process it...
-        if (pMsg->transaction_id == transaction_id) {
-            pMsg->msg_type = IPI_MSG_NO_MESSAGE;
-
-            mHSS_DEBUG_PRINTF(LOG_NORMAL, "Address to execute is %p\n", (void *)p_extended_buffer);
-            CSR_ClearMSIP();
-
-            uint32_t mstatus_val = csr_read(CSR_MSTATUS);
-            mstatus_val = EXTRACT_FIELD(mstatus_val, MSTATUS_MPIE);
-            csr_write(CSR_MSTATUS, mstatus_val);
-            csr_write(CSR_MIE, 0u);
-
-            result = IPI_SUCCESS;
-        }
-
-        if (result != IPI_FAIL) {
-            // From the v1.10 RISC-V Priileged Spec:
-            // The MRET, SRET, or URET instructions are used to return from traps in M-mode, S-mode,
-            // or U-mode respectively. When executing an xRET instruction, supposing x PP holds the
-            // value y, x IE is set to x PIE; the privilege mode is changed to y; x PIE is set to 1;
-            // and x PP is set to U (or M if user-mode is not supported).
-            const uint32_t next_mode = immediate_arg;
-            HSS_U54_SetState(HSS_State_Running);
-
-#if IS_ENABLED(CONFIG_OPENSBI)
-            sbi_hart_switch_mode(hartid, 0u, (unsigned long)p_extended_buffer, next_mode, false /*next_virt -> required hypervisor */);
-#else
-            // set MSTATUS.MPP to Supervisor mode, and set MSTATUS.MPIE to 1
-            uint32_t mstatus_val = csr_read(mstatus);
-
-            // next_mode stores the desired privilege mode to return to..
-            // typically PRV_S
-            //mHSS_DEBUG_PRINTF(LOG_NORMAL, "Setting priv mode to %d\n", next_mode);
-            mstatus_val = INSERT_FIELD(mstatus_val, MSTATUS_MPP, next_mode);
-
-            if (next_mode == PRV_M) {
-                mHSS_DEBUG_PRINTF(LOG_NORMAL, "Booting into M-Mode so clearing MSTATUS:MIE\n");
-                mstatus_val = INSERT_FIELD(mstatus_val, MSTATUS_MPIE, 0);
-                mstatus_val = INSERT_FIELD(mstatus_val, MSTATUS_MIE, 0);
-            } else {
-                mstatus_val = INSERT_FIELD(mstatus_val, MSTATUS_MPIE, 1);
-                mstatus_val = INSERT_FIELD(mstatus_val, MSTATUS_MIE, 1);
-            }
-
-            mstatus_val = INSERT_FIELD(mstatus_val, MSTATUS_SIE, 0);
-            mstatus_val = INSERT_FIELD(mstatus_val, MSTATUS_SPIE, 0);
-            csr_write(mstatus, mstatus_val);
-
-            // set MEPC to function address (smuggled in p_extended_buffer argument)
-            csr_write(mepc, *((void **)p_extended_buffer));
-
-
-
-            // execute MRET, causing MIE <= MPIE, new priv mode <= PRV_S, MPIE <= 1, MPP <= U
-            register unsigned long a0 asm("a0") = hartid;
-            register unsigned long a1 asm("a1") = 0u;
-            asm("mret" : : "r"(a0), "r"(a1));
-            __builtin_unreachable();
+// Define the UART0 Line Status Register and the Empty bit
+#define UART0_LSR (*((volatile uint32_t *)0x20000014u))
+#define LSR_TEMT  0x40u // Transmitter Empty bit
 #endif
 
-            // state machine doesn't want outside framework to send a separate complete
-            // message, as we have jumped somewhere else
-            //
-            // for tidyness/test code, we'll return IPI_IDLE in this scenario if all is okay, or
-            // IPI_FAIL otherwise
-            result = IPI_IDLE;
-        }
+enum IPIStatusCode HSS_GOTO_IPIHandler(TxId_t transaction_id, enum HSSHartId source,
+    uint32_t immediate_arg, void *p_extended_buffer, void *p_ancilliary_buffer_in_ddr)
+{
+    const enum HSSHartId my_hartid = current_hartid();
+    p_extended_buffer = (void*)(uint64_t)0x80000000u;
 
+    // 1. ACKNOWLEDGE IMMEDIATELY
+    // We must tell the E51 we got the message before we jump,
+    // because after the jump, the HSS code on this hart is GONE.
+    IPI_Send(source, IPI_MSG_ACK_COMPLETE, transaction_id, IPI_SUCCESS, NULL, NULL);
+
+    if (source != HSS_HART_E51) {
+        return IPI_FAIL;
     }
 
-    return result;
+    mHSS_DEBUG_PRINTF(LOG_NORMAL, "u54_%d: Processing GOTO...\n", my_hartid);
+#if 1
+    if (p_extended_buffer != NULL) {
+        /// Set state so E51 knows this Hart is now busy/running
+        HSS_U54_SetState(HSS_State_Running);
+
+        // Inside HSS_GOTO_IPIHandler
+        // Use PMP Entry 0 as a "Global Pass"
+        // 0x1FFFFFFFFFFFFFull is the encoding for "All Addresses" in NAPOT
+        csr_write(pmpaddr0, 0x1FFFFFFFFFFFFFull);
+        csr_write(pmpcfg0,  0x1Fu); // NAPOT | R | W | X
+
+        // Clear any existing BEU errors before jumping
+        // The BEU (Bus Error Unit) registers are at 0x01700000
+        *((volatile uint64_t*)0x01700000) = 0ULL;
+
+        // --- CLEANUP ---
+        // --- HARDWARE DE-COUPLE ---
+        //csr_write(mie, 0u);    // Disable all interrupts
+        //csr_write(mip, 0u);    // Clear any pending interrupts
+
+        // Clear the MSIP (Machine Software Interrupt) specifically
+        // to tell the hardware this IPI is finished.
+        /// CSR_ClearMSIP();
+
+        // --- MSTATUS ---
+        ///uint64_t mstatus_val = 0;
+        ///mstatus_val = INSERT_FIELD(mstatus_val, MSTATUS_MPP, PRV_M);
+        ///mstatus_val = INSERT_FIELD(mstatus_val, MSTATUS_MPIE, 1);
+        ///mstatus_val = INSERT_FIELD(mstatus_val, MSTATUS_FS, 1);
+
+        // --- UART FLUSH ---
+        //while ((UART0_LSR & LSR_TEMT) == 0);
+
+        examine_payload((uintptr_t) p_extended_buffer, 256);
+
+        // Add this just before hss_final_transition
+        uint64_t current_mstatus = csr_read(mstatus);
+        uint32_t mpp_val = (uint32_t)((current_mstatus >> 11) & 0x3u);
+
+        mHSS_DEBUG_PRINTF(LOG_NORMAL, "u54_%d: Transition Check - mstatus: 0x%lx, MPP: %u\n",
+                          my_hartid, current_mstatus, mpp_val);
+
+        if (mpp_val != 3) {
+            mHSS_DEBUG_PRINTF(LOG_ERROR, "FATAL: Hart %d not configured for Machine Mode jump!\n", my_hartid);
+        }
+
+        // Force a complete pipeline and cache clear
+        __asm__ volatile ("fence.i" ::: "memory");
+        __asm__ volatile ("fence rw, rw" ::: "memory");
+        // --- FINAL JUMP ---
+
+        mHSS_DEBUG_PRINTF(LOG_NORMAL, "Jumping to payload now. Goodbye from HSS!\n");
+
+        ///GOTO_ReleaseHarts((uintptr_t)p_extended_buffer, transaction_id);
+        ///((void (*)(uintptr_t, uintptr_t))p_extended_buffer)(HSS_HART_U54_1, 0);
+        ///
+        // Use the HSS-native way to ensure registers are clean:
+        extern void hss_final_transition(uintptr_t entry, uintptr_t stack, unsigned int hartid);
+
+        // We jump to 0x80000000.
+        // We let the payload assembly set its own stack, so we pass a dummy or 0.
+        hss_final_transition(0x80000000u, 0u, 1);
+    }
+#endif
+    return IPI_SUCCESS;
 }

@@ -92,11 +92,11 @@ static bool getBootImageFromPayload_(struct HSS_Storage *pStorage, struct HSS_Bo
 static struct HSS_Storage qspiStorage_ = {
     .name = "QSPI",
     .getBootImage = getBootImageFromQSPI_,
-    .init = HSS_CachedQSPIInit,
-    .readBlock = HSS_CachedQSPI_ReadBlock,
-    .writeBlock = HSS_CachedQSPI_WriteBlock,
-    .getInfo = HSS_CachedQSPI_GetInfo,
-    .flushWriteBuffer = HSS_CachedQSPI_FlushWriteBuffer
+    .init = HSS_QSPIInit,
+    .readBlock = HSS_QSPI_ReadBlock,
+    .writeBlock = HSS_QSPI_WriteBlock,
+    .getInfo = HSS_QSPI_GetInfo,
+    .flushWriteBuffer = NULL /// HSS_QSPI_FlushWriteBuffer
 };
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_MMC)
@@ -270,10 +270,10 @@ bool tryBootFunction_(struct HSS_Storage *pStorage, HSS_GetBootImageFnPtr_t cons
             pBootImage = NULL;
         }
     } else if (!result) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Failed to get boot image, cannot decompress\n");
+        /// mHSS_DEBUG_PRINTF(LOG_ERROR, "Failed to get boot image, cannot decompress\n");
         result = false;
     } else if (!pBootImage) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot Image NULL, ignoring\n");
+        /// mHSS_DEBUG_PRINTF(LOG_ERROR, "Boot Image NULL, ignoring\n");
         result = false;
     }
 #  endif
@@ -333,6 +333,10 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
     uint32_t blockSize, eraseSize, blockCount;
     pStorage->getInfo(&blockSize, &eraseSize, &blockCount);
 
+    /// mHSS_DEBUG_PRINTF(LOG_WARN, "MMC Block size: %u\n", blockSize);
+    /// mHSS_DEBUG_PRINTF(LOG_WARN, "MMC Erase size: %u\n", eraseSize);
+    /// mHSS_DEBUG_PRINTF(LOG_WARN, "MMC Block count: %u\n", blockCount);
+
 # if (IS_ENABLED(CONFIG_SERVICE_BOOT_MMC_USE_GPT))
     {
         HSS_GPT_t gpt;
@@ -341,7 +345,10 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
         GPT_Init(&gpt, pStorage);
         result = GPT_ReadHeader(&gpt);
 
-        if (result) {
+        /// mHSS_DEBUG_PRINTF(LOG_WARN, "GPT Valid Header: %s\n", result == true ? "yes" : "no");
+
+        if (result)
+        {
             size_t srcIndex = 0u;
 
             if (GPT_GetBootPartitionIndex(&gpt, &srcIndex)) {
@@ -350,7 +357,7 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
                 result = GPT_FindBootSectorIndex(&gpt, &srcIndex, NULL);
 
                 if (!result) {
-                    mHSS_DEBUG_PRINTF(LOG_ERROR, "GPT_FindBootSectorIndex() failed\n");
+                    /// mHSS_DEBUG_PRINTF(LOG_ERROR, "GPT_FindBootSectorIndex() failed\n");
                 } else {
                     mHSS_DEBUG_PRINTF(LOG_NORMAL, "Boot Partition found at index %lu\n",
                         srcIndex);
@@ -364,7 +371,7 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
     }
 
     if (!result) {
-        mHSS_DEBUG_PRINTF(LOG_WARN, "GPT_PartitionIdToLBAOffset() failed - using offset %lu\n", srcLBAOffset);
+        /// mHSS_DEBUG_PRINTF(LOG_WARN, "GPT_PartitionIdToLBAOffset() failed - using offset %lu\n", srcLBAOffset);
     } else {
         //mHSS_DEBUG_PRINTF(LOG_WARN, "GPT_PartitionIdToLBAOffset() returned %lu\n", srcLBAOffset);
     }
@@ -385,7 +392,7 @@ static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootIm
             result = HSS_Boot_VerifyMagic(&bootImage);
 
             if (!result) {
-                mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_Boot_VerifyMagic() failed\n");
+                /// mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_Boot_VerifyMagic() failed\n");
             } else {
                 int perf_ctr_index = PERF_CTR_UNINITIALIZED;
                 HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image MMC Copy");
@@ -466,20 +473,25 @@ static bool getBootImageFromQSPI_(struct HSS_Storage *pStorage, struct HSS_BootI
     uint32_t blockSize, eraseSize, blockCount;
     pStorage->getInfo(&blockSize, &eraseSize, &blockCount);
 
-    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to read image header (%d bytes) ...\n",
-        sizeof(struct HSS_BootImage));
+    /// mHSS_DEBUG_PRINTF(LOG_WARN, "QSPI Block size: %u\n", blockSize);
+    /// mHSS_DEBUG_PRINTF(LOG_WARN, "QSPI Erase size: %u\n", eraseSize);
+    /// mHSS_DEBUG_PRINTF(LOG_WARN, "QSPI Block count: %u\n", blockCount);
+
+    /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to read image header (%d bytes) ...\n",
+    ///    sizeof(struct HSS_BootImage));
     result = HSS_QSPI_ReadBlock(&bootImage, srcLBAOffset * blockSize,
         sizeof(struct HSS_BootImage));
     if (!result) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_QSPI_ReadBlock() failed\n");
+        /// mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_QSPI_ReadBlock() failed\n");
     } else {
+
         result = HSS_Boot_VerifyMagic(&bootImage);
 
         if (!result) {
-            mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_Boot_VerifyMagic() failed\n");
+            /// mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_Boot_VerifyMagic() failed\n");
         } else {
             int perf_ctr_index = PERF_CTR_UNINITIALIZED;
-            HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image QSPI Copy");
+            /// HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image QSPI Copy");
 
             result = copyBootImageToDDR_(&bootImage,
                 (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR), srcLBAOffset * blockSize,
@@ -489,7 +501,7 @@ static bool getBootImageFromQSPI_(struct HSS_Storage *pStorage, struct HSS_BootI
             HSS_PerfCtr_Lap(perf_ctr_index);
 
             if (!result) {
-                 mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
+                 /// mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
             }
         }
     }
@@ -583,6 +595,7 @@ static bool getBootImageFromSpiFlash_(struct HSS_Storage *pStorage, struct HSS_B
     if (!result) {
         return false;
     }
+
 
     result = copyBootImageToDDR_(&bootImage, (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR),
         srcOffset, spiFlashReadBlock_);

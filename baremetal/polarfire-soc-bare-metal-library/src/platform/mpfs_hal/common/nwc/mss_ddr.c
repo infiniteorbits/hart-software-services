@@ -6,12 +6,13 @@
  * @file mss_ddr.c
  * @author Microchip FPGA Embedded Systems Solutions
  * @brief DDR related code
- *
  */
 
-/* #define PRINT_CA_VREF_WINDOW "1" */
+
+/// #define PRINT_CA_VREF_WINDOW "1"
 #define MOVE_CK
 #define MANUAL_ADDCMD_TRAINIG
+
 /* #define FABRIC_NOISE_TEST */
 #include <string.h>
 #include <stdio.h>
@@ -27,9 +28,11 @@
  * Local Defines
  */
 /* This string is updated if any change to ddr driver */
-#define DDR_DRIVER_VERSION_STRING   "0.4.031"
+#define DDR_DRIVER_VERSION_STRING   "0.4.033"
 const char DDR_DRIVER_VERSION[] = DDR_DRIVER_VERSION_STRING;
 /* Version     |  Comment                                                     */
+/* 0.4.033     |  Fix bug that causes crash when post-stimulus test fails     */
+/* 0.4.032     |  Increase size of cache flush to fully clear                 */
 /* 0.4.031     |  Minor change to correct definition of MTC size define       */
 /* 0.4.030     |  Minor cleanup- removed unused code, renamed function        */
 /* 0.4.029     |  Fixed bug relating to DDR x 16 with ECC on. ECC lane 4 is   */
@@ -292,7 +295,7 @@ void mpfs_hal_turn_ddr_selfrefresh_on(void)
     {
         chip_selects = 1U;
     }
-	DDRCFG->MC_BASE2.INIT_SELF_REFRESH.INIT_SELF_REFRESH = chip_selects;
+    DDRCFG->MC_BASE2.INIT_SELF_REFRESH.INIT_SELF_REFRESH = chip_selects;
 }
 
 /**
@@ -302,7 +305,7 @@ void mpfs_hal_turn_ddr_selfrefresh_on(void)
  */
 void mpfs_hal_turn_ddr_selfrefresh_off(void)
 {
-	DDRCFG->MC_BASE2.INIT_SELF_REFRESH.INIT_SELF_REFRESH = 0U;
+    DDRCFG->MC_BASE2.INIT_SELF_REFRESH.INIT_SELF_REFRESH = 0U;
 }
 
 /**
@@ -701,16 +704,14 @@ static uint32_t ddr_setup(void)
 #ifdef DEBUG_DDR_INIT
             (void)uprint32(g_debug_uart, "\n\r DDR_SANITY_CHECKS FAIL: ",\
                                                                 addr_cmd_value);
-            ddr_training_state = DDR_TRAINING_FAIL;
 #endif
+            ddr_training_state = DDR_TRAINING_FAIL;
             break;
-
         case DDR_TRAINING_FAIL:
 #ifdef DEBUG_DDR_INIT
             {
                 tip_register_status (g_debug_uart);
                 (void)uprint32(g_debug_uart, "\n\r ****************************************************", 0U);
-
             }
 #endif
             DDRCFG->MC_BASE2.INIT_CS.INIT_CS = 0x1;
@@ -4646,30 +4647,28 @@ __attribute__((weak)) void clear_bootup_cache_ways(void)
     volatile PATTERN_TEST_PARAMS pattern_test;
 
     /* clear using pdma routine, uses the 4 channels */
-    pattern_test.base = LIBERO_SETTING_DDR_32_CACHE;
-    pattern_test.size = TWO_MBYTES*4;
+    pattern_test.size = TWO_MBYTES * 4;
     pattern_test.pattern_type = DDR_INIT_FILL;
     pattern_test.pattern_offset = 0U;
+    pattern_test.base = LIBERO_SETTING_DDR_32_CACHE;
 
     load_ddr_pattern(&pattern_test);
 
-	/* clear using my d-cache ways */
-	fill_cache_new_seg_address((void *)BASE_ADDRESS_CACHED_32_DDR,
-							   (void *)(BASE_ADDRESS_CACHED_32_DDR +
-										TWO_MBYTES));
+    /* clear using my d-cache ways */
+    fill_cache_new_seg_address((void *)BASE_ADDRESS_CACHED_32_DDR,
+                               (void *)(BASE_ADDRESS_CACHED_32_DDR +
+                                        pattern_test.size));
 
-	/* clear using pdma routine, uses the 4 channels */
-	pattern_test.base = LIBERO_SETTING_DDR_64_CACHE;
-	pattern_test.size = TWO_MBYTES*4;
-	pattern_test.pattern_type = DDR_INIT_FILL;
-	pattern_test.pattern_offset = 0U;
+    /* clear using pdma routine, uses the 4 channels */
+    pattern_test.base = LIBERO_SETTING_DDR_64_CACHE;
 
-	load_ddr_pattern(&pattern_test);
 
-	/* clear using my d-cache ways */
-	fill_cache_new_seg_address((void *)BASE_ADDRESS_CACHED_64_DDR,
-							   (void *)(BASE_ADDRESS_CACHED_64_DDR +
-									TWO_MBYTES));
+    load_ddr_pattern(&pattern_test);
+
+    /* clear using my d-cache ways */
+    fill_cache_new_seg_address((void *)BASE_ADDRESS_CACHED_64_DDR,
+                               (void *)(BASE_ADDRESS_CACHED_64_DDR +
+                                        pattern_test.size));
 }
 
 /**
@@ -5040,66 +5039,30 @@ void debug_read_ddrcfg(void)
 #endif
 
 
-const uint8_t REFCLK_OFFSETS[][5U] = {
-        {LIBERO_SETTING_REFCLK_DDR3_1333_NUM_OFFSETS,
-        LIBERO_SETTING_REFCLK_DDR3_1333_OFFSET_0,
-        LIBERO_SETTING_REFCLK_DDR3_1333_OFFSET_1,
-        LIBERO_SETTING_REFCLK_DDR3_1333_OFFSET_2,
-        LIBERO_SETTING_REFCLK_DDR3_1333_OFFSET_3},
-        {
-        LIBERO_SETTING_REFCLK_DDR3L_1333_NUM_OFFSETS,
-        LIBERO_SETTING_REFCLK_DDR3L_1333_OFFSET_0,
-        LIBERO_SETTING_REFCLK_DDR3L_1333_OFFSET_1,
-        LIBERO_SETTING_REFCLK_DDR3L_1333_OFFSET_2,
-        LIBERO_SETTING_REFCLK_DDR3L_1333_OFFSET_3},
-        {
-        LIBERO_SETTING_REFCLK_DDR4_1600_NUM_OFFSETS,
-        LIBERO_SETTING_REFCLK_DDR4_1600_OFFSET_0,
-        LIBERO_SETTING_REFCLK_DDR4_1600_OFFSET_1,
-        LIBERO_SETTING_REFCLK_DDR4_1600_OFFSET_2,
-        LIBERO_SETTING_REFCLK_DDR4_1600_OFFSET_3},
-        {
-        LIBERO_SETTING_REFCLK_LPDDR3_1600_NUM_OFFSETS,
-        LIBERO_SETTING_REFCLK_LPDDR3_1600_OFFSET_0,
-        LIBERO_SETTING_REFCLK_LPDDR3_1600_OFFSET_1,
-        LIBERO_SETTING_REFCLK_LPDDR3_1600_OFFSET_2,
-        LIBERO_SETTING_REFCLK_LPDDR3_1600_OFFSET_3},
-        {
-        LIBERO_SETTING_REFCLK_LPDDR4_1600_NUM_OFFSETS,
-        LIBERO_SETTING_REFCLK_LPDDR4_1600_OFFSET_0,
-        LIBERO_SETTING_REFCLK_LPDDR4_1600_OFFSET_1,
-        LIBERO_SETTING_REFCLK_LPDDR4_1600_OFFSET_2,
-        LIBERO_SETTING_REFCLK_LPDDR4_1600_OFFSET_3},
+const uint8_t REFCLK_OFFSETS[][9U] = {
 
-        {LIBERO_SETTING_REFCLK_DDR3_1067_NUM_OFFSETS,
-        LIBERO_SETTING_REFCLK_DDR3_1067_OFFSET_0,
-        LIBERO_SETTING_REFCLK_DDR3_1067_OFFSET_1,
-        LIBERO_SETTING_REFCLK_DDR3_1067_OFFSET_2,
-        LIBERO_SETTING_REFCLK_DDR3_1067_OFFSET_3},
+        /// {
+        ///     LIBERO_SETTING_REFCLK_DDR4_1600_NUM_OFFSETS,
+        ///     LIBERO_SETTING_REFCLK_DDR4_1600_OFFSET_0,
+        ///     LIBERO_SETTING_REFCLK_DDR4_1600_OFFSET_1,
+        ///     LIBERO_SETTING_REFCLK_DDR4_1600_OFFSET_2,
+        ///     LIBERO_SETTING_REFCLK_DDR4_1600_OFFSET_3
+        /// },
+        ///
+
+        /// Cycling in the range of 0 to 7 for the reference clock offset (CK/CA Additive Offset)
+        /// is a standard "brute-force" debugging method to find a stable timing window for the DDR4 interface.
+        /// Each step shifts the phase of the Address/Command bus relative to the Clock by approximately 45 degrees
+        ///
+        /// This might help naughty boards to pass the DDR training. Some of the boards by default can get stuck
+        /// into infinite loop. This is a Libero bug reported here
+        ///
+        /// https://support.microchip.com/s/article/The-CK--CA-additive-offset-value-is-not-propagated-inside-the-DDR-Controller-Sub-System-of-PolarFire
+        ///
+        ///
         {
-        LIBERO_SETTING_REFCLK_DDR3L_1067_NUM_OFFSETS,
-        LIBERO_SETTING_REFCLK_DDR3L_1067_OFFSET_0,
-        LIBERO_SETTING_REFCLK_DDR3L_1067_OFFSET_1,
-        LIBERO_SETTING_REFCLK_DDR3L_1067_OFFSET_2,
-        LIBERO_SETTING_REFCLK_DDR3L_1067_OFFSET_3},
-        {
-        LIBERO_SETTING_REFCLK_DDR4_1333_NUM_OFFSETS,
-        LIBERO_SETTING_REFCLK_DDR4_1333_OFFSET_0,
-        LIBERO_SETTING_REFCLK_DDR4_1333_OFFSET_1,
-        LIBERO_SETTING_REFCLK_DDR4_1333_OFFSET_2,
-        LIBERO_SETTING_REFCLK_DDR4_1333_OFFSET_3},
-        {
-        LIBERO_SETTING_REFCLK_LPDDR3_1333_NUM_OFFSETS,
-        LIBERO_SETTING_REFCLK_LPDDR3_1333_OFFSET_0,
-        LIBERO_SETTING_REFCLK_LPDDR3_1333_OFFSET_1,
-        LIBERO_SETTING_REFCLK_LPDDR3_1333_OFFSET_2,
-        LIBERO_SETTING_REFCLK_LPDDR3_1333_OFFSET_3},
-        {
-        LIBERO_SETTING_REFCLK_LPDDR4_1333_NUM_OFFSETS,
-        LIBERO_SETTING_REFCLK_LPDDR4_1333_OFFSET_0,
-        LIBERO_SETTING_REFCLK_LPDDR4_1333_OFFSET_1,
-        LIBERO_SETTING_REFCLK_LPDDR4_1333_OFFSET_2,
-        LIBERO_SETTING_REFCLK_LPDDR4_1333_OFFSET_3},
+                8U, 0U, 5U, 3U, 4U, 2U, 7U, 1U, 6U
+        }
 };
 
 /**
@@ -5110,45 +5073,25 @@ const uint8_t REFCLK_OFFSETS[][5U] = {
  * @return
  */
 #ifdef MANUAL_ADDCMD_TRAINIG
+
 static uint8_t ddr_manual_addcmd_refclk_offset(DDR_TYPE ddr_type, uint8_t * refclk_sweep_index)
 {
     uint8_t refclk_offset;
-    uint8_t type_array_index;
 
-    type_array_index = (uint8_t)ddr_type;
-    switch (ddr_type)
-    {
-        case DDR3L:
-        case DDR3:
-            if(LIBERO_SETTING_DDR_CLK + DDR_FREQ_MARGIN < DDR_1333_MHZ)
-            {
-                type_array_index = (uint8_t)(type_array_index + (uint8_t)LPDDR4 + (uint8_t)1U);
-            }
-            break;
-        case DDR4:
-        case LPDDR3:
-        case LPDDR4:
-            if(LIBERO_SETTING_DDR_CLK + DDR_FREQ_MARGIN < DDR_1600_MHZ)
-            {
-                type_array_index = (uint8_t)(type_array_index + (uint8_t)LPDDR4 + (uint8_t)1U);
-            }
-            break;
-        default:
-        case DDR_OFF_MODE:
-            break;
-    }
+    (void)ddr_type;
 
-    if (*refclk_sweep_index >= REFCLK_OFFSETS[type_array_index][0U])
+    if (*refclk_sweep_index >= REFCLK_OFFSETS[0][0U])
     {
         *refclk_sweep_index = 0U;
     }
 
-    refclk_offset = REFCLK_OFFSETS[type_array_index][*refclk_sweep_index + 1U];
+    refclk_offset = REFCLK_OFFSETS[0][*refclk_sweep_index + 1U];
 
     *refclk_sweep_index = (uint8_t)(*refclk_sweep_index + 1U);
 
     return refclk_offset;
 }
+
 #endif
 
 static uint32_t mode_register_masked_write(uint32_t address)

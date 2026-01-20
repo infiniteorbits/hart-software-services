@@ -392,7 +392,8 @@ typedef struct
 } QSPI_TypeDef;
 
 /*PolarFire SoC MSS QSPI base memory address*/
-#define QSPI_BASE               0x21000000u
+/// #define QSPI_BASE               0x21000000u
+#define QSPI_BASE               0x37020100u
 
 /*PolarFire SoC MSS QSPI hardware instance*/
 #define QSPI                    ((QSPI_TypeDef *) QSPI_BASE)

@@ -1,186 +1,214 @@
 /*******************************************************************************
- * Copyright 2019-2025 Microchip FPGA Embedded Systems Solutions.
- *
+ * HSS Boot Logo (ASCII): User-provided orbsight-2/OrbSight block-art
  * SPDX-License-Identifier: MIT
- *
- * MPFS HSS Embedded Software
- *
- */
-
-/**
- * \file HSS Software Initalization
- * \brief Full System Initialization
- */
+ ******************************************************************************/
 
 #include "config.h"
 #include "hss_types.h"
-
 #include "hss_init.h"
 #include "hss_debug.h"
 
-//
-// A variety of colored pixels are needed - red, white, black
-// define these as ASCII characters if color output is not enabled
-//
-#if IS_ENABLED(CONFIG_COLOR_OUTPUT)
-  const char B0_str[] ="\033[48;5;188m ";
-  const char W0_str[] ="\033[0m ";
-  const char r1_str[] ="\033[48;5;217m ";
-  const char r2_str[] ="\033[48;5;210m ";
-  const char r3_str[] ="\033[48;5;203m ";
-  const char r4_str[] ="\033[48;5;196m ";
-  const char b1_str[] ="\033[48;5;188m ";
-  const char b2_str[] ="\033[48;5;145m ";
-  const char b3_str[] ="\033[48;5;102m ";
-  const char b4_str[] ="\033[48;5;59m ";
-  const char RST_str[] ="\033[0m";
+enum Token { CRLF_token = 0,
+    LINE_0,
+    LINE_1,
+    LINE_2,
+    LINE_3,
+    LINE_4,
+    LINE_5,
+    LINE_6,
+    LINE_7,
+    LINE_8,
+    LINE_9,
+    LINE_10,
+    LINE_11,
+    LINE_12,
+    LINE_13,
+    LINE_14,
+    LINE_15,
+    LINE_16,
+    LINE_17,
+    LINE_18,
+    LINE_19,
+    LINE_20,
+    LINE_21,
+    LINE_22,
+    LINE_23,
+    LINE_24,
+    LINE_25,
+    LINE_26,
+    LINE_27,
+    LINE_28,
+    LINE_29,
+    LINE_30,
+    LINE_31,
+    LINE_32,
+    LINE_33,
+    LINE_34,
+    LINE_35,
+    LINE_36,
+    LINE_37,
+    LINE_38,
+    LINE_39,
+    LINE_40,
+    LINE_41,
+    LINE_42,
+    LINE_43,
+    LINE_44,
+    LINE_45,
+    LINE_46,
+    LINE_47,
+    LINE_48,
+    LINE_49,
+    LINE_50,
+    LINE_51,
+    LINE_52,
+    LINE_53,
+    LINE_54,
+};
+
+#if 0
+static const char* tokenStringTable[] = {
+    "\n",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                 %                                                  ",
+    "                        -+               ++++++++++++++++++           -                             ",
+    "                        -            +++++++*        ++++++++++                                     ",
+    "                                  +++++                   %+++%                                     ",
+    "                                +++%                                                                ",
+    "                              +++                                 ----           :--:               ",
+    "                            *++                                 --------                            ",
+    "                           ++*                     %          -----------=                          ",
+    "                          ++           :                      +----------                           ",
+    "                         ++            -                        -------    **                       ",
+    "                        *+          =------                 ===+  ---#    *****                     ",
+    "                        *             :--                   ===-        ********%                   ",
+    "                       +               -                                 *******                    ",
+    "                       %                                                   ***                      ",
+    "                              --%                                                                   ",
+    "                                                     --                -                            ",
+    "                                                                       +                            ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                 @@@@@@@@@@@@       @@@@@@@@@@@@    @@@@@    @@@@@           @@@@@                  ",
+    "                 @@@@@@@@@@@@@@     @@@@@@@@@@@@    :@@@@    @@@@@@         @@@@@@                  ",
+    "                 @@@@      @@@@@    @@@@            @@@@@    @@@@@@@       @@@@@@@                  ",
+    "                 @@@@      %@@@@    @@@@            @@@@@    @@@@@@@@     @@@@@@@@                  ",
+    "                 @@@@      @@@@@    @@@@@@@@@@@     @@@@@    @@@@ @@@@   @@@@ @@@@                  ",
+    "                 @@@@@@@@@@@@@@     @@@@@@@@@@@     @@@@@    @@@@  @@@@ @@@@  @@@@                  ",
+    "                 @@@@@@@@@@@        @@@@            @@@@@    @@@@   @@@@@@@   @@@@                  ",
+    "                 @@@@    @@@@       @@@@            @@@@@    @@@@    @@@@@    @@@@                  ",
+    "                 @@@@     @@@@      @@@@            @@@@@    @@@@     @@@     @@@@                  ",
+    "                 @@@@      @@@@     @@@@            @@@@@    @@@@             @@@@                  ",
+    "                 @@@@       @@@@    @@@@            @@@@:    @@@@             @@@@                  ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                          ---#     -----       --         ----      -----                           ",
+    "                        *-         -   --     -*-       --          --                              ",
+    "                         -===      -**--     -- --      -*          -----                           ",
+    "                             #-    -        +---=--     --          --                              ",
+    "                         ====      -       -=     -=      ----      -----                           ",
+    "                                                                                                    ",
+    "                                         orbsight-2 Space Ltd                                             ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                                                                    ",
+    "                                                                                                    "
+};
+
 #else
-  const char B0_str[] =" ";
-  const char W0_str[] =" ";
-  const char r1_str[] =".";
-  const char r2_str[] ="-";
-  const char r3_str[] ="x";
-  const char r4_str[] ="X";
-  const char b1_str[] =":";
-  const char b2_str[] ="o";
-  const char b3_str[] ="0";
-  const char b4_str[] ="O";
-  const char RST_str[] ="";
+
+static const char* tokenStringTable[] = {
+        "\n",
+        "\033[38;5;80m _____  _____ ____    __ __  ____  __  __ _____    __ __ 2",
+        "((   )) ||_// ||=)   ((  || (( ___ ||==||  ||      \\\\ //  ",
+        " \\\\_//  || \\\\ ||_)) \\_)) ||  \\\\_|| ||  ||  ||       \\V/   \033[0m",
+        "                                                          ",
+        "                                                          "
+};
+
 #endif
 
-enum Color {
-    B0 = 0,
-    W0,
-    r1,
-    r2,
-    r3,
-    r4,
-    b1,
-    b2,
-    b3,
-    b4,
-    RST,
-    CRLF_token,
+struct __attribute__((packed)) RLEElement {
+    unsigned char count;
+    enum Token tokenIndex;
 };
 
-const char* tokenStringTable[] = {
-    B0_str,
-    W0_str,
-    r1_str,
-    r2_str,
-    r3_str,
-    r4_str,
-    b1_str,
-    b2_str,
-    b3_str,
-    b4_str,
-    RST_str,
-    "\n",
+static const struct RLEElement rleLogoElements[] = {
+    {1, LINE_0}, {1, CRLF_token},
+    {1, LINE_1}, {1, CRLF_token},
+    {1, LINE_2}, {1, CRLF_token},
+    {1, LINE_3}, {1, CRLF_token},
+    {1, LINE_4}, {1, CRLF_token},
+#if 0
+    {1, LINE_5}, {1, CRLF_token},
+    {1, LINE_6}, {1, CRLF_token},
+    {1, LINE_7}, {1, CRLF_token},
+    {1, LINE_8}, {1, CRLF_token},
+    {1, LINE_9}, {1, CRLF_token},
+    {1, LINE_10}, {1, CRLF_token},
+    {1, LINE_11}, {1, CRLF_token},
+    {1, LINE_12}, {1, CRLF_token},
+    {1, LINE_13}, {1, CRLF_token},
+    {1, LINE_14}, {1, CRLF_token},
+    {1, LINE_15}, {1, CRLF_token},
+    {1, LINE_16}, {1, CRLF_token},
+    {1, LINE_17}, {1, CRLF_token},
+    {1, LINE_18}, {1, CRLF_token},
+    {1, LINE_19}, {1, CRLF_token},
+    {1, LINE_20}, {1, CRLF_token},
+    {1, LINE_21}, {1, CRLF_token},
+    {1, LINE_22}, {1, CRLF_token},
+    {1, LINE_23}, {1, CRLF_token},
+    {1, LINE_24}, {1, CRLF_token},
+    {1, LINE_25}, {1, CRLF_token},
+    {1, LINE_26}, {1, CRLF_token},
+    {1, LINE_27}, {1, CRLF_token},
+    {1, LINE_28}, {1, CRLF_token},
+    {1, LINE_29}, {1, CRLF_token},
+    {1, LINE_30}, {1, CRLF_token},
+    {1, LINE_31}, {1, CRLF_token},
+    {1, LINE_32}, {1, CRLF_token},
+    {1, LINE_33}, {1, CRLF_token},
+    {1, LINE_34}, {1, CRLF_token},
+    {1, LINE_35}, {1, CRLF_token},
+    {1, LINE_36}, {1, CRLF_token},
+    {1, LINE_37}, {1, CRLF_token},
+    {1, LINE_38}, {1, CRLF_token},
+    {1, LINE_39}, {1, CRLF_token},
+    {1, LINE_40}, {1, CRLF_token},
+    {1, LINE_41}, {1, CRLF_token},
+    {1, LINE_42}, {1, CRLF_token},
+    {1, LINE_43}, {1, CRLF_token},
+    {1, LINE_44}, {1, CRLF_token},
+    {1, LINE_45}, {1, CRLF_token},
+    {1, LINE_46}, {1, CRLF_token},
+    {1, LINE_47}, {1, CRLF_token},
+    {1, LINE_48}, {1, CRLF_token},
+    {1, LINE_49}, {1, CRLF_token},
+    {1, LINE_50}, {1, CRLF_token},
+    {1, LINE_51}, {1, CRLF_token},
+    {1, LINE_52}, {1, CRLF_token},
+    {1, LINE_53}, {1, CRLF_token},
+    {1, LINE_54}, {1, CRLF_token},
+#endif
 };
 
-
-// RLE Microchip Logo, built up from our color pixel primitives above...
-// RLE shrinks the size of this
-const struct __attribute__((packed))  {
-    uint8_t const count;
-    enum Color const tokenIndex;
-} rleLogoElements[] = {
-    { 4, W0 }, { 1, r1 }, { 1, r3 }, { 7, r4 }, { 1, RST }, { 1, CRLF_token },
-
-    { 3, W0 }, { 1, r2 }, { 9, r4 }, { 1, r3 }, { 1, RST }, { 1, CRLF_token },
-
-    { 2, W0 }, { 1, r3 }, { 2, r4 }, { 1, r3 }, { 1, r2 }, { 5, r4 }, { 1, r2 },
-        { 1, r4 }, { 1, r1 }, { 7, W0 }, { 1, b3 }, { 5, W0 }, { 1, b3 },
-        { 1, RST }, { 1, CRLF_token },
-
-    { 1, W0 }, { 1, r1 }, { 3, r4 }, { 2, B0 }, { 1, r2 }, { 3, r4 }, { 1, r1 },
-        { 1, B0 }, { 1, r1 }, { 1, r4 }, { 6, W0 }, { 1, b4 }, { 1, b1 }, { 1, b2 },
-        { 3, W0 }, { 1, b3 }, { 1, b1 }, { 1, b4 }, { 1, RST },
-        { 1, CRLF_token },
-
-    { 1, W0 }, { 3, r4 }, { 1, r1 }, { 3, B0 }, { 2, r4 }, { 1, r2 }, { 3, B0 },
-        { 2, r3 }, { 5, W0 }, { 1, b4 }, { 2, b1 }, { 3, W0 }, { 2, b1 }, { 1, b4 },
-        { 1, W0 }, { 1, b4 }, { 2, W0 }, { 1, b4 }, { 3, b3 }, { 1, b4 }, { 1, W0 },
-        { 5, b4 }, { 2, W0 }, { 1, b4 }, { 3, b3 }, { 1, b4 }, { 2, W0 }, { 1, b4 },
-        { 3, b3 }, { 1, b4 }, { 1, W0 }, { 1, b4 }, { 3, W0 }, { 1, b4 }, { 2, W0 },
-        { 1, b4 }, { 1, W0 }, { 5, b4 }, { 1, RST }, { 1, CRLF_token },
-
-    { 1, r1 }, { 3, r4 }, { 4, B0 }, { 1, r1 }, { 1, r4 }, { 5, B0 }, { 1, r4 },
-        { 1, r1 }, { 4, W0 }, { 1, b3 }, { 2, b1 }, { 1, b4 }, { 1, W0 }, { 1, b4 },
-        { 2, b1 }, { 1, b3 }, { 1, W0 }, { 1, b1 }, { 1, b4 }, { 1, W0 }, { 5, b1 },
-        { 1, W0 }, { 5, b1 }, { 1, b3 }, { 1, W0 }, { 5, b1 }, { 1, b4 }, { 1, W0 },
-        { 5, b1 }, { 1, W0 }, { 1, b1 }, { 3, W0 }, { 1, b2 }, { 1, b4 }, { 1, W0 },
-        { 1, b1 }, { 1, W0 }, { 5, b1 }, { 1, b3 }, { 1, RST }, { 1, CRLF_token },
-
-    { 1, r2 }, { 2, r4 }, { 1, r3 }, { 1, r2 }, { 4, B0 }, { 1, r3 }, { 1, r2 },
-        { 4, B0 }, { 1, r2 }, { 1, r4 }, { 4, W0 }, { 1, b3 }, { 3, b2 }, { 1, W0 },
-        { 2, b2 }, { 1, b3 }, { 1, b2 }, { 1, W0 }, { 1, b1 }, { 2, b4 }, { 1, b1 },
-        { 5, W0 }, { 1, b1 }, { 1, b4 }, { 2, W0 }, { 1, b3 }, { 1, b2 }, { 1, b4 },
-        { 1, b1 }, { 3, W0 }, { 1, b2 }, { 1, b3 }, { 1, b4 }, { 1, b1 }, { 5, W0 },
-        { 1, b1 }, { 1, b4 }, { 2, W0 }, { 1, b2 }, { 1, b4 }, { 1, W0 }, { 1, b1 },
-        { 1, W0 }, { 1, b1 }, { 1, b4 }, { 2, W0 }, { 1, b3 }, { 1, b2 }, { 1, RST },
-        { 1, CRLF_token },
-
-    { 1, r3 }, { 1, r4 }, { 1, r1 }, { 1, B0 }, { 1, r4 }, { 5, B0 }, { 1, r4 },
-        { 5, B0 }, { 1, r4 }, { 1, r2 }, { 3, W0 }, { 1, b2 }, { 1, b3 }, { 1, W0 },
-        { 1, b1 }, { 1, b3 }, { 1, b1 }, { 1, b4 }, { 1, b3 }, { 1, b2 }, { 1, W0 },
-        { 1, b1 }, { 2, b4 }, { 1, b2 }, { 5, W0 }, { 1, b1 }, { 1, b3 }, { 2, W0 },
-        { 2, b3 }, { 1, b4 }, { 1, b1 }, { 3, W0 }, { 1, b2 }, { 1, b3 }, { 1, b4 },
-        { 1, b2 }, { 5, W0 }, { 5, b1 }, { 1, b4 }, { 1, W0 }, { 1, b1 }, { 1, W0 },
-        { 1, b1 }, { 1, b4 }, { 2, W0 }, { 1, b3 }, { 1, b2 }, { 1, RST },
-        { 1, CRLF_token },
-
-    { 1, r3 }, { 1, r2 }, { 2, B0 }, { 1, r2 }, { 1, r3 }, { 4, B0 }, { 1, r1 },
-        { 1, r3 }, { 4, B0 }, { 1, r1 }, { 1, r4 }, { 3, W0 }, { 1, b1 }, { 1, b3 },
-        { 1, W0 }, { 3, b1 }, { 1, W0 }, { 1, b4 }, { 1, b1 }, { 1, W0 }, { 1, b1 },
-        { 2, b4 }, { 1, b2 }, { 5, W0 }, { 5, b1 }, { 1, W0 }, { 1, b4 }, { 1, b1 },
-        { 3, W0 }, { 1, b2 }, { 1, b3 }, { 1, b4 }, { 1, b2 }, { 5, W0 }, { 1, b1 },
-        { 1, b3 }, { 2, b4 }, { 1, b2 }, { 1, b4 }, { 1, W0 }, { 1, b1 }, { 1, W0 },
-        { 5, b1 }, { 1, b3 }, { 1, RST }, { 1, CRLF_token },
-
-    { 1, r1 }, { 4, B0 }, { 1, r4 }, { 1, r1 }, { 4, B0 }, { 1, r3 }, { 1, r2 },
-        { 4, B0 }, { 1, r3 }, { 3, W0 }, { 1, b1 }, { 1, b4 }, { 1, W0 }, { 1, b3 },
-        { 1, b1 }, { 1, b3 }, { 1, W0 }, { 1, b4 }, { 1, b1 }, { 1, W0 }, { 1, b1 },
-        { 2, b4 }, { 1, b1 }, { 4, b4 }, { 1, W0 }, { 1, b1 }, { 1, b3 }, { 2, W0 },
-        { 1, b2 }, { 1, b3 }, { 1, W0 }, { 1, b1 }, { 1, b3 }, { 2, b4 }, { 1, b1 },
-        { 1, b3 }, { 1, b4 }, { 1, b1 }, { 4, b4 }, { 1, W0 }, { 1, b1 }, { 3, W0 },
-        { 1, b2 }, { 1, b4 }, { 1, W0 }, { 1, b1 }, { 1, W0 }, { 1, b1 }, { 1, b3 },
-        { 2, b4 }, { 1, RST }, { 1, CRLF_token },
-
-    { 5, B0 }, { 1, r3 }, { 1, r4 }, { 4, B0 }, { 1, r1 }, { 1, r4 }, { 5, B0 }, { 3, W0 },
-        { 1, b1 }, { 1, b4 }, { 2, W0 }, { 1, b3 }, { 3, W0 }, { 1, b1 }, { 1, W0 },
-        { 1, b1 }, { 1, b4 }, { 1, W0 }, { 5, b1 }, { 1, W0 }, { 1, b1 }, { 1, b4 },
-        { 2, W0 }, { 2, b3 }, { 1, W0 }, { 1, b2 }, { 4, b1 }, { 2, W0 }, { 5, b1 },
-        { 1, W0 }, { 1, b1 }, { 3, W0 }, { 1, b2 }, { 1, b4 }, { 1, W0 }, { 1, b1 },
-        { 1, W0 }, { 1, b1 }, { 1, RST }, { 1, CRLF_token },
-
-    { 1, W0 }, { 3, B0 }, { 1, r2 }, { 2, r4 }, { 1, r2 }, { 3, B0 }, { 1, r3 }, { 1, r4 },
-        { 1, r3 }, {2, B0 }, {1, B0}, { 1, RST }, { 1, CRLF_token },
-
-    { 1, W0 }, {1, r1}, { 2, B0 }, { 4, r4 }, { 2, B0 }, { 1, r1 }, { 3, r4 }, { 1, r1 },
-        {1, B0 }, {1, r1}, { 1, RST }, { 1, CRLF_token },
-
-    { 2, W0 }, {1, r2},  { 5, r4 }, { 1, r3 }, { 1, r1 }, { 5, r4 }, {1, r3},
-        { 1, RST }, { 1, CRLF_token },
-
-    { 3, W0 }, { 1, r2 }, { 11, r4 }, { 1, RST }, { 1, CRLF_token },
-
-    { 4, W0 }, { 1, r1 }, { 1, r3 }, { 7, r4 }, { 1, r3 }, { 1, RST }, {1, CRLF_token}
-};
-
-bool HSS_LogoInit(void)
-{
-    mHSS_PUTS("\n");
-    int i;
-
-    // decode and output our RLE Logo
-    for (i = 0; i < ARRAY_SIZE(rleLogoElements); i++) {
-        uint8_t j;
-
-        for (j = 0u; j < rleLogoElements[i].count; j++) {
+bool HSS_LogoInit(void) {
+    for (unsigned int i = 0u; i < (sizeof(rleLogoElements)/sizeof(rleLogoElements[0])); i++) {
+        for (unsigned char j = 0u; j < rleLogoElements[i].count; j++) {
             mHSS_PUTS(tokenStringTable[rleLogoElements[i].tokenIndex]);
         }
     }
-
     return true;
 }

@@ -49,7 +49,7 @@ ifneq ("$(wildcard boards/${BOARD}/Makefile)","")
   include boards/${BOARD}/Makefile
 else
   ifndef BOARD
-    BOARD:=mpfs-icicle-kit-es
+    BOARD:=mpfs-orbsight-v2
     export BOARD
     $(info INFO: BOARD not specified, defaulting to ${BOARD}) # default to icicle if nothing found
     include boards/${BOARD}/Makefile

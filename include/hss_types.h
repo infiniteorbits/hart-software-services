@@ -55,8 +55,9 @@ extern "C" {
 
 #define ARRAY_SIZE(x)		(sizeof(x)/sizeof(x[0]))
 
-#define mHSS_BOOT_MAGIC		(0xB007C0DEu)
+#define mHSS_BOOT_MAGIC		    (0xB007C0DEu)
 #define mHSS_COMPRESSED_MAGIC	(0xC08B8355u)
+
 
 #define mHSS_BOOT_VERSION       1u
 

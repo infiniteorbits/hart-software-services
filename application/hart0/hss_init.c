@@ -47,9 +47,12 @@
 
 #include "hss_memcpy_via_pdma.h"
 #include "mpfs_hal_version.h"
-#include "miv_ihc_version.h"
 #include "mss_sys_services.h"
 #include "mss_sysreg.h"
+
+#if IS_ENABLED(CONFIG_USE_IHC) || IS_ENABLED(CONFIG_USE_IHC_V2)
+#include "miv_ihc_version.h"
+#endif
 
 /**
  * \brief Main Initialization Function
@@ -197,7 +200,7 @@ bool HSS_E51_Banner(void)
 #if !IS_ENABLED(CONFIG_SKIP_DDR)
         " / DDR Driver version %s"
 #endif
-#if IS_ENABLED(CONFIG_USE_IHC)
+#if IS_ENABLED(CONFIG_USE_IHC) || IS_ENABLED(CONFIG_USE_IHC_V2)
 	" / Mi-V IHC version %d.%d.%d"
 #endif
         " / BOARD=" STR(BOARD)
@@ -210,7 +213,7 @@ bool HSS_E51_Banner(void)
 #if !IS_ENABLED(CONFIG_SKIP_DDR)
         , DDR_DRIVER_VERSION
 #endif
-#if IS_ENABLED(CONFIG_USE_IHC)
+#if IS_ENABLED(CONFIG_USE_IHC) || IS_ENABLED(CONFIG_USE_IHC_V2)
 	// add the comma separator here if adding IHC version information to prevent a
 	// compile error on the macro if CONFIG_USE_IHC is not enabled
 	, MIV_IHC_VERSION_MAJOR, MIV_IHC_VERSION_MINOR, MIV_IHC_VERSION_PATCH
