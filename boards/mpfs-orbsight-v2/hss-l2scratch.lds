@@ -91,9 +91,9 @@ ENTRY(_start)
  */
 MEMORY
 {
-    envm (rx)          : ORIGIN = 0x20220100, LENGTH = 700k
+    envm (rx)          : ORIGIN = 0x20220100, LENGTH = (128k-256)
 
-    dtim (rwx)         : ORIGIN = 0x01000000, LENGTH = 64k /* DTIM */
+    dtim (rwx)         : ORIGIN = 0x01000000, LENGTH = 7k /* DTIM */
     switch_code (rx)   : ORIGIN = 0x01001c00, LENGTH = 1k /* This 1K of DTIM is used to run code
                                                            * when switching the envm clock */
     e51_itim (rwx)     : ORIGIN = 0x01800000, LENGTH = 28k
@@ -263,7 +263,7 @@ SECTIONS
     .data.payload : ALIGN(16) 
     {
       _payload_start = .;
-      KEEP(build/boards/mpfs-orbsight-v2/payload.o(.*))
+      KEEP(boards/mpfs-icicle-kit-es/payload.o(.*))
       _payload_end = .;
     }
 #endif

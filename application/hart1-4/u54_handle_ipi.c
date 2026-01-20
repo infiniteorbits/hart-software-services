@@ -43,19 +43,6 @@
 #  include "miv_ihc.h"
 #endif
 
-__attribute__((naked)) 
-void hss_final_transition(unsigned long hartid, void* dtb, uintptr_t entry, unsigned long status);
-
-__attribute__((naked)) 
-void hss_final_transition(unsigned long hartid, void* dtb, uintptr_t entry, unsigned long status) {
-    __asm__ volatile (
-        "csrw mepc, a2\n\t"      // Set the destination address
-        "csrw mstatus, a3\n\t"   // Set the target privilege mode
-        "mret\n\t"               // Jump!
-        : : "r"(hartid), "r"(dtb), "r"(entry), "r"(status) : "memory"
-    );
-}
-
 //
 // This routine gets executed when a U54 receives an IPI from E51 in machine mode...
 //
@@ -147,11 +134,9 @@ bool HSS_U54_HandleIPI(void)
 #else
     bool intentFound = false;
     for (int i = 0; i < ARRAY_SIZE(intentsArray); i++) {
-        // Check if there is a message for this hart
-        if (IPI_ConsumeIntent(HSS_HART_E51, intentsArray[i].msg_type)) {
-            intentFound = true;
-        }
+        intentFound = IPI_ConsumeIntent(HSS_HART_E51, intentsArray[i].msg_type) | intentFound;
     }
+
     result = intentFound;
 #endif
 

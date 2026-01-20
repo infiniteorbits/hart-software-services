@@ -137,9 +137,7 @@ static void tinyCLI_HexDump_(void);
 #if IS_ENABLED(CONFIG_MEMTEST)
 static void tinyCLI_MemTest_(void);
 #endif
-#if 1
 static void tinyCLI_UnsupportedBootMechanism_(char const * const pName);
-#endif
 #if IS_ENABLED(CONFIG_SERVICE_YMODEM)
 static void tinyCLI_YModem_(void);
 #endif
@@ -871,7 +869,7 @@ static void tinyCLI_HexDump_(void)
     }
 }
 
-#if 1
+
 static void tinyCLI_UnsupportedBootMechanism_(char const * const pName)
 {
     mHSS_PUTS(pName);
@@ -879,7 +877,6 @@ static void tinyCLI_UnsupportedBootMechanism_(char const * const pName)
               "Supported boot mechanisms:\n");
     HSS_BootListStorageProviders();
 }
-#endif
 
 
 #if IS_ENABLED(CONFIG_SERVICE_YMODEM)

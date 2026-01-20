@@ -668,14 +668,14 @@ static void common_boot_message_delivery(struct StateMachine * const pMyMachine,
     assert(result);
 
     if (pBootImage->hart[target-1].flags & BOOT_FLAG_SKIP_OPENSBI) {
-        mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::u54_%u:goto %p\n", pMyMachine->pMachineName,
-           target, pBootImage->hart[target-1].entryPoint);
+        //mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::u54_%u:goto %p\n", pMyMachine->pMachineName,
+        //    target, pBootImage->hart[target-1].entryPoint);
 
         result = IPI_MessageDeliver(pInstanceData->msgIndexAux[target-1], target,
             IPI_MSG_GOTO,
             pBootImage->hart[target-1].privMode,
-            (uint8_t*)(uint64_t)pBootImage->hart[target-1].entryPoint,
-            (uint8_t*)(uint64_t)pInstanceData->ancilliaryData);
+            (void *)pBootImage->hart[target-1].entryPoint,
+            (void *)pInstanceData->ancilliaryData);
 
         if (!result) {
             mHSS_DEBUG_PRINTF(LOG_ERROR, "%s::u54_%u:sbi_init failed\n",
@@ -684,14 +684,14 @@ static void common_boot_message_delivery(struct StateMachine * const pMyMachine,
             pMyMachine->state = BOOT_ERROR;
         }
     } else {
-        mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::u54_%u:sbi_init %p\n", pMyMachine->pMachineName,
-           target, pBootImage->hart[target-1].entryPoint);
+        //mHSS_DEBUG_PRINTF(LOG_NORMAL, "%s::u54_%u:sbi_init %p\n", pMyMachine->pMachineName,
+        //    target, pBootImage->hart[target-1].entryPoint);
 
         result = IPI_MessageDeliver(pInstanceData->msgIndexAux[target-1], target,
             IPI_MSG_OPENSBI_INIT,
             pBootImage->hart[target-1].privMode,
-            (uint8_t*)(uint64_t)pBootImage->hart[target-1].entryPoint,
-            (uint8_t*)(uint64_t)pInstanceData->ancilliaryData);
+            (void *)pBootImage->hart[target-1].entryPoint,
+            (void *)pInstanceData->ancilliaryData);
 
         if (!result) {
             mHSS_DEBUG_PRINTF(LOG_ERROR, "%s::u54_%u:sbi_init failed\n",
