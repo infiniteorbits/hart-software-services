@@ -78,7 +78,7 @@ bool HSS_BoardLateInit(void)
 #  if defined(CONFIG_SERVICE_MMC_BUS_VOLTAGE_1V8)
         /// "1.8V"
 #  elif defined(CONFIG_SERVICE_MMC_BUS_VOLTAGE_3V3)
-        "3.3V"
+        ///          "3.3V"
 #  endif
         /// " MMC voltage... \n");
 #endif

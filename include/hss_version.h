@@ -39,14 +39,14 @@ extern "C" {
 #endif
 
 #define HSS_VERSION_MAJOR 1
-#define HSS_VERSION_MINOR 0
-#define HSS_VERSION_PATCH 0
+#define HSS_VERSION_MINOR 1
+#define HSS_VERSION_PATCH 1
 
 #ifdef VENDOR_STRING
     #undef VENDOR_STRING
 #endif
 #ifndef VENDOR_STRING
-#  define VENDOR_STRING "OrbSight2"
+#  define VENDOR_STRING OrbSight2
 #endif
 
 #ifdef __cplusplus

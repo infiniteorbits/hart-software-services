@@ -1,6 +1,6 @@
 <project name="proj_fp" version="1.2">
     <ProjectDirectory>
-        /home/trajce-nikolov/Git/hart-software-services/build/bootmode1/fpgenprogProject/proj_fp
+        /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject/proj_fp
     </ProjectDirectory>
     <View>
         ChainView
@@ -9,7 +9,7 @@
         
     </LiberoTargetDevice>
     <LogFile>
-        /home/trajce-nikolov/Git/hart-software-services/build/bootmode1/fpgenprogProject/proj_fp/proj_fp.log
+        /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject/proj_fp/proj_fp.log
     </LogFile>
     <SerializationOption>
         Skip
@@ -17,6 +17,14 @@
     <ProgrammingInterface>
         JTAGMode
     </ProgrammingInterface>
+    <programmer status="enable" type="FlashPro5" revision="UndefRev" connection="usb1.1">
+        <name>
+            S20059IEC3
+        </name>
+        <id>
+            S20059IEC3
+        </id>
+    </programmer>
     <Servers>
     </Servers>
     <configuration>
@@ -76,7 +84,7 @@
         </Hardware>
         <Device type="ACTEL">
             <Name>
-                MPFS250T_ES
+                MPFS160T
             </Name>
             <Custom>
                 target
@@ -89,10 +97,10 @@
             </SpiFlashSelectedAction>
             <Algo type="PDB">
                 <filename>
-                    /home/trajce-nikolov/Git/hart-software-services/build/bootmode1/fpgenprogProject/target.pdb
+                    /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject/proj_fp/target.ppd
                 </filename>
                 <local>
-                    projectData/target.pdb
+                    projectData/target.ppd
                 </local>
                 <SelectedAction>
                     PROGRAM

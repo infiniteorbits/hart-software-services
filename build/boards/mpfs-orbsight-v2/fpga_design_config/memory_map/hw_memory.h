@@ -60,7 +60,7 @@ extern  "C" {
 #if !defined (LIBERO_SETTING_DDR_32_CACHE)
 /*example instance of memory */
 #define LIBERO_SETTING_DDR_32_CACHE    0x80000000
-#define LIBERO_SETTING_DDR_32_CACHE_SIZE    0x100000    /* Length of memory block*/
+#define LIBERO_SETTING_DDR_32_CACHE_SIZE    0x30000000    /* Length of memory block*/
 #endif
 #if !defined (LIBERO_SETTING_DDR_32_NON_CACHE)
 /*example instance */
