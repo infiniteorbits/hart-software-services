@@ -17,14 +17,6 @@
     <ProgrammingInterface>
         JTAGMode
     </ProgrammingInterface>
-    <programmer status="enable" type="FlashPro5" revision="UndefRev" connection="usb1.1">
-        <name>
-            S20059IEC3
-        </name>
-        <id>
-            S20059IEC3
-        </id>
-    </programmer>
     <Servers>
     </Servers>
     <configuration>
@@ -84,7 +76,7 @@
         </Hardware>
         <Device type="ACTEL">
             <Name>
-                MPFS160T
+                MPFS250T_ES
             </Name>
             <Custom>
                 target
@@ -97,10 +89,10 @@
             </SpiFlashSelectedAction>
             <Algo type="PDB">
                 <filename>
-                    /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject/proj_fp/target.ppd
+                    /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject/target.pdb
                 </filename>
                 <local>
-                    projectData/target.ppd
+                    projectData/target.pdb
                 </local>
                 <SelectedAction>
                     PROGRAM

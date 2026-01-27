@@ -4,7 +4,7 @@
       <design_name>OrbSight_2</design_name>
       <mpfs_part_no>MPFS160T</mpfs_part_no>
       <mpfs_package>FCVG784</mpfs_package>
-      <creation_date_time>12-17-2025_10:41:37</creation_date_time>
+      <creation_date_time>01-26-2026_22:13:26</creation_date_time>
       <xml_format_version>0.6.8</xml_format_version>
     </design_information>
     <mss_memory_map>
@@ -15,7 +15,7 @@
           <mem description="Reset vector hart2" name="RESET_VECTOR_HART2" size="0x4">0x20220000</mem>
           <mem description="Reset vector hart3" name="RESET_VECTOR_HART3" size="0x4">0x20220000</mem>
           <mem description="Reset vector hart4" name="RESET_VECTOR_HART4" size="0x4">0x20220000</mem>
-          <mem description="example instance of memory" name="DDR_32_CACHE" size="0x30000000">0x80000000</mem>
+          <mem description="example instance of memory" name="DDR_32_CACHE" size="0x100000">0x80000000</mem>
           <mem description="example instance" name="DDR_32_NON_CACHE" size="0x100000">0xC0000000</mem>
           <mem description="64 bit address " name="DDR_64_CACHE" size="0x100000">0x1000000000</mem>
           <mem description="64 bit address " name="DDR_64_NON_CACHE" size="0x100000">0x1400000000</mem>
@@ -146,9 +146,6 @@
         <registers>
           <register address="0x00000008" description="Way indexes less than or equal to this register value  may be used by the cache. E.g. set to 0x7, will allocate 8 cache ways, 0-7 to cache, and leave 8-15 as LIM. Note 1: Way 0 is always allocated as cache. Note 2: each way is 128KB." name="WAY_ENABLE">
             <field Type="RW" name="WAY_ENABLE" offset="0" width="8">0xB</field>
-          </register>
-          <register address="0x00000040" description="L2 Cache Segment 0" name="L2_SEG_0">
-            <field Type="RW" name="L2_SEG_0" offset="0" width="64">0x4000000080000000</field>
           </register>
           <register address="0x00000008" description="Way mask register master DMA. Set field to zero to disable way from this master. The available cache ways are 0 to number set in WAY_ENABLE register. If using scratch pad memory, the ways you want reserved for scrathpad are not available for selection, you must set to 0.  e.g. If three ways reserved for scratchpad, WAY_MASK_0, WAY_MASK_1 and WAY_MASK_2 will be set to zero for all masters, so they can not evict the way. " name="WAY_MASK_DMA">
             <field Type="RW" name="WAY_MASK_0" offset="0" width="1">0x1</field>

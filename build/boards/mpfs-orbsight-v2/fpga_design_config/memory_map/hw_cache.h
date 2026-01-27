@@ -40,11 +40,6 @@ cache. E.g. set to 0x7, will allocate 8 cache ways, 0-7 to cache, and leave
 #define LIBERO_SETTING_WAY_ENABLE    0x0000000BUL
     /* WAY_ENABLE                        [0:8]   RW value= 0xB */
 #endif
-#if !defined (LIBERO_SETTING_L2_SEG_0)
-/*L2 Cache Segment 0 */
-#define LIBERO_SETTING_L2_SEG_0    0x4000000080000000UL
-    /* L2_SEG_0                          [0:64]  RW value= 0x4000000080000000 */
-#endif
 #if !defined (LIBERO_SETTING_WAY_MASK_DMA)
 /*Way mask register master DMA. Set field to zero to disable way from this
 master. The available cache ways are 0 to number set in WAY_ENABLE register. If
