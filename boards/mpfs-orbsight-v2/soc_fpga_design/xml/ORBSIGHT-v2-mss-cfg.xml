@@ -4,8 +4,8 @@
       <design_name>OrbSight_2</design_name>
       <mpfs_part_no>MPFS160T</mpfs_part_no>
       <mpfs_package>FCVG784</mpfs_package>
-      <creation_date_time>01-26-2026_22:13:26</creation_date_time>
-      <xml_format_version>0.6.8</xml_format_version>
+      <creation_date_time>01-27-2026_12:12:41</creation_date_time>
+      <xml_format_version>1.1.1</xml_format_version>
     </design_information>
     <mss_memory_map>
       <map>

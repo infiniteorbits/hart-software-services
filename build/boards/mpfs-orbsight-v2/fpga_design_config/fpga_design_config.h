@@ -30,11 +30,11 @@
 #define  LIBERO_SETTING_MSS_CONFIGURATOR_VERSION                    "2025.1"
 #define  LIBERO_SETTING_DESIGN_NAME                                 "OrbSight_2"
 #define  LIBERO_SETTING_MPFS_PART                                   "MPFS160T"
-#define  LIBERO_SETTING_GENERATION_DATE                             "01-26-2026_22:13:26"
-#define  LIBERO_SETTING_XML_VERSION                                 "0.6.8"
-#define  LIBERO_SETTING_XML_VERSION_MAJOR                           0
-#define  LIBERO_SETTING_XML_VERSION_MINOR                           6
-#define  LIBERO_SETTING_XML_VERSION_PATCH                           8
+#define  LIBERO_SETTING_GENERATION_DATE                             "01-27-2026_12:12:41"
+#define  LIBERO_SETTING_XML_VERSION                                 "1.1.1"
+#define  LIBERO_SETTING_XML_VERSION_MAJOR                           1
+#define  LIBERO_SETTING_XML_VERSION_MINOR                           1
+#define  LIBERO_SETTING_XML_VERSION_PATCH                           1
 #define  LIBERO_SETTING_HEADER_GENERATOR_VERSION                    "0.6.4.1"
 #define  LIBERO_SETTING_HEADER_GENERATOR_VERSION_MAJOR              0
 #define  LIBERO_SETTING_HEADER_GENERATOR_VERSION_MINOR              6

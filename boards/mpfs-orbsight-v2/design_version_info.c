@@ -24,6 +24,8 @@
 #include "design_version_info.h"
 #include "mss_sys_services.h"
 
+#include "fpga_design_config.h"
+
 /****************************************************************************/
 
 #include <string.h>
@@ -31,8 +33,30 @@
 static uint8_t design_info_[76];
 bool Design_Version_Info_Init(void)
 {
+#if 1
+    /// bool result = true;
+    
+    mHSS_FANCY_PRINTF(LOG_STATUS, "DESIGNID: ");
+    for (int i = 0; i < strlen(LIBERO_SETTING_DESIGN_NAME); i++) {
+        mHSS_PUTC(LIBERO_SETTING_DESIGN_NAME[i]);
+    }
+    mHSS_PUTC('\n');
+    
+    mHSS_FANCY_PRINTF(LOG_STATUS, "DESIGNVER: ");
+    for (int i = 0; i < strlen(LIBERO_SETTING_XML_VERSION); i++) {
+        mHSS_PUTC(LIBERO_SETTING_XML_VERSION[i]);
+    }
+    mHSS_PUTC('\n');
+    
+    mHSS_FANCY_PRINTF(LOG_STATUS, "DESIGNDATE: ");
+    for (int i = 0; i < strlen(LIBERO_SETTING_GENERATION_DATE); i++) {
+        mHSS_PUTC(LIBERO_SETTING_GENERATION_DATE[i]);
+    }
+    mHSS_PUTC('\n');
+    
+#else
     bool result = false;
-
+    
     MSS_SYS_select_service_mode( MSS_SYS_SERVICE_POLLING_MODE, NULL);
     memset(design_info_, 0, ARRAY_SIZE(design_info_));
 
@@ -62,8 +86,10 @@ bool Design_Version_Info_Init(void)
     } else {
         mHSS_FANCY_PRINTF(LOG_ERROR, "Couldn't read Design Information\n");
     }
-
     return result;
+#endif
+
+    return true; /// result;
 }
 
 bool Get_Design_Version_Info(uint8_t **ppBuffer, size_t* pLen)
