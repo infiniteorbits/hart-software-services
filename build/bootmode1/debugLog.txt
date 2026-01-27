@@ -1,33 +1,42 @@
 
-09:41:00 DEBUG - Looking for ELF file in the work directory.
-09:41:00 DEBUG - ELF file found: "hss-envm-wrapper.elf".
-09:41:00 INFO  - Selected boot mode "1 - non-secure boot from eNVM" and working in directory "/home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build".
-09:41:00 DEBUG - Workdir=/home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build die=MPFS160T diePackage=FCVG784 bm=1 - non-secure boot from eNVM verify=false elf=hss-envm-wrapper.elf
-09:41:00 DEBUG - Invoking command: "/home/trajce-nikolov/Libero_SoC/Designer/bin64/fpgenprog new_project --location /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject --target_die MPFS160T --target_package FCVG784".
-09:41:00 DEBUG - Finished with exit code: "0".
-09:41:00 INFO  - Generating BIN file...
-09:41:00 DEBUG - Invoking command: "/home/trajce-nikolov/Microchip/SoftConsole-v2022.2-RISC-V-747/riscv-unknown-elf-gcc/bin/riscv64-unknown-elf-objcopy --version".
-09:41:00 DEBUG - Finished with exit code: "0".
-09:41:00 DEBUG - Invoking command: "/home/trajce-nikolov/Microchip/SoftConsole-v2022.2-RISC-V-747/riscv-unknown-elf-gcc/bin/riscv64-unknown-elf-objcopy -O binary /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/hss-envm-wrapper.elf /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/hss-envm-wrapper.bin ".
-09:41:00 DEBUG - Finished with exit code: "0".
-09:41:00 DEBUG - Size of the BIN file is "99856 (decimal)" or "0x00018610 (hex)".
-09:41:00 DEBUG - Invoking command: "/home/trajce-nikolov/Microchip/SoftConsole-v2022.2-RISC-V-747/riscv-unknown-elf-gcc/bin/riscv64-unknown-elf-readelf --program-headers /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/hss-envm-wrapper.elf ".
-09:41:00 DEBUG - Finished with exit code: "0".
-09:41:00 DEBUG - Entry point 0x20220100
-09:41:00 DEBUG - The detected entry address is "20220100".
-09:41:00 INFO  - Generating header...
-09:41:00 INFO  - Generating HEX file...
-09:41:00 DEBUG - Invoking command: "/home/trajce-nikolov/Microchip/SoftConsole-v2022.2-RISC-V-747/riscv-unknown-elf-gcc/bin/riscv64-unknown-elf-objcopy -I binary -O ihex --change-section-lma *+0x20220000 /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/hss-envm-wrapper-bm1-p0.bin /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/hss-envm-wrapper-bm1-p0.hex ".
-09:41:00 DEBUG - Finished with exit code: "0".
-09:41:00 INFO  - Preparing for bitstream generation...
-09:41:00 DEBUG - Invoking command: "/home/trajce-nikolov/Libero_SoC/Designer/bin64/fpgenprog mss_boot_info --location /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject --u_mss_bootmode 1 --u_mss_bootcfg 2022010020220100202201002022010020220100".
-09:41:00 DEBUG - Finished with exit code: "0".
-09:41:00 DEBUG - Invoking command: "/home/trajce-nikolov/Libero_SoC/Designer/bin64/fpgenprog envm_client --location /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject --number_of_bytes 100112 --content_file_format intel-hex --content_file /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/hss-envm-wrapper-bm1-p0.hex --start_page 0 --client_name bootmode1_0 --mem_file_base_address 20220000".
-09:41:00 DEBUG - Finished with exit code: "0".
-09:41:00 INFO  - Generating bitstream...
-09:41:00 DEBUG - Invoking command: "/home/trajce-nikolov/Libero_SoC/Designer/bin64/fpgenprog generate_bitstream --location /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject".
-09:41:12 DEBUG - Finished with exit code: "0".
-09:41:12 INFO  - Programming the target...
-09:41:12 DEBUG - Invoking command: "/home/trajce-nikolov/Libero_SoC/Designer/bin64/fpgenprog run_action --location /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject --action PROGRAM".
-09:41:22 DEBUG - Finished with exit code: "0".
-09:41:22 INFO  - mpfsBootmodeProgrammer completed successfully.
+13:54:24 DEBUG - Looking for ELF file in the work directory.
+13:54:24 DEBUG - ELF file found: "hss-envm-wrapper.elf".
+13:54:24 INFO  - Selected boot mode "1 - non-secure boot from eNVM" and working in directory "/home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build".
+13:54:24 DEBUG - Workdir=/home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build die=MPFS160T diePackage=FCVG784 bm=1 - non-secure boot from eNVM verify=false elf=hss-envm-wrapper.elf
+13:54:24 DEBUG - Invoking command: "/home/trajce-nikolov/Libero_SoC/Designer/bin64/fpgenprog new_project --location /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject --target_die MPFS160T --target_package FCVG784".
+13:54:24 DEBUG - Finished with exit code: "0".
+13:54:24 INFO  - Generating BIN file...
+13:54:24 DEBUG - Invoking command: "/home/trajce-nikolov/Microchip/SoftConsole-v2022.2-RISC-V-747/riscv-unknown-elf-gcc/bin/riscv64-unknown-elf-objcopy --version".
+13:54:24 DEBUG - Finished with exit code: "0".
+13:54:24 DEBUG - Invoking command: "/home/trajce-nikolov/Microchip/SoftConsole-v2022.2-RISC-V-747/riscv-unknown-elf-gcc/bin/riscv64-unknown-elf-objcopy -O binary /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/hss-envm-wrapper.elf /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/hss-envm-wrapper.bin ".
+13:54:24 ERROR - Error: Folder '/home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject' is not empty. Please specify empty folder for new project.
+13:54:24 DEBUG - Finished with exit code: "1".
+13:54:24 ERROR - Failed to create fpgenprog project at location "/home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject".
+13:54:24 DEBUG - Finished with exit code: "0".
+13:54:24 DEBUG - Size of the BIN file is "98512 (decimal)" or "0x000180D0 (hex)".
+13:54:24 ERROR - Error: Folder '/home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject' is not empty. Please specify empty folder for new project.
+13:54:24 DEBUG - Finished with exit code: "1".
+13:54:24 DEBUG - Invoking command: "/home/trajce-nikolov/Microchip/SoftConsole-v2022.2-RISC-V-747/riscv-unknown-elf-gcc/bin/riscv64-unknown-elf-readelf --program-headers /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/hss-envm-wrapper.elf ".
+13:54:24 ERROR - Failed to create fpgenprog project at location "/home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject".
+13:54:24 DEBUG - Finished with exit code: "0".
+13:54:24 DEBUG - Entry point 0x20220100
+13:54:24 DEBUG - The detected entry address is "20220100".
+13:54:24 INFO  - Generating header...
+13:54:24 INFO  - Generating HEX file...
+13:54:24 DEBUG - Invoking command: "/home/trajce-nikolov/Microchip/SoftConsole-v2022.2-RISC-V-747/riscv-unknown-elf-gcc/bin/riscv64-unknown-elf-objcopy -I binary -O ihex --change-section-lma *+0x20220000 /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/hss-envm-wrapper-bm1-p0.bin /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/hss-envm-wrapper-bm1-p0.hex ".
+13:54:24 DEBUG - Finished with exit code: "0".
+13:54:24 INFO  - Preparing for bitstream generation...
+13:54:24 DEBUG - Invoking command: "/home/trajce-nikolov/Libero_SoC/Designer/bin64/fpgenprog mss_boot_info --location /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject --u_mss_bootmode 1 --u_mss_bootcfg 2022010020220100202201002022010020220100".
+13:54:24 ERROR - Error: Folder '/home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject' is not empty. Please specify empty folder for new project.
+13:54:24 DEBUG - Finished with exit code: "1".
+13:54:24 ERROR - Failed to create fpgenprog project at location "/home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject".
+13:54:24 DEBUG - Finished with exit code: "0".
+13:54:24 DEBUG - Invoking command: "/home/trajce-nikolov/Libero_SoC/Designer/bin64/fpgenprog envm_client --location /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject --number_of_bytes 98768 --content_file_format intel-hex --content_file /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/hss-envm-wrapper-bm1-p0.hex --start_page 0 --client_name bootmode1_0 --mem_file_base_address 20220000".
+13:54:25 DEBUG - Finished with exit code: "0".
+13:54:25 INFO  - Generating bitstream...
+13:54:25 DEBUG - Invoking command: "/home/trajce-nikolov/Libero_SoC/Designer/bin64/fpgenprog generate_bitstream --location /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject".
+13:54:33 DEBUG - Finished with exit code: "0".
+13:54:33 INFO  - Programming the target...
+13:54:33 DEBUG - Invoking command: "/home/trajce-nikolov/Libero_SoC/Designer/bin64/fpgenprog run_action --location /home/trajce-nikolov/Git/infiniteorbits/hart-software-services/build/bootmode1/fpgenprogProject --action PROGRAM".
+13:54:43 DEBUG - Finished with exit code: "0".
+13:54:43 INFO  - mpfsBootmodeProgrammer completed successfully.
