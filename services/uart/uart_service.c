@@ -46,7 +46,7 @@ static const struct StateDesc uart_state_descs[] = {
  * \brief UART Driver State Machine
  */
 struct StateMachine uart_service = {
-        (stateType_t)UART_INITIALIZATION, (stateType_t)SM_INVALID_STATE, (const uint32_t)UART_NUM_STATES, (const char *)"uart_service", 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, uart_state_descs, false, 0u, NULL
+    (stateType_t)UART_INITIALIZATION, (stateType_t)SM_INVALID_STATE, (const uint32_t)UART_NUM_STATES, (const char *)"uart_service", 0u, 0u, 0u, uart_state_descs, false, 0u, NULL
 };
 
 // --------------------------------------------------------------------------------------------------
