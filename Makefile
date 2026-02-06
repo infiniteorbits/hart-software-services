@@ -33,6 +33,8 @@ BINDIR=build
 DOT_CONFIG=.config
 CONFIG_H=config.h
 
+CORE_CFLAGS += -DORBSIGHT2
+
 #
 # To build the HSS under SoftConsole on Windows, we need to use SoftConsole-provided
 # tools, and potentially to modify paths

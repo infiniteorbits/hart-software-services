@@ -18,6 +18,49 @@
 #include "hss_init.h"
 #include "hss_debug.h"
 
+#ifdef ORBSIGHT2
+
+static const char* tokenStringTable[] = {
+        "\n",
+        "\033[38;5;80m _____  _____ ____    __ __  ____  __  __ _____    __ __ 2",
+        "((   )) ||_// ||=)   ((  || (( ___ ||==||  ||      \\\\ //  ",
+        " \\\\_//  || \\\\ ||_)) \\_)) ||  \\\\_|| ||  ||  ||       \\V/   \033[0m",
+        "                                                          ",
+        "                                                          "
+};
+
+enum Token { CRLF_token = 0,
+    LINE_0,
+    LINE_1,
+    LINE_2,
+    LINE_3,
+    LINE_4,
+};
+
+struct __attribute__((packed)) RLEElement {
+    unsigned char count;
+    enum Token tokenIndex;
+};
+
+static const struct RLEElement rleLogoElements[] = {
+    {1, LINE_0}, {1, CRLF_token},
+    {1, LINE_1}, {1, CRLF_token},
+    {1, LINE_2}, {1, CRLF_token},
+    {1, LINE_3}, {1, CRLF_token},
+    {1, LINE_4}, {1, CRLF_token},
+};
+
+bool HSS_LogoInit(void) {
+    for (unsigned int i = 0u; i < (sizeof(rleLogoElements)/sizeof(rleLogoElements[0])); i++) {
+        for (unsigned char j = 0u; j < rleLogoElements[i].count; j++) {
+            mHSS_PUTS(tokenStringTable[rleLogoElements[i].tokenIndex]);
+        }
+    }
+    return true;
+}
+
+#else /// ORBSIGHT2
+
 //
 // A variety of colored pixels are needed - red, white, black
 // define these as ASCII characters if color output is not enabled
@@ -77,7 +120,6 @@ const char* tokenStringTable[] = {
     RST_str,
     "\n",
 };
-
 
 // RLE Microchip Logo, built up from our color pixel primitives above...
 // RLE shrinks the size of this
@@ -184,3 +226,5 @@ bool HSS_LogoInit(void)
 
     return true;
 }
+
+#endif /// ORBSIGHT2

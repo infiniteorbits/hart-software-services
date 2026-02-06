@@ -4807,6 +4807,64 @@ void debug_read_ddrcfg(void)
 #endif
 #endif
 
+#ifdef ORBSIGHT2
+
+const uint8_t REFCLK_OFFSETS[][9U] = {
+
+        /// {
+        ///     LIBERO_SETTING_REFCLK_DDR4_1600_NUM_OFFSETS,
+        ///     LIBERO_SETTING_REFCLK_DDR4_1600_OFFSET_0,
+        ///     LIBERO_SETTING_REFCLK_DDR4_1600_OFFSET_1,
+        ///     LIBERO_SETTING_REFCLK_DDR4_1600_OFFSET_2,
+        ///     LIBERO_SETTING_REFCLK_DDR4_1600_OFFSET_3
+        /// },
+        ///
+
+        /// Cycling in the range of 0 to 7 for the reference clock offset (CK/CA Additive Offset)
+        /// is a standard "brute-force" debugging method to find a stable timing window for the DDR4 interface.
+        /// Each step shifts the phase of the Address/Command bus relative to the Clock by approximately 45 degrees
+        ///
+        /// This might help naughty boards to pass the DDR training. Some of the boards by default can get stuck
+        /// into infinite loop. This is a Libero bug reported here
+        ///
+        /// https://support.microchip.com/s/article/The-CK--CA-additive-offset-value-is-not-propagated-inside-the-DDR-Controller-Sub-System-of-PolarFire
+        ///
+        ///
+        {
+                8U, 0U, 5U, 3U, 4U, 2U, 7U, 1U, 6U
+        }
+};
+
+/**
+ * ddr_manual_addcmd_refclk_offset This function determines current
+ * sweep offset based on DDR type
+ * @param ddr_type
+ * @param refclk_sweep_index
+ * @return
+ */
+#ifdef MANUAL_ADDCMD_TRAINIG
+
+static uint8_t ddr_manual_addcmd_refclk_offset(DDR_TYPE ddr_type, uint8_t * refclk_sweep_index)
+{
+    uint8_t refclk_offset;
+
+    (void)ddr_type;
+
+    if (*refclk_sweep_index >= REFCLK_OFFSETS[0][0U])
+    {
+        *refclk_sweep_index = 0U;
+    }
+
+    refclk_offset = REFCLK_OFFSETS[0][*refclk_sweep_index + 1U];
+
+    *refclk_sweep_index = (uint8_t)(*refclk_sweep_index + 1U);
+
+    return refclk_offset;
+}
+
+#endif
+
+#else /// ORBSIGHT2
 
 const uint8_t REFCLK_OFFSETS[][5U] = {
         {LIBERO_SETTING_REFCLK_DDR3_1333_NUM_OFFSETS,
@@ -4918,6 +4976,8 @@ static uint8_t ddr_manual_addcmd_refclk_offset(DDR_TYPE ddr_type, uint8_t * refc
     return refclk_offset;
 }
 #endif
+
+#endif /// ORBSIGHT2
 
 static uint32_t mode_register_masked_write(uint32_t address)
 {
