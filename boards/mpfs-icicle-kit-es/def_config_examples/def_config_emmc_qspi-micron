@@ -7,6 +7,7 @@
 # Icicle-Kit Design Configuration Options
 #
 CONFIG_SOC_FPGA_DESIGN_XML="boards/mpfs-icicle-kit-es/soc_fpga_design/xml/ICICLE_MSS_mss_cfg.xml"
+CONFIG_DEFAULT_DEVICE_TREE="boards/mpfs-icicle-kit-es/mpfs_minimal_uboot_qspi_micron.dtb"
 # end of Icicle-Kit Design Configuration Options
 # end of Board/Design Configuration Options
 
@@ -66,8 +67,8 @@ CONFIG_SERVICE_MMC_SPIN_TIMEOUT_MAX_SPINS=1000000
 # end of MMC
 
 CONFIG_SERVICE_OPENSBI=y
-CONFIG_SERVICE_OPENSBI_IHC=y
-CONFIG_SERVICE_OPENSBI_RPROC=y
+CONFIG_SERVICE_OPENSBI_IPC=y
+CONFIG_SERVICE_OPENSBI_RPROC_IPC=y
 
 #
 # SBI Extension Support
@@ -155,7 +156,7 @@ CONFIG_ENABLE_PCIE_CTRL_1=y
 # end of Enabled PCIe controllers
 
 CONFIG_OPENSBI=y
-CONFIG_USE_IHC=y
+CONFIG_USE_IHC_V2=y
 # CONFIG_USE_USER_CRYPTO is not set
 
 #
@@ -185,7 +186,7 @@ CONFIG_ALLOW_COLDREBOOT_ALWAYS=y
 #
 # OpenSBI
 #
-# CONFIG_PROVIDE_DTB is not set
+CONFIG_PROVIDE_DTB=y
 # end of OpenSBI
 
 #
