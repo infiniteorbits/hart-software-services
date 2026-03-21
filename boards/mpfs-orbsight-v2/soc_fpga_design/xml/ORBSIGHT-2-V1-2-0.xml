@@ -4,8 +4,8 @@
       <design_name>OrbSight_2</design_name>
       <mpfs_part_no>MPFS160T</mpfs_part_no>
       <mpfs_package>FCVG784</mpfs_package>
-      <creation_date_time>01-27-2026_12:12:41</creation_date_time>
-      <xml_format_version>1.1.1</xml_format_version>
+      <creation_date_time>03-12-2026_12:26:10</creation_date_time>
+      <xml_format_version>1.2.0</xml_format_version>
     </design_information>
     <mss_memory_map>
       <map>
@@ -145,17 +145,17 @@
       <cache>
         <registers>
           <register address="0x00000008" description="Way indexes less than or equal to this register value  may be used by the cache. E.g. set to 0x7, will allocate 8 cache ways, 0-7 to cache, and leave 8-15 as LIM. Note 1: Way 0 is always allocated as cache. Note 2: each way is 128KB." name="WAY_ENABLE">
-            <field Type="RW" name="WAY_ENABLE" offset="0" width="8">0xB</field>
+            <field Type="RW" name="WAY_ENABLE" offset="0" width="8">0x7</field>
           </register>
           <register address="0x00000008" description="Way mask register master DMA. Set field to zero to disable way from this master. The available cache ways are 0 to number set in WAY_ENABLE register. If using scratch pad memory, the ways you want reserved for scrathpad are not available for selection, you must set to 0.  e.g. If three ways reserved for scratchpad, WAY_MASK_0, WAY_MASK_1 and WAY_MASK_2 will be set to zero for all masters, so they can not evict the way. " name="WAY_MASK_DMA">
             <field Type="RW" name="WAY_MASK_0" offset="0" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -170,10 +170,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -188,10 +188,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -206,10 +206,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -224,10 +224,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -242,10 +242,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -260,10 +260,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -278,10 +278,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -296,10 +296,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -314,10 +314,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -332,10 +332,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -350,10 +350,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -368,10 +368,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -386,10 +386,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -404,10 +404,10 @@
             <field Type="RW" name="WAY_MASK_1" offset="1" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_2" offset="2" width="1">0x1</field>
             <field Type="RW" name="WAY_MASK_3" offset="3" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x1</field>
-            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x1</field>
+            <field Type="RW" name="WAY_MASK_4" offset="4" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_5" offset="5" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_6" offset="6" width="1">0x0</field>
+            <field Type="RW" name="WAY_MASK_7" offset="7" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_8" offset="8" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_9" offset="9" width="1">0x0</field>
             <field Type="RW" name="WAY_MASK_10" offset="10" width="1">0x0</field>
@@ -2496,10 +2496,10 @@
             <field Type="RW" name="CRC" offset="4" width="1">0x0</field>
             <field Type="RW" name="BUS_WIDTH" offset="5" width="3">0x1</field>
             <field Type="RW" name="DMI_DBI" offset="8" width="1">0x0</field>
-            <field Type="RW" name="DQ_DRIVE" offset="9" width="2">0x0</field>
-            <field Type="RW" name="DQS_DRIVE" offset="11" width="2">0x0</field>
-            <field Type="RW" name="ADD_CMD_DRIVE" offset="13" width="2">0x0</field>
-            <field Type="RW" name="CLOCK_OUT_DRIVE" offset="15" width="2">0x0</field>
+            <field Type="RW" name="DQ_DRIVE" offset="9" width="2">0x3</field>
+            <field Type="RW" name="DQS_DRIVE" offset="11" width="2">0x3</field>
+            <field Type="RW" name="ADD_CMD_DRIVE" offset="13" width="2">0x3</field>
+            <field Type="RW" name="CLOCK_OUT_DRIVE" offset="15" width="2">0x3</field>
             <field Type="RW" name="DQ_TERMINATION" offset="17" width="2">0x0</field>
             <field Type="RW" name="DQS_TERMINATION" offset="19" width="2">0x0</field>
             <field Type="RW" name="ADD_CMD_INPUT_PIN_TERMINATION" offset="21" width="2">0x0</field>
@@ -2704,10 +2704,10 @@
             <field Type="RW" name="CFG_GENERATE_REFRESH_ON_SRX" offset="0" width="32">0x00000001</field>
           </register>
           <register address="0x00002828" description="IP Blk = MC_BASE3 Access=RW " name="CFG_DBI_CL">
-            <field Type="RW" name="CFG_DBI_CL" offset="0" width="32">0xC</field>
+            <field Type="RW" name="CFG_DBI_CL" offset="0" width="32">0x11</field>
           </register>
           <register address="0x0000282C" description="IP Blk = MC_BASE3 Access=RW " name="CFG_NON_DBI_CL">
-            <field Type="RW" name="CFG_NON_DBI_CL" offset="0" width="32">0xC</field>
+            <field Type="RW" name="CFG_NON_DBI_CL" offset="0" width="32">0x11</field>
           </register>
           <register address="0x00002830" description="IP Blk = MC_BASE3 Access=RW " name="INIT_FORCE_WRITE_DATA_0">
             <field Type="RW" name="INIT_FORCE_WRITE_DATA_0" offset="0" width="32">0x00000000</field>
@@ -2752,10 +2752,10 @@
             <field Type="RW" name="CFG_INT_VREF_MON" offset="0" width="32">0x0</field>
           </register>
           <register address="0x00003C34" description="IP Blk = MC_BASE1 Access=RW " name="CFG_TEMP_CTRL_REF_MODE">
-            <field Type="RW" name="CFG_TEMP_CTRL_REF_MODE" offset="0" width="32">0x0</field>
+            <field Type="RW" name="CFG_TEMP_CTRL_REF_MODE" offset="0" width="32">0x1</field>
           </register>
           <register address="0x00003C38" description="IP Blk = MC_BASE1 Access=RW " name="CFG_TEMP_CTRL_REF_RANGE">
-            <field Type="RW" name="CFG_TEMP_CTRL_REF_RANGE" offset="0" width="32">0x0</field>
+            <field Type="RW" name="CFG_TEMP_CTRL_REF_RANGE" offset="0" width="32">0x1</field>
           </register>
           <register address="0x00003C3C" description="IP Blk = MC_BASE1 Access=RW " name="CFG_MAX_PWR_DOWN_MODE">
             <field Type="RW" name="CFG_MAX_PWR_DOWN_MODE" offset="0" width="32">0x00000000</field>
@@ -2806,19 +2806,19 @@
             <field Type="RW" name="CFG_RRD_S" offset="0" width="32">0x4</field>
           </register>
           <register address="0x00003C7C" description="IP Blk = MC_BASE1 Access=RW " name="CFG_RRD_L">
-            <field Type="RW" name="CFG_RRD_L" offset="0" width="32">0x5</field>
+            <field Type="RW" name="CFG_RRD_L" offset="0" width="32">0x4</field>
           </register>
           <register address="0x00003C80" description="IP Blk = MC_BASE1 Access=RW " name="CFG_WTR_S">
             <field Type="RW" name="CFG_WTR_S" offset="0" width="32">0x2</field>
           </register>
           <register address="0x00003C84" description="IP Blk = MC_BASE1 Access=RW " name="CFG_WTR_L">
-            <field Type="RW" name="CFG_WTR_L" offset="0" width="32">0x6</field>
+            <field Type="RW" name="CFG_WTR_L" offset="0" width="32">0x4</field>
           </register>
           <register address="0x00003C88" description="IP Blk = MC_BASE1 Access=RW " name="CFG_WTR_S_CRC_DM">
             <field Type="RW" name="CFG_WTR_S_CRC_DM" offset="0" width="32">0x7</field>
           </register>
           <register address="0x00003C8C" description="IP Blk = MC_BASE1 Access=RW " name="CFG_WTR_L_CRC_DM">
-            <field Type="RW" name="CFG_WTR_L_CRC_DM" offset="0" width="32">0xB</field>
+            <field Type="RW" name="CFG_WTR_L_CRC_DM" offset="0" width="32">0x9</field>
           </register>
           <register address="0x00003C90" description="IP Blk = MC_BASE1 Access=RW " name="CFG_WR_CRC_DM">
             <field Type="RW" name="CFG_WR_CRC_DM" offset="0" width="32">0x11</field>
@@ -2995,22 +2995,22 @@
             <field Type="RW" name="CFG_AUTO_REF_EN" offset="0" width="32">0x1</field>
           </register>
           <register address="0x00004044" description="IP Blk = MC_BASE2 Access=RW " name="CFG_RAS">
-            <field Type="RW" name="CFG_RAS" offset="0" width="32">0x1C</field>
+            <field Type="RW" name="CFG_RAS" offset="0" width="32">0x1A</field>
           </register>
           <register address="0x00004048" description="IP Blk = MC_BASE2 Access=RW " name="CFG_RCD">
-            <field Type="RW" name="CFG_RCD" offset="0" width="32">0xB</field>
+            <field Type="RW" name="CFG_RCD" offset="0" width="32">0xC</field>
           </register>
           <register address="0x0000404C" description="IP Blk = MC_BASE2 Access=RW " name="CFG_RRD">
             <field Type="RW" name="CFG_RRD" offset="0" width="32">0x00000007</field>
           </register>
           <register address="0x00004050" description="IP Blk = MC_BASE2 Access=RW " name="CFG_RP">
-            <field Type="RW" name="CFG_RP" offset="0" width="32">0xB</field>
+            <field Type="RW" name="CFG_RP" offset="0" width="32">0xC</field>
           </register>
           <register address="0x00004054" description="IP Blk = MC_BASE2 Access=RW " name="CFG_RC">
-            <field Type="RW" name="CFG_RC" offset="0" width="32">0x27</field>
+            <field Type="RW" name="CFG_RC" offset="0" width="32">0x25</field>
           </register>
           <register address="0x00004058" description="IP Blk = MC_BASE2 Access=RW " name="CFG_FAW">
-            <field Type="RW" name="CFG_FAW" offset="0" width="32">0x10</field>
+            <field Type="RW" name="CFG_FAW" offset="0" width="32">0x17</field>
           </register>
           <register address="0x0000405C" description="IP Blk = MC_BASE2 Access=RW " name="CFG_RFC">
             <field Type="RW" name="CFG_RFC" offset="0" width="32">0x00000076</field>
@@ -3034,7 +3034,7 @@
             <field Type="RW" name="CFG_XSR" offset="0" width="32">0x00000024</field>
           </register>
           <register address="0x00004080" description="IP Blk = MC_BASE2 Access=RW " name="CFG_CL">
-            <field Type="RW" name="CFG_CL" offset="0" width="32">0xC</field>
+            <field Type="RW" name="CFG_CL" offset="0" width="32">0x11</field>
           </register>
           <register address="0x00004088" description="IP Blk = MC_BASE2 Access=RW " name="CFG_READ_TO_WRITE">
             <field Type="RW" name="CFG_READ_TO_WRITE" offset="0" width="32">0xF</field>
@@ -3097,7 +3097,7 @@
             <field Type="RW" name="CFG_MEM_BANKBITS" offset="0" width="32">0x3</field>
           </register>
           <register address="0x000040E0" description="IP Blk = MC_BASE2 Access=RW " name="CFG_ODT_RD_MAP_CS0">
-            <field Type="RW" name="CFG_ODT_RD_MAP_CS0" offset="0" width="32">0x00</field>
+            <field Type="RW" name="CFG_ODT_RD_MAP_CS0" offset="0" width="32">0x01</field>
           </register>
           <register address="0x000040E4" description="IP Blk = MC_BASE2 Access=RW " name="CFG_ODT_RD_MAP_CS1">
             <field Type="RW" name="CFG_ODT_RD_MAP_CS1" offset="0" width="32">0x00</field>

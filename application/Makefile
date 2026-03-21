@@ -33,6 +33,7 @@ SRCS-y += \
     application/hart0/hss_state_machine.c \
     application/hart0/hss_clock.c \
     application/hart0/hss_registry.c \
+    application/hart0/housekeeping.c
 
 INCLUDES +=\
     -I./include \
@@ -41,6 +42,7 @@ INCLUDES +=\
 
 ASM_SRCS += \
     application/crt.S \
+    baremetal/polarfire-soc-bare-metal-library/src/platform/hal/hw_reg_access.S
 
 
 EXTRA_SRCS-y += \

@@ -50,6 +50,8 @@
 
 #include "csr_helper.h"
 
+#include "housekeeping.h"
+
 #include <string.h>
 
 
@@ -79,6 +81,8 @@ int main(int argc, char **argv)
     if (current_hartid() != 0) {
         sbi_hart_hang();
     }
+    /*hk_state_t hk_state = */(void)HK_SM_Run((void*)0ULL);
+    /// if (hk_state != HK_POWER_GOOD) return -1;
 
     hss_main();
 
