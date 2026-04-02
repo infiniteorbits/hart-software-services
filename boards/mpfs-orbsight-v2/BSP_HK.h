@@ -1,46 +1,55 @@
 /** ----------------------------------------------------------------------------
- * @file        Housekeeping.h
+ * @file        BSP_HK.h
  * @brief
  * @author      Trajce Nikolov | nick@rfim.co.uk
  * @date        January - March 2026
  *
- * @version     1.2.0       /// Added HK_ERROR state
+ * @version     1.2.0       /// Added BSP_HK_ERROR state
  * @version     1.0.0
  *
  * @copyright   RFIM Space 2025-2026
  * -----------------------------------------------------------------------------
  */
 
-#ifndef HOUSEKEEPING_H_
-#define HOUSEKEEPING_H_
+#ifndef BSP_HK_H_
+#define BSP_HK_H_
 
-#include <stdint.h>
+#ifdef __cplusplus
+extern "C" {
+    #include <cstdint.h>
+#else
+    #include <stdint.h>
+#endif
 
-
-#include <stdbool.h>
 #include <stddef.h>
+
 
 /** ----------------------------------------------------------------------------
 * @brief BSP Camera housekeeping state machine states .
 * ------------------------------------------------------------------------------
 */
 typedef enum {
-    HK_CAMERA_POWER_ON,
-    HK_VDD3V5_POWER_GOOD,
-    HK_VDD2V0_POWER_GOOD,
-    HK_VDD3V8_AND_VDD0V8_ON,
-    HK_ERROR,
-    HK_VDD3V8_OR_VDD0V8_ON,
-    HK_POWER_GOOD,
-    HK_UNKNOWN
-} hk_state_t;
+    BSP_HK_CAMERA_POWER_ON,
+    BSP_HK_VDD3V5_POWER_GOOD,
+    BSP_HK_VDD2V0_POWER_GOOD,
+    BSP_HK_VDD3V8_POWER_GOOD,
+    BSP_HK_VDD0V8_POWER_GOOD,
+    BSP_HK_VDD3V5_VDD2V0_POWER_GOOD,
+    BSP_HK_ALL_POWER_GOOD,
+    BSP_HK_ERROR,
+    BSP_HK_POWER_GOOD,
+    BSP_HK_UNKNOWN,
+    BSP_HK_VOLTAGE_FAILURE,
+    BSP_HK_TEMPERATURE_FAILURE,
+    BSP_HK_OK
+} bsp_hk_state_t;
 
 /** -----------------------------------------------------------------------------
  * @note    The initial action callbacks when the camera is turned on
  *          It is called like this
  *
- *          if (HK_POWER_GOOD == g_action_camera_power_on((void*)0,
- *                  HK_CAMERA_POWER_ON,
+ *          if (BSP_HK_POWER_GOOD == g_action_camera_power_on((void*)0,
+ *                  BSP_HK_CAMERA_POWER_ON,
  *                  g_event_is_camera_power_on,
  *                  g_event_is_camera_power_off
  *             )
@@ -59,7 +68,7 @@ typedef enum {
  *
  * -----------------------------------------------------------------------------
 */
-typedef hk_state_t(*event_cb)(void *user_data, hk_state_t state);
+typedef bsp_hk_state_t(*event_cb)(void *user_data, bsp_hk_state_t state);
 
 /** -----------------------------------------------------------------------------
  * @brief   An action callback producing true or false for a decision in the
@@ -78,7 +87,7 @@ typedef hk_state_t(*event_cb)(void *user_data, hk_state_t state);
  *
  * -----------------------------------------------------------------------------
 */
-typedef hk_state_t(*action_cb)(void *user_data, hk_state_t state,  \
+typedef bsp_hk_state_t(*action_cb)(void *user_data, bsp_hk_state_t state,  \
             event_cb true_event, event_cb false_event);
 
 
@@ -92,6 +101,25 @@ typedef hk_state_t(*action_cb)(void *user_data, hk_state_t state,  \
  *
  * -----------------------------------------------------------------------------
 */
-hk_state_t HK_SM_Run(void* user_data);
+bsp_hk_state_t
+BSP_HK_SM_Run(void* user_data);
 
-#endif /// HOUSEKEEPING_H_
+/** -----------------------------------------------------------------------------
+ * @brief                   Runs a step -- suppose to be in a loop -- of the
+ *                          Event engine
+ *
+ * @param[in] user_data     Any user data to be passed onto the Event engine
+ *
+ * @return                  State of the Event engine
+ *
+ * -----------------------------------------------------------------------------
+*/
+bsp_hk_state_t
+BSP_HK_EVM_Step(void* user_data);
+
+
+#ifdef __cplusplus
+    }
+#endif
+
+#endif /// BSP_HK_H_

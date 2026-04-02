@@ -38,6 +38,9 @@ LINKER_SCRIPT-l2scratch=boards/${BOARD}/hss-l2scratch.ld
 
 BOARD_DIR=boards/mpfs-orbsight-v2
 
+ASM_SRCS += \
+    baremetal/polarfire-soc-bare-metal-library/src/platform/hal/hw_reg_access.S \
+    
 INCLUDES += \
 	-I$(BOARD_DIR)/mpfs_hal_config/ \
 	-I$(BINDIR)/$(BOARD_DIR)/fpga_design_config/ \
@@ -50,7 +53,9 @@ EXTRA_SRCS-y += \
         $(BOARD_DIR)/uart_device_list.c \
         $(BOARD_DIR)/hss_board_init.c \
         $(BOARD_DIR)/design_version_info.c \
-
+		$(BOARD_DIR)/BSP_HK.c \
+		$(BOARD_DIR)/BSP_HK_Observer.c \
+		
 EXTRA_SRCS-$(CONFIG_USE_LOGO) += \
         init/hss_logo_init.c
 

@@ -24,6 +24,10 @@
 #include "hss_registry.h"
 #include <string.h>
 
+#include "BSP_HK.h"
+
+
+
 /******************************************************************************************************/
 /*!
  * \brief Board Init Function Registration Table
@@ -35,6 +39,8 @@
 #include "hss_boot_pmp.h"
 #include "hss_sys_setup.h"
 #include "hss_board_init.h"
+
+bool HSS_HK_PG_Init(void);
 
 const struct InitFunction /*@null@*/ boardInitFunctions[] = {
     // Name                     FunctionPointer         Halt   Restart
@@ -49,6 +55,7 @@ const struct InitFunction /*@null@*/ boardInitFunctions[] = {
     { "HSS_TamperInit",         HSS_TamperInit,         false, false },
 #endif
     { "HSS_USBInit",            HSS_USBInit,            false, false },
+    { "HSS_HK_PG_Init",         HSS_HK_PG_Init,         false, false },
 };
 
 /******************************************************************************************************/
@@ -84,4 +91,10 @@ bool HSS_BoardLateInit(void)
 #endif
 
     return result;
+}
+
+bool HSS_HK_PG_Init(void)
+{
+    bsp_hk_state_t hk_state = BSP_HK_SM_Run((void*)0ULL);
+    return hk_state == BSP_HK_POWER_GOOD;
 }
