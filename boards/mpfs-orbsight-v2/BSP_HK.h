@@ -25,7 +25,7 @@ extern "C" {
 
 
 /** ----------------------------------------------------------------------------
-* @brief BSP Camera housekeeping state machine states .
+* @brief BSP Housekeeping state machine states .
 * ------------------------------------------------------------------------------
 */
 typedef enum {
@@ -41,6 +41,10 @@ typedef enum {
     BSP_HK_UNKNOWN,
     BSP_HK_VOLTAGE_FAILURE,
     BSP_HK_TEMPERATURE_FAILURE,
+    BSP_HK_EMMC_PR_CURRENT_FAILURE,
+    BSP_HK_EMMC_PR_VOLTAGE_FAILURE,
+    BSP_HK_EMMC_SC_CURRENT_FAILURE,
+    BSP_HK_EMMC_SC_VOLTAGE_FAILURE,
     BSP_HK_OK
 } bsp_hk_state_t;
 
@@ -115,7 +119,7 @@ BSP_HK_SM_Run(void* user_data);
  * -----------------------------------------------------------------------------
 */
 bsp_hk_state_t
-BSP_HK_EVM_Step(void* user_data);
+BSP_HK_EVE_Step(void* user_data);
 
 
 #ifdef __cplusplus

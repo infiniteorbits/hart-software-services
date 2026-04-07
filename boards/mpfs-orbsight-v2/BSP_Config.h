@@ -141,9 +141,15 @@
  *
  * @note TWEAKABLE  macro
  */
-#define BSP_CAMERA_ACQ_DEST_ADDR        ((uint64_t)(0xCF000000u + 0x1000u))
+#define BSP_CAMERA_ACQ_DEST_ADDR         ((void*)(0xC0200000u))
 
-
+/**
+ * @brief Camera acquisition stream descriptor address
+ * @note  As of this version only low non-cached memory regions are supported
+ *
+ * @note TWEAKABLE macro
+ */
+#define BSP_CAMERA_ACQ_STREAM_DESC_ADDR (0xC0100000u)
 
 /**
  * @brief Address of a camera image chunk to be sent over ethernet
@@ -159,14 +165,6 @@
  * @note TWEAKABLE macro
  */
 #define BSP_CAMERA_ACQ_DMA_TIMEOUT      (100000000u)
-
-/**
- * @brief Camera acquisition stream descriptor address
- * @note  As of this version only low non-cached memory regions are supported
- *
- * @note TWEAKABLE macro
- */
-#define BSP_CAMERA_ACQ_STREAM_DESC_ADDR (0xC0000000u)
 
 /**
  * @brief Ethernet transmit packet size
@@ -189,17 +187,11 @@
  * @note CONST macros
  * @note TBD: Provide the correct values
  */
-#define BSP_TVS_MONITORED_VOLTAGE_V1        (640)
-#define BSP_TVS_MONITORED_VOLTAGE_V18       (1010)
-#define BSP_TVS_MONITORED_VOLTAGE_V25       (1830)
+#define BSP_TVS_MONITORED_VOLTAGE_V1        (2512)
+#define BSP_TVS_MONITORED_VOLTAGE_V18       (1842)
+#define BSP_TVS_MONITORED_VOLTAGE_V25       (1014)
 
-/**
- * @brief Macro for building with HSS
- *
- * @note CONST macro
- */
 #define BSP_HSS_BUILD
-
 
 
 /** @}

@@ -9,6 +9,11 @@
  *
  */
 
+/** Remap asm to __asm__ for strict ISO C compliance                          */
+#ifndef asm
+#define asm __asm__
+#endif
+
 #include <stdint.h>
 #include "mpfs_hal/mss_hal.h"
 
@@ -20,7 +25,7 @@ static uint64_t g_systick_increment[5] = {0ULL,0ULL,0ULL,0ULL,0ULL};
  */
 void reset_mtime(void)
 {
-#if ROLLOVER_TEST
+#ifdef ROLLOVER_TEST
     CLINT->MTIME = 0xFFFFFFFFFFFFF000ULL;
 #else
     CLINT->MTIME = 0ULL;

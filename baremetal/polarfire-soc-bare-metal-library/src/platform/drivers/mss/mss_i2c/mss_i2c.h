@@ -1,39 +1,22 @@
 /*******************************************************************************
- * (c) Copyright 2019-2025 Microchip FPGA Embedded Systems Solutions.
- * All rights reserved.
+ * Copyright 2019 Microchip FPGA Embedded Systems Solutions.
  *
  * SPDX-License-Identifier: MIT
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to
- * deal in the Software without restriction, including without limitation the
- * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
- * sell copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * @file mss_i2c.h
+ * @author Microchip FPGA Embedded Systems Solutions
+ * @brief PolarFire SoC Microprocessor Subsystem (MSS) I2C bare metal software
+ * driver public API.
  *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
- *
- * PolarFire SoC Microprocessor Subsystem I2C bare metal software driver
- * public API.
- *
- * SVN $Revision$
- * SVN $Date$
  */
-/*=========================================================================*//**
+
+/*==============================================================================
   @mainpage PolarFire SoC MSS I2C Bare Metal Driver.
+
   ==============================================================================
   Introduction
   ==============================================================================
-  The PolarFire SoC microcontroller subsystem (MSS) includes two I2C peripherals
+  The PolarFire SoC Microprocessor Subsystem (MSS) includes two I2C peripherals
   for serial communication. This driver provides a set of functions for
   controlling the MSS I2Cs as part of a bare metal system where no
   operating system is available. The driver can be adapted for use as part of an
@@ -48,18 +31,18 @@
   this driver with the exception of the PolarFire SoC IOMUX configuration.
   PolarFire SoC allows multiple non-concurrent uses of some external pins
   through IOMUX configuration. This feature allows optimization of external pin
-  usage by assigning external pins for use by either the microcontroller
+  usage by assigning external pins for use by either the microprocessor
   subsystem or the FPGA fabric. The MSS I2C serial signals are routed through
   IOMUXs to the PolarFire SoC device external pins. The MSS I2C serial signals
   may also be routed through IOMUXs to the PolarFire SoC FPGA fabric. For more
-  information on IOMUX, refer to the IOMUX section of the PolarFire SoC
-  Microcontroller Subsystem (MSS) User's Guide.
+  information on IOMUX, refer to the I/O Configuration section of the PolarFire
+  SoC Microprocessor Subsystem (MSS) User's Guide.
 
   The IOMUXs are configured using the PolarFire SoC MSS configurator tool. You
   must ensure that the MSS I2C peripherals are enabled and configured in the
   PolarFire SoC MSS configurator if you wish to use them. For more information
-  on IOMUXs, refer to the IOMUX section of the PolarFire SoC Microcontroller
-  Subsystem (MSS) User's Guide.
+  on IOMUXs, refer to the IOMUX section of the PolarFire SoC Microprocessor
+  Subsystem (MSS) User’s Guide.
 
   On PolarFire SoC an AXI switch forms a bus matrix interconnect among
   multiple masters and multiple slaves. Five RISC-V CPUs connect to the Master
@@ -329,7 +312,7 @@
   --------------------------------
   SMBus Interface Configuration and Control
   --------------------------------
-    The MSS I2C driver enables the MSS I2C peripherals SMBus functionality
+    The MSS I2C driver enables the MSS I2C peripheral�s SMBus functionality
     using the MSS_I2C_smbus_init() function.
 
     The MSS_I2C_suspend_smbus_slave() function is used, with a master mode MSS
@@ -350,7 +333,7 @@
     The MSS_I2C_enable_smbus_irq() and MSS_I2C_disable_smbus_irq() functions are
     used to enable and disable the SMBSUS and SMBALERT SMBus interrupts.
 
- *//*=========================================================================*/
+ =============================================================================*/
 
 #ifndef MSS_I2C_H_
 #define MSS_I2C_H_
@@ -361,11 +344,8 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
-#include "mss_plic.h"
-#include "mss_i2c_regs.h"
-#include "hal/hal.h"
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The mss_i2c_clock_divider_t type is used to specify the divider to be applied
   to the MSS I2C PCLK or BCLK signal in order to generate the I2C clock.
   The MSS_I2C_BCLK_DIV_8 value selects a clock frequency based on division of
@@ -382,7 +362,9 @@ typedef enum mss_i2c_clock_divider {
     MSS_I2C_BCLK_DIV_8
 } mss_i2c_clock_divider_t;
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
+  MSS_I2C_RELEASE_BUS
+  =================================
   The MSS_I2C_RELEASE_BUS constant is used to specify the options parameter to
   functions MSS_I2C_read(), MSS_I2C_write() and MSS_I2C_write_read() to indicate
   that a STOP bit must be generated at the end of the I2C transaction to release
@@ -390,7 +372,9 @@ typedef enum mss_i2c_clock_divider {
  */
 #define MSS_I2C_RELEASE_BUS        0x00u
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
+  MSS_I2C_HOLD_BUS
+  =================================
   The MSS_I2C_HOLD_BUS constant is used to specify the options parameter to
   functions MSS_I2C_read(), MSS_I2C_write() and MSS_I2C_write_read() to
   indicate that a STOP bit must not be generated at the end of the I2C
@@ -400,39 +384,44 @@ typedef enum mss_i2c_clock_divider {
  */
 #define MSS_I2C_HOLD_BUS           0x01u
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
+  MSS_I2C_SMBALERT_IRQ
+  =================================
   The MSS_I2C_SMBALERT_IRQ constant is used with the MSS_I2C_enable_smbus_irq()
   and MSS_I2C_disable_smbus_irq() functions to enable or disable the SMBus
   SMBALERT interrupt.
  */
 #define MSS_I2C_SMBALERT_IRQ       0x01u
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
+  MSS_I2C_SMBSUS_IRQ
+  =================================
  The MSS_I2C_SMBSUS_IRQ constant is used with the MSS_I2C_enable_smbus_irq() and
  MSS_I2C_disable_smbus_irq() functions to enable or disable the SMBus
  SMBSUS interrupt.
  */
 #define MSS_I2C_SMBSUS_IRQ         0x02u
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
+  MSS_I2C_NO_TIMEOUT
+  =================================
   The MSS_I2C_NO_TIMEOUT constant is used to specify the timeout_ms parameter to
   the MSS_I2C_wait_complete() function to indicate that the function must not
   time out while waiting for the I2C transaction to complete.
  */
 #define MSS_I2C_NO_TIMEOUT         0u
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The mss_i2c_status_t type is used to report the status of I2C transactions.
  */
-typedef enum mss_i2c_status
-{
+typedef enum mss_i2c_status {
     MSS_I2C_SUCCESS = 0u,
     MSS_I2C_IN_PROGRESS,
     MSS_I2C_FAILED,
     MSS_I2C_TIMED_OUT
 } mss_i2c_status_t;
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The mss_i2c_slave_handler_ret_t type is used by slave write handler functions
   to indicate whether or not the received data buffer should be released.
  */
@@ -441,9 +430,9 @@ typedef enum mss_i2c_slave_handler_ret {
     MSS_I2C_PAUSE_SLAVE_RX = 1u
 } mss_i2c_slave_handler_ret_t;
 
-typedef struct mss_i2c_instance mss_i2c_instance_t ;
+typedef struct mss_i2c_instance mss_i2c_instance_t;
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   Transfer completion call back handler functions prototype.
   This defines the function prototype that must be followed by MSS I2C master
   and slave transfer completion handler functions. These functions are registered
@@ -466,9 +455,10 @@ typedef struct mss_i2c_instance mss_i2c_instance_t ;
 
   }
   */
-typedef void (*mss_i2c_transfer_completion_t)( mss_i2c_instance_t *instance, mss_i2c_status_t status);
+typedef void (*mss_i2c_transfer_completion_t)(mss_i2c_instance_t * instance,
+                                              mss_i2c_status_t status);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   Slave write handler functions prototype.
   ------------------------------------------------------------------------------
   This defines the function prototype that must be followed by MSS I2C slave
@@ -512,37 +502,37 @@ typedef void (*mss_i2c_transfer_completion_t)( mss_i2c_instance_t *instance, mss
     buffer so it can be used to store data received by subsequent I2C write
     transactions.
  */
-typedef mss_i2c_slave_handler_ret_t (*mss_i2c_slave_wr_handler_t)( mss_i2c_instance_t *instance, uint8_t * data, uint16_t size);
+typedef mss_i2c_slave_handler_ret_t(*mss_i2c_slave_wr_handler_t)
+ (mss_i2c_instance_t * instance, uint8_t * data, uint16_t size);
 
-typedef struct
-{
-    volatile uint8_t  CTRL;
-    uint8_t  RESERVED0;
+typedef struct {
+    volatile uint8_t CTRL;
+    uint8_t RESERVED0;
     uint16_t RESERVED1;
-    uint8_t  STATUS;
-    uint8_t  RESERVED2;
+    uint8_t STATUS;
+    uint8_t RESERVED2;
     uint16_t RESERVED3;
-    volatile  uint8_t  DATA;
-    uint8_t  RESERVED4;
+    volatile uint8_t DATA;
+    uint8_t RESERVED4;
     uint16_t RESERVED5;
-    volatile uint8_t  ADDR;
-    uint8_t  RESERVED6;
+    volatile uint8_t ADDR;
+    uint8_t RESERVED6;
     uint16_t RESERVED7;
-    volatile uint8_t  SMBUS;
-    uint8_t  RESERVED8;
+    volatile uint8_t SMBUS;
+    uint8_t RESERVED8;
     uint16_t RESERVED9;
-    volatile uint8_t  FREQ;
-    uint8_t  RESERVED10;
+    volatile uint8_t FREQ;
+    uint8_t RESERVED10;
     uint16_t RESERVED11;
-    volatile uint8_t  GLITCHREG;
-    uint8_t  RESERVED12;
+    volatile uint8_t GLITCHREG;
+    uint8_t RESERVED12;
     uint16_t RESERVED13;
-    volatile uint8_t  SLAVE1_ADDR;
-    uint8_t  RESERVED14;
+    volatile uint8_t SLAVE1_ADDR;
+    uint8_t RESERVED14;
     uint16_t RESERVED15;
 } I2C_TypeDef;
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   mss_i2c_instance_t
   ------------------------------------------------------------------------------
   There is one instance of this structure for each of the MSS I2Cs. Instances
@@ -551,14 +541,13 @@ typedef struct
   to MSS I2C driver functions to identify which MSS I2C should perform the
   requested operation.
  */
-struct mss_i2c_instance
-{
+struct mss_i2c_instance {
     uint_fast8_t ser_address;
 
-    /* Transmit related info:*/
+    /* Transmit related info: */
     uint_fast8_t target_addr;
 
-    /* Current transaction type (WRITE, READ, RANDOM_READ)*/
+    /* Current transaction type (WRITE, READ, RANDOM_READ) */
     uint8_t transaction;
 
     uint_fast16_t random_read_addr;
@@ -566,17 +555,17 @@ struct mss_i2c_instance
     uint8_t options;
 
     /* I2C hardware instance identification */
-    PLIC_IRQn_Type  irqn;
-    I2C_TypeDef * hw_reg;
+    PLIC_IRQn_Type irqn;
+    I2C_TypeDef *hw_reg;
 
     /* Master TX INFO: */
-    const uint8_t * master_tx_buffer;
+    const uint8_t *master_tx_buffer;
     uint_fast16_t master_tx_size;
     uint_fast16_t master_tx_idx;
     uint_fast8_t dir;
 
     /* Master RX INFO: */
-    uint8_t * master_rx_buffer;
+    uint8_t *master_rx_buffer;
     uint_fast16_t master_rx_size;
     uint_fast16_t master_rx_idx;
 
@@ -585,12 +574,12 @@ struct mss_i2c_instance
     uint32_t master_timeout_ms;
 
     /* Slave TX INFO */
-    const uint8_t * slave_tx_buffer;
+    const uint8_t *slave_tx_buffer;
     uint_fast16_t slave_tx_size;
     uint_fast16_t slave_tx_idx;
 
     /* Slave RX INFO */
-    uint8_t * slave_rx_buffer;
+    uint8_t *slave_rx_buffer;
     uint_fast16_t slave_rx_size;
     uint_fast16_t slave_rx_idx;
 
@@ -606,7 +595,7 @@ struct mss_i2c_instance
     mss_i2c_transfer_completion_t transfer_completion_handler;
 
     /* User  specific data */
-    void *p_user_data ;
+    void *p_user_data;
 
     /* I2C bus status */
     uint8_t bus_status;
@@ -618,7 +607,7 @@ struct mss_i2c_instance
     uint8_t pending_transaction;
 };
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   This instance of mss_i2c_instance_t holds all data related to the operations
   performed by MSS I2C 0 connected on main APB bus. The MSS_I2C_init()function
   initializes this structure. A pointer to g_mss_i2c0_lo is passed as the first
@@ -627,7 +616,7 @@ struct mss_i2c_instance
 */
 extern mss_i2c_instance_t g_mss_i2c0_lo;
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   This instance of mss_i2c_instance_t holds all data related to the operations
   performed by MSS I2C 1 connected on main APB bus. The MSS_I2C_init()function
   initializes this structure. A pointer to g_mss_i2c1_lo is passed as the first
@@ -636,7 +625,7 @@ extern mss_i2c_instance_t g_mss_i2c0_lo;
 */
 extern mss_i2c_instance_t g_mss_i2c1_lo;
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   This instance of mss_i2c_instance_t holds all data related to the operations
   performed by MSS I2C 0 connected on main APB bus. The MSS_I2C_init()function
   initializes this structure. A pointer to g_mss_i2c0_lo is passed as the first
@@ -645,7 +634,7 @@ extern mss_i2c_instance_t g_mss_i2c1_lo;
 */
 extern mss_i2c_instance_t g_mss_i2c0_hi;
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   This instance of mss_i2c_instance_t holds all data related to the operations
   performed by MSS I2C 1 connected on main APB bus. The MSS_I2C_init()function
   initializes this structure. A pointer to g_mss_i2c1_lo is passed as the first
@@ -654,7 +643,7 @@ extern mss_i2c_instance_t g_mss_i2c0_hi;
 */
 extern mss_i2c_instance_t g_mss_i2c1_hi;
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   MSS I2C initialization routine.
   ------------------------------------------------------------------------------
   structures of one of the PolarFire SoC MSS I2Cs.
@@ -718,11 +707,8 @@ extern mss_i2c_instance_t g_mss_i2c1_hi;
   @endcode
 */
 void MSS_I2C_init
-(
-    mss_i2c_instance_t * this_i2c,
-    uint8_t ser_address,
-    mss_i2c_clock_divider_t ser_clock_speed
-);
+    (mss_i2c_instance_t * this_i2c,
+     uint8_t ser_address, mss_i2c_clock_divider_t ser_clock_speed);
 
 /*******************************************************************************
  *******************************************************************************
@@ -732,7 +718,7 @@ void MSS_I2C_init
  * The following functions are only used within an I2C master's implementation.
  */
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   I2C master write function.
   ------------------------------------------------------------------------------
   This function initiates an I2C master write transaction. This function returns
@@ -797,28 +783,22 @@ void MSS_I2C_init
         uint8_t  target_slave_addr = 0x12;
         mss_i2c_status_t status;
 
-        // Initialize MSS I2C peripheral
         MSS_I2C_init( &g_mss_i2c0_lo, I2C_DUMMY_ADDR, MSS_I2C_PCLK_DIV_256 );
 
-        // Write data to slave.
-        MSS_I2C_write( &g_mss_i2c0_lo, target_slave_addr, tx_buffer, write_length,
+        MSS_I2C_write( &g_mss_i2c0_lo, target_slave_addr, tx_buffer,
+                       write_length,
                        MSS_I2C_RELEASE_BUS );
 
-        // Wait for completion and record the outcome
         status = MSS_I2C_wait_complete( &g_mss_i2c0_lo, MSS_I2C_NO_TIMEOUT );
     }
   @endcode
  */
 void MSS_I2C_write
-(
-    mss_i2c_instance_t * this_i2c,
-    uint8_t serial_addr,
-    const uint8_t * write_buffer,
-    uint16_t write_size,
-    uint8_t options
-);
+    (mss_i2c_instance_t * this_i2c,
+     uint8_t serial_addr,
+     const uint8_t * write_buffer, uint16_t write_size, uint8_t options);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   I2C master read.
   ------------------------------------------------------------------------------
   This function initiates an I2C master read transaction. This function returns
@@ -883,10 +863,8 @@ void MSS_I2C_write
         uint8_t  target_slave_addr = 0x12;
         mss_i2c_status_t status;
 
-        // Initialize MSS I2C peripheral
         MSS_I2C_init( &g_mss_i2c0_lo, I2C_DUMMY_ADDR, MSS_I2C_PCLK_DIV_256 );
 
-        // Read data from target slave using MSS I2C 0.
         MSS_I2C_read( &g_mss_i2c0_lo, target_slave_addr, rx_buffer, read_length,
                       MSS_I2C_RELEASE_BUS );
 
@@ -895,15 +873,11 @@ void MSS_I2C_write
   @endcode
  */
 void MSS_I2C_read
-(
-    mss_i2c_instance_t * this_i2c,
-    uint8_t serial_addr,
-    uint8_t * read_buffer,
-    uint16_t read_size,
-    uint8_t options
-);
+    (mss_i2c_instance_t * this_i2c,
+     uint8_t serial_addr,
+     uint8_t * read_buffer, uint16_t read_size, uint8_t options);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   I2C master write-read
   ------------------------------------------------------------------------------
   This function initiates an I2C write-read transaction where data is first
@@ -920,17 +894,17 @@ void MSS_I2C_read
     I2C 0 and MSS I2C 1 when they are connected on the AXI switch slave 5 (main
     APB bus) and g_mss_i2c0_hi and g_mss_i2c1_hi, associated with MSS I2C 0 to
     MSS I2C 1 when they are connected on the AXI switch slave 6 (AMP APB bus).
-    This parameter must point to one of these four global data structure defined
-    within I2C driver.
+    This parameter must point to one of these four global data structure
+    defined within I2C driver.
 
   @param serial_addr:
     This parameter specifies the serial address of the target I2C device.
 
   @param addr_offset:
     This parameter is a pointer to the buffer containing the data that will be
-    sent to the slave during the write phase of the write-read transaction. This
-    data is typically used to specify an address offset specifying to the I2C
-    slave device what data it must return during the read phase of the
+    sent to the slave during the write phase of the write-read transaction.
+    This data is typically used to specify an address offset specifying to the
+    I2C slave device what data it must return during the read phase of the
     write-read transaction.
 
   @param offset_size:
@@ -975,7 +949,6 @@ void MSS_I2C_read
         uint8_t  target_slave_addr = 0x12;
         mss_i2c_status_t status;
 
-        // Initialize MSS I2C peripheral
         MSS_I2C_init( &g_mss_i2c0_lo, I2C_DUMMY_ADDR, MSS_I2C_PCLK_DIV_256 );
 
         MSS_I2C_write_read( &g_mss_i2c0_lo, target_slave_addr, tx_buffer,
@@ -987,17 +960,13 @@ void MSS_I2C_read
   @endcode
  */
 void MSS_I2C_write_read
-(
-    mss_i2c_instance_t * this_i2c,
-    uint8_t serial_addr,
-    const uint8_t * addr_offset,
-    uint16_t offset_size,
-    uint8_t * read_buffer,
-    uint16_t read_size,
-    uint8_t options
-);
+    (mss_i2c_instance_t * this_i2c,
+     uint8_t serial_addr,
+     const uint8_t * addr_offset,
+     uint16_t offset_size,
+     uint8_t * read_buffer, uint16_t read_size, uint8_t options);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   I2C status
   ------------------------------------------------------------------------------
   This function indicates the current state of an MSS I2C instance.
@@ -1040,12 +1009,9 @@ void MSS_I2C_write_read
     }
   @endcode
  */
-mss_i2c_status_t MSS_I2C_get_status
-(
-    mss_i2c_instance_t * this_i2c
-);
+mss_i2c_status_t MSS_I2C_get_status(mss_i2c_instance_t * this_i2c);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   Wait for I2C transaction completion.
   ------------------------------------------------------------------------------
   This function waits for the current I2C transaction to complete. The return
@@ -1112,12 +1078,9 @@ mss_i2c_status_t MSS_I2C_get_status
   @endcode
  */
 mss_i2c_status_t MSS_I2C_wait_complete
-(
-    mss_i2c_instance_t * this_i2c,
-    uint32_t timeout_ms
-);
+    (mss_i2c_instance_t * this_i2c, uint32_t timeout_ms);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   Time out delay expiration.
   ------------------------------------------------------------------------------
   This function is used to control the expiration of the time out delay
@@ -1173,10 +1136,7 @@ mss_i2c_status_t MSS_I2C_wait_complete
   @endcode
  */
 void MSS_I2C_system_tick
-(
-    mss_i2c_instance_t * this_i2c,
-    uint32_t ms_since_last_tick
-);
+    (mss_i2c_instance_t * this_i2c, uint32_t ms_since_last_tick);
 
 /*******************************************************************************
  *******************************************************************************
@@ -1187,7 +1147,7 @@ void MSS_I2C_system_tick
  * slave device.
  */
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   I2C slave transmit buffer configuration.
   ------------------------------------------------------------------------------
   This function specifies the memory buffer holding the data that will be sent
@@ -1237,13 +1197,10 @@ void MSS_I2C_system_tick
   @endcode
  */
 void MSS_I2C_set_slave_tx_buffer
-(
-    mss_i2c_instance_t * this_i2c,
-    const uint8_t * tx_buffer,
-    uint16_t tx_size
-);
+    (mss_i2c_instance_t * this_i2c,
+     const uint8_t * tx_buffer, uint16_t tx_size);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   I2C slave receive buffer configuration.
   ------------------------------------------------------------------------------
   This function specifies the memory buffer that will be used by the MSS I2C
@@ -1271,7 +1228,7 @@ void MSS_I2C_set_slave_tx_buffer
     Note:   This buffer size indirectly specifies the maximum I2C write
             transaction length this MSS I2C instance can be the target of.
             This is because this MSS I2C instance responds to further received
-            bytes with a non-acknowledge bit (NACK) as soon as its receive
+            bytes with a non-acknowledge bit (NACK) as soon as it�s receive
             buffer is full. This causes the write transaction to fail.
 
   @return none.
@@ -1296,13 +1253,9 @@ void MSS_I2C_set_slave_tx_buffer
   @endcode
  */
 void MSS_I2C_set_slave_rx_buffer
-(
-    mss_i2c_instance_t * this_i2c,
-    uint8_t * rx_buffer,
-    uint16_t rx_size
-);
+    (mss_i2c_instance_t * this_i2c, uint8_t * rx_buffer, uint16_t rx_size);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   I2C slave memory offset length configuration.
   ------------------------------------------------------------------------------
   This function is used as part of the configuration of an MSS I2C instance for
@@ -1365,12 +1318,9 @@ void MSS_I2C_set_slave_rx_buffer
   @endcode
  */
 void MSS_I2C_set_slave_mem_offset_length
-(
-    mss_i2c_instance_t * this_i2c,
-    uint8_t offset_length
-);
+    (mss_i2c_instance_t * this_i2c, uint8_t offset_length);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   I2C write handler registration.
   ------------------------------------------------------------------------------
   Register the function that is called to process the data written to this MSS
@@ -1381,7 +1331,7 @@ void MSS_I2C_set_slave_mem_offset_length
         transmit buffer with the data that will be transmitted to the I2C master
         as part of the read phase of the write-read transaction. If a write
         handler is not registered, the write data of a write read transaction is
-        interpreted as an offset into the slaves transmit buffer and handled by
+        interpreted as an offset into the slave�s transmit buffer and handled by
         the driver.
   ------------------------------------------------------------------------------
   @param this_i2c:
@@ -1428,12 +1378,9 @@ void MSS_I2C_set_slave_mem_offset_length
   @endcode
  */
 void MSS_I2C_register_write_handler
-(
-    mss_i2c_instance_t * this_i2c,
-    mss_i2c_slave_wr_handler_t handler
-);
+    (mss_i2c_instance_t * this_i2c, mss_i2c_slave_wr_handler_t handler);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   I2C slave enable.
   ------------------------------------------------------------------------------
   This function enables slave mode operation for an MSS I2C peripheral. It
@@ -1458,12 +1405,9 @@ void MSS_I2C_register_write_handler
     MSS_I2C_enable_slave( &g_mss_i2c0_lo );
   @endcode
  */
-void MSS_I2C_enable_slave
-(
-    mss_i2c_instance_t * this_i2c
-);
+void MSS_I2C_enable_slave(mss_i2c_instance_t * this_i2c);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   I2C slave disable.
   ------------------------------------------------------------------------------
   This function disables slave mode operation for an MSS I2C peripheral. It
@@ -1489,12 +1433,9 @@ void MSS_I2C_enable_slave
     MSS_I2C_disable_slave( &g_mss_i2c0_lo );
   @endcode
  */
-void MSS_I2C_disable_slave
-(
-    mss_i2c_instance_t * this_i2c
-);
+void MSS_I2C_disable_slave(mss_i2c_instance_t * this_i2c);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The MSS_I2C_set_gca() function is used to set the general call acknowledgment
   bit of an MSS I2C slave device. This allows the slave device respond to a
   general call or broadcast message from an I2C master.
@@ -1518,12 +1459,9 @@ void MSS_I2C_disable_slave
     MSS_I2C_set_gca( &g_mss_i2c0_lo );
   @endcode
  */
-void MSS_I2C_set_gca
-(
-    mss_i2c_instance_t * this_i2c
-);
+void MSS_I2C_set_gca(mss_i2c_instance_t * this_i2c);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The MSS_I2C_clear_gca() function is used to clear the general call
   acknowledgment bit of an MSS I2C slave device. This will stop the I2C slave
   device responding to any general call or broadcast message from the master.
@@ -1547,18 +1485,15 @@ void MSS_I2C_set_gca
     MSS_I2C_clear_gca( &g_mss_i2c0_lo );
   @endcode
  */
-void MSS_I2C_clear_gca
-(
-    mss_i2c_instance_t * this_i2c
-);
+void MSS_I2C_clear_gca(mss_i2c_instance_t * this_i2c);
 
 /*------------------------------------------------------------------------------
                       I2C SMBUS specific APIs
  ----------------------------------------------------------------------------*/
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The MSS_I2C_smbus_init() function enables SMBus timeouts and status logic. Set
-  the frequency parameter to the MSS I2Cs PCLK frequency for 25ms SMBus
+  the frequency parameter to the MSS I2C�s PCLK frequency for 25ms SMBus
   timeouts, or to any frequency between 1 MHz and 255 MHz for to adjust the
   timeout.
   ------------------------------------------------------------------------------
@@ -1574,7 +1509,7 @@ void MSS_I2C_clear_gca
 
   @param frequency
     The frequency parameter specifies a frequency in MHz from 1 to 255. It can
-    be the MSS I2Cs PCLK frequency to specify 25ms SMBus timeouts, or a higher
+    be the MSS I2C�s PCLK frequency to specify 25ms SMBus timeouts, or a higher
     or lower frequency than the PCLK for increased or decreased timeouts.
 
   @return
@@ -1592,14 +1527,10 @@ void MSS_I2C_clear_gca
     }
   @endcode
  */
-void MSS_I2C_smbus_init
-(
-    mss_i2c_instance_t * this_i2c,
-    uint8_t frequency
-);
+void MSS_I2C_smbus_init(mss_i2c_instance_t * this_i2c, uint8_t frequency);
 
-/*-------------------------------------------------------------------------*//**
-  The MSS_I2C_enable_smbus_irq() function is used to enable the MSS I2Cs SMBSUS
+/*------------------------------------------------------------------------------
+  The MSS_I2C_enable_smbus_irq() function is used to enable the MSS I2C�s SMBSUS
   and SMBALERT SMBus interrupts.
 
   If this function is used to enable an MSS I2C SMBus interrupt source, the
@@ -1657,13 +1588,9 @@ void MSS_I2C_smbus_init
    }
    @endcode
  */
-void MSS_I2C_enable_smbus_irq
-(
-    mss_i2c_instance_t * this_i2c,
-    uint8_t  irq_type
-);
+void MSS_I2C_enable_smbus_irq(mss_i2c_instance_t * this_i2c, uint8_t irq_type);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The MSS_I2C_disable_smbus_irq() function is used to disable the MSS I2C's
   SMBSUS and SMBALERT SMBus interrupts.
   ------------------------------------------------------------------------------
@@ -1719,16 +1646,12 @@ void MSS_I2C_enable_smbus_irq
     }
   @endcode
  */
-void MSS_I2C_disable_smbus_irq
-(
-    mss_i2c_instance_t * this_i2c,
-    uint8_t  irq_type
-);
+void MSS_I2C_disable_smbus_irq(mss_i2c_instance_t * this_i2c, uint8_t irq_type);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The MSS_I2C_suspend_smbus_slave() function forces any SMBUS slave devices
   connected to an MSS I2C peripheral into power down or suspend mode by
-  asserting the MSS I2Cs I2C_X_SMBSUS_NO output signal. The MSS I2C is the
+  asserting the MSS I2C�s I2C_X_SMBSUS_NO output signal. The MSS I2C is the
   SMBus master in this case.
   ------------------------------------------------------------------------------
   @param this_i2c:
@@ -1765,12 +1688,9 @@ void MSS_I2C_disable_smbus_irq
     }
   @endcode
  */
-void MSS_I2C_suspend_smbus_slave
-(
-    mss_i2c_instance_t * this_i2c
-);
+void MSS_I2C_suspend_smbus_slave(mss_i2c_instance_t * this_i2c);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The MSS_I2C_resume_smbus_slave() function de-asserts the MSS I2C's
   I2C_X_SMBSUS_NO output signal to take any connected slave devices out of
   suspend mode. The MSS I2C is the SMBus master in this case.
@@ -1809,12 +1729,9 @@ void MSS_I2C_suspend_smbus_slave
     }
   @endcode
  */
-void MSS_I2C_resume_smbus_slave
-(
-    mss_i2c_instance_t * this_i2c
-);
+void MSS_I2C_resume_smbus_slave(mss_i2c_instance_t * this_i2c);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The MSS_I2C_reset_smbus() function resets the MSS I2C's SMBus connection by
   forcing SCLK low for 35mS. The reset is automatically cleared after 35ms have
   elapsed. The MSS I2C is the SMBus master in this case.
@@ -1848,12 +1765,9 @@ void MSS_I2C_resume_smbus_slave
     }
   @endcode
  */
-void MSS_I2C_reset_smbus
-(
-    mss_i2c_instance_t * this_i2c
-);
+void MSS_I2C_reset_smbus(mss_i2c_instance_t * this_i2c);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The MSS_I2C_set_smbus_alert() function is used to force master communication
   with an I2C slave device by asserting the MSS I2C's I2C_X_SMBALERT_NO signal.
   The MSS I2C is the SMBus master in this case.
@@ -1892,13 +1806,10 @@ void MSS_I2C_reset_smbus
     }
   @endcode
  */
-void MSS_I2C_set_smbus_alert
-(
-    mss_i2c_instance_t * this_i2c
-);
+void MSS_I2C_set_smbus_alert(mss_i2c_instance_t * this_i2c);
 
-/*-------------------------------------------------------------------------*//**
-  The MSS_I2C_clear_smbus_alert() function is used de-assert the MSS I2Cs
+/*------------------------------------------------------------------------------
+  The MSS_I2C_clear_smbus_alert() function is used de-assert the MSS I2C�s
   I2C_X_SMBALERT_NO signal once a slave device has had a response from the
   master. The MSS I2C is the SMBus slave in this case.
   ------------------------------------------------------------------------------
@@ -1936,12 +1847,9 @@ void MSS_I2C_set_smbus_alert
     }
   @endcode
  */
-void MSS_I2C_clear_smbus_alert
-(
-    mss_i2c_instance_t * this_i2c
-);
+void MSS_I2C_clear_smbus_alert(mss_i2c_instance_t * this_i2c);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The MSS_I2C_set_user_data() function is used to allow the association of a
   block of application specific data with an MDD I2C peripheral. The composition
   of the data block is an application matter and the driver simply provides the
@@ -1994,13 +1902,9 @@ void MSS_I2C_clear_smbus_alert
     }
   @endcode
  */
-void MSS_I2C_set_user_data
-(
-    mss_i2c_instance_t * this_i2c,
-    void * p_user_data
-);
+void MSS_I2C_set_user_data(mss_i2c_instance_t * this_i2c, void *p_user_data);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The MSS_I2C_get_user_data() function is used to allow the retrieval of the
   address of a block of application specific data associated with an MSS I2C
   peripheral. The composition of the data block is an application matter and the
@@ -2050,12 +1954,9 @@ void MSS_I2C_set_user_data
     }
   @endcode
  */
-void * MSS_I2C_get_user_data
-(
-    mss_i2c_instance_t * this_i2c
-);
+void *MSS_I2C_get_user_data(mss_i2c_instance_t * this_i2c);
 
-/*-------------------------------------------------------------------------*//**
+/*------------------------------------------------------------------------------
   The MSS_I2C_register_transfer_completion_handler() function is used register
   transfer completion call back function. This mechanism is used to
   notify the completion of the previously initiated I2C transfer when MSS I2C
@@ -2085,29 +1986,29 @@ void * MSS_I2C_get_user_data
 
   Example
   @code
-    void i2c0_completion_handler(mss_i2c_instance_t * instance, mss_i2c_status_t status)
+    void i2c0_completion_handler(mss_i2c_instance_t * instance,
+                                 mss_i2c_status_t status)
     {
         if (status == MSS_I2C_SUCCESS)
         {
-            MSS_UART_polled_tx_string(gp_my_uart, (const uint8_t*)"\rI2C0 Transfer completed.\n\r");
+            MSS_UART_polled_tx_string(gp_my_uart, (const uint8_t*)"\rI2C0 \
+                                      Transfer completed.\n\r");
         }
     }
 
     void main()
     {
         MSS_I2C_init(I2C_MASTER, MASTER_SER_ADDR, MSS_I2C_BCLK_DIV_8);
-        MSS_I2C_register_transfer_completion_handler(I2C_MASTER, i2c0_completion_handler);
+        MSS_I2C_register_transfer_completion_handler(I2C_MASTER,
+                                                     i2c0_completion_handler);
     }
   @endcode
  */
 void MSS_I2C_register_transfer_completion_handler
-(
-    mss_i2c_instance_t * this_i2c,
-    mss_i2c_transfer_completion_t completion_handler
-);
+    (mss_i2c_instance_t * this_i2c,
+     mss_i2c_transfer_completion_t completion_handler);
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /*MSS_I2C_H_*/
+#endif                          /*MSS_I2C_H_ */

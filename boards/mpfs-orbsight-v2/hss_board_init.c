@@ -90,11 +90,13 @@ bool HSS_BoardLateInit(void)
         /// " MMC voltage... \n");
 #endif
 
+    /// bsp_hk_state_t hk_state = BSP_HK_SM_Run((void*)0ULL);
+    /// result = hk_state == BSP_HK_POWER_GOOD;
     return result;
 }
 
 bool HSS_HK_PG_Init(void)
 {
-    bsp_hk_state_t hk_state = BSP_HK_SM_Run((void*)0ULL);
-    return hk_state == BSP_HK_POWER_GOOD;
+
+    return true;
 }

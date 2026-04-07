@@ -196,10 +196,19 @@ typedef enum
 /** Event types — extend as needed for the system                          */
 typedef enum
 {
+    BSP_EVT_NONE                = 0u,
     BSP_EVT_TVS_TEMP_LOW        = 1u,
     BSP_EVT_TVS_TEMP_HIGH       = 2u,
     BSP_EVT_TVS_VOLT_LOW        = 3u,
     BSP_EVT_TVS_VOLT_HIGH       = 4u,
+    BSP_EVT_EMMC_PR_CURRENT_LOW = 5u,
+    BSP_EVT_EMMC_PR_CURRENT_HIGH= 6u,
+    BSP_EVT_EMMC_PR_VOLT_LOW    = 7u,
+    BSP_EVT_EMMC_PR_VOLT_HIGH    = 8u,
+    BSP_EVT_EMMC_SC_CURRENT_LOW = 9u,
+    BSP_EVT_EMMC_SC_CURRENT_HIGH= 10u,
+    BSP_EVT_EMMC_SC_VOLT_LOW    = 11u,
+    BSP_EVT_EMMC_SC_VOLT_HIGH   = 12u,
     BSP_EVT_COUNT
 } bsp_event_type_t;
 

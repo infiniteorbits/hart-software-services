@@ -52,6 +52,8 @@
 
 #include <string.h>
 
+#include "boards/mpfs-orbsight-v2/BSP_HK.h"
+
 
 /******************************************************************************************/
 
@@ -64,8 +66,19 @@ void hss_main(void)
     HSS_Wdog_MonitorHart(HSS_HART_ALL);
 #endif
 
+    HSSTicks_t last_sec_time = 0u;
+
+    last_sec_time = HSS_GetTime();
+
     while (true) {
         RunStateMachines(spanOfPGlobalStateMachines, pGlobalStateMachines);
+
+        if (HSS_Timer_IsElapsed(last_sec_time, 1 * TICKS_PER_SEC))
+        {
+            ///(void)BSP_HK_EVE_Step((void*)0ULL);
+
+            last_sec_time = HSS_GetTime();
+        }
     }
 }
 

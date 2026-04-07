@@ -46,11 +46,14 @@ EXTRA_SRCS-y += \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/drivers/mss/mss_mmuart/mss_uart.c \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/drivers/mss/mss_sys_services/mss_sys_services.c \
 	baremetal/drivers/mss/mss_watchdog/mss_watchdog.c \
+	baremetal/polarfire-soc-bare-metal-library/src/platform/drivers/mss/mss_i2c/mss_i2c.c \
+	baremetal/drivers/off_chip/pac1934/pac1934.c \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_mpu.c \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_peripherals.c \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_plic.c \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_beu.c \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_l2_cache.c \
+	baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_clint.c \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/mss_util.c \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/nwc/mss_nwc_init.c \
 	baremetal/polarfire-soc-bare-metal-library/src/platform/mpfs_hal/common/nwc/mss_io.c \
