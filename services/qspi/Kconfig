@@ -12,7 +12,7 @@ menu "QSPI"
 
 choice
 	prompt "QSPI Driver"
-	default SERVICE_QSPI_WINBOND_W25N01GV
+	default SERVICE_QSPI_INFINEON_S25FL
 
 config SERVICE_QSPI_WINBOND_W25N01GV
 	bool "Winbond W25N01GV"
@@ -20,7 +20,7 @@ config SERVICE_QSPI_WINBOND_W25N01GV
 	help
 		This feature enables support for Winbond W25N01GV SPI NAND flash.
 
-		If you don't know what to do here, say Y.
+		If you don't know what to do here, say N.
 
 config SERVICE_QSPI_MICRON_MQ25T
 	bool "Micron MQ25T"
@@ -30,6 +30,13 @@ config SERVICE_QSPI_MICRON_MQ25T
 
 		If you don't know what to do here, say N.
 
+config SERVICE_QSPI_INFINEON_S25FL
+	bool "Infıneon S25FL"
+	depends on SERVICE_QSPI
+	help
+		This feature enables support for Infıneon S25FL SPI NOR flash.
+
+		If you don't know what to do here, say Y.
 endchoice
 
 endmenu

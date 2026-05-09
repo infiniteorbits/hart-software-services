@@ -363,8 +363,6 @@ Flash_erase(void)
 uint8_t
 Flash_sector_erase(uint32_t addr)
 {
-    mHSS_DEBUG_PRINTF(LOG_ERROR, "Sector Erase Called for addr: %d\n", addr);
-
     uint8_t status = 0u;
     uint8_t command_buf[5] __attribute__ ((aligned (4))) = {0};
     /*execute Enter 4-byte mode command */
