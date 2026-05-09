@@ -135,11 +135,11 @@ static struct HSS_Storage payloadStorage_ = {
 
 static struct HSS_Storage *pStorages[] =
 {
-#if IS_ENABLED(CONFIG_SERVICE_QSPI)
-	&qspiStorage_,
-#endif
 #if IS_ENABLED(CONFIG_SERVICE_SPI)
 	&spiStorage_,
+#endif
+#if IS_ENABLED(CONFIG_SERVICE_QSPI)
+	&qspiStorage_,
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_MMC)
 	&mmcStorage_,
@@ -477,21 +477,21 @@ static bool getBootImageFromQSPI_(struct HSS_Storage *pStorage, struct HSS_BootI
     /// mHSS_DEBUG_PRINTF(LOG_WARN, "QSPI Erase size: %u\n", eraseSize);
     /// mHSS_DEBUG_PRINTF(LOG_WARN, "QSPI Block count: %u\n", blockCount);
 
-    /// mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to read image header (%d bytes) ...\n",
-    ///    sizeof(struct HSS_BootImage));
+    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to read image header (%d bytes) ...\n",
+        sizeof(struct HSS_BootImage));
     result = HSS_QSPI_ReadBlock(&bootImage, srcLBAOffset * blockSize,
         sizeof(struct HSS_BootImage));
     if (!result) {
-        /// mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_QSPI_ReadBlock() failed\n");
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_QSPI_ReadBlock() failed\n");
     } else {
 
         result = HSS_Boot_VerifyMagic(&bootImage);
 
         if (!result) {
-            /// mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_Boot_VerifyMagic() failed\n");
+            mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_Boot_VerifyMagic() failed\n");
         } else {
             int perf_ctr_index = PERF_CTR_UNINITIALIZED;
-            /// HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image QSPI Copy");
+            HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image QSPI Copy");
 
             result = copyBootImageToDDR_(&bootImage,
                 (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR), srcLBAOffset * blockSize,
@@ -501,7 +501,7 @@ static bool getBootImageFromQSPI_(struct HSS_Storage *pStorage, struct HSS_BootI
             HSS_PerfCtr_Lap(perf_ctr_index);
 
             if (!result) {
-                 /// mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
+                 mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
             }
         }
     }
