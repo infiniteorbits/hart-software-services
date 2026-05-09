@@ -198,8 +198,8 @@ CONFIG_PROVIDE_DTB=y
 #
 # CONFIG_SKIP_DDR is not set
 CONFIG_MEMTEST=y
-# CONFIG_USE_PDMA is not set
-# CONFIG_INITIALIZE_MEMORIES is not set
+CONFIG_USE_PDMA=y
+CONFIG_INITIALIZE_MEMORIES=y
 # end of Memory Options
 # end of General Configuration Options
 
