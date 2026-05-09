@@ -72,11 +72,6 @@ The build is configured using the Kconfig system of selecting build options.
 The Hart Software Services includes the Kconfig parsing infrastructure directly as a third-party tool invoked by the build system.
 
 Both Linux and Windows are supported by Kconfiglib.
-<<<<<<< HEAD
-=======
-
-The HSS currently support PolarFire SoC-based icicle kit (mpfs-icicle-kit-es) as a board build target.
->>>>>>> v2025.07
 
 ### Building on Linux
 
@@ -110,11 +105,7 @@ Alternatively, copy the default config for your board. For example:
 
 or just use the defconfig target to do the copy:
 
-<<<<<<< HEAD
     $ make BOARD=mpfs-orbsight-2 defconfig
-=======
-    $ make BOARD=mpfs-icicle-kit-es defconfig
->>>>>>> v2025.07
 
 Once configured, to build, run `make`:
 

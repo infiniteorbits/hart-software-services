@@ -92,11 +92,11 @@ static bool getBootImageFromPayload_(struct HSS_Storage *pStorage, struct HSS_Bo
 static struct HSS_Storage qspiStorage_ = {
     .name = "QSPI",
     .getBootImage = getBootImageFromQSPI_,
-    .init = HSS_QSPIInit,
-    .readBlock = HSS_QSPI_ReadBlock,
-    .writeBlock = HSS_QSPI_WriteBlock,
-    .getInfo = HSS_QSPI_GetInfo,
-    .flushWriteBuffer = NULL /// HSS_QSPI_FlushWriteBuffer
+    .init = HSS_CachedQSPIInit,
+    .readBlock = HSS_CachedQSPI_ReadBlock,
+    .writeBlock = HSS_CachedQSPI_WriteBlock,
+    .getInfo = HSS_CachedQSPI_GetInfo,
+    .flushWriteBuffer = HSS_CachedQSPI_FlushWriteBuffer
 };
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_MMC)

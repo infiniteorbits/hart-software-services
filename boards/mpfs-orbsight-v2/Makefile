@@ -93,6 +93,15 @@ EXTRA_SRCS-$(CONFIG_SERVICE_QSPI) += \
 	baremetal/drivers/micron_mt25q/micron_mt25q.c
 
 $(BINDIR)/baremetal/drivers/micron_mt25q/micron_mt25q.o: CFLAGS=$(CFLAGS_GCCEXT)
+
+ifdef CONFIG_SERVICE_QSPI_INFINEON_S25FL
+INCLUDES += \
+	-Ibaremetal/drivers/infineon_s25fl \
+
+EXTRA_SRCS-$(CONFIG_SERVICE_QSPI) += \
+	baremetal/drivers/infineon_s25fl/infineon_s25fl.c
+
+$(BINDIR)/baremetal/drivers/infineon_s25fl/infineon_s25fl.o: CFLAGS=$(CFLAGS_GCCEXT)
 endif
 
 

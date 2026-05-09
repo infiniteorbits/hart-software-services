@@ -34,6 +34,9 @@
 #if IS_ENABLED(CONFIG_SERVICE_QSPI_MICRON_MQ25T)
 #  include "micron_mt25q.h"
 #endif
+#if IS_ENABLED(CONFIG_SERVICE_QSPI_INFINEON_S25FL)
+#  include "infineon_s25fl.h"
+#endif
 #if IS_ENABLED(CONFIG_SERVICE_WDOG)
 #  include "wdog_service.h"
 #endif
@@ -62,7 +65,7 @@ struct FlashDescriptor
 } qspiFlashes[] = {
     { 0xEFAA21u, 2048u, 64u, 1024u, SPI_NAND, "Winbond W25N01GV" }, // EFh => Winbond, AA21h => W25N01GV
     { 0x20BA19u, 256u, 256u, 512u, SPI_NOR, "Micron N25Q256A" }, // 20h => Micron, BA91h => N25Q256A, and using sector as block
-    { 0x016019u, 256u, 1u, 256u, SPI_NOR, "Infineon S25FL256LAGNFV013" },
+    { 0x016019u, 256u, 256u, 512u, SPI_NOR, "Infineon S25FL256LAGNFV013" },
 };
 
 static uint32_t pageSize, blockSize, dieSize, eraseSize, pageCount, blockCount;
@@ -193,7 +196,7 @@ static void demandCopyFlashBlocksToCache_(size_t byteOffset, size_t byteCount, b
     }
 }
 
-#if IS_ENABLED(CONFIG_SERVICE_QSPI_MICRON_MQ25T)
+#if IS_ENABLED(CONFIG_SERVICE_QSPI_MICRON_MQ25T) || IS_ENABLED(CONFIG_SERVICE_QSPI_INFINEON_S25FL)
 static uint8_t flashEraseSector(uint32_t addr)
 {
     uint8_t status = 0xff;
