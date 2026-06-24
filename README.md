@@ -97,19 +97,19 @@ To make these persistent upon logging in, these three environment variables - `$
 
 You can enter an interactive Kconfiglib configuration selection by running `make BOARD=mpfs-orbsight-2 config`. This will generate a `.config` file (which is used to configure the Make build system) and a `config.h` header file (which is used to configure the source code):
 
-    $ make BOARD=mpfs-orbsight-2 config
+    $ make BOARD=mpfs-orbsight-v2 config
 
 Alternatively, copy the default config for your board. For example:
 
-    $ cp boards/mpfs-orbsight-2/def_config .config
+    $ cp boards/mpfs-orbsight-v2/def_config .config
 
 or just use the defconfig target to do the copy:
 
-    $ make BOARD=mpfs-orbsight-2 defconfig
+    $ make BOARD=mpfs-orbsight-v2 defconfig
 
 Once configured, to build, run `make`:
 
-    $ make BOARD=mpfs-orbsight-2
+    $ make BOARD=mpfs-orbsight-v2
 
 In the `build` subdirectory, the standard build will create `hss-envm.elf` and various binary formats (`hss-envm.hex` and `hss-envm.bin`).  Also generated are `output-envm.map`, which is a mapfile for the build, and  `hss-envm.sym`, which is a list of symbols.  (The name `build` is required by SoftConsole for programming purposes. In earlier releases, this was called `Default`.)
 
