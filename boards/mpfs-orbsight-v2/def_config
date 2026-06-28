@@ -6,7 +6,7 @@
 #
 # Icicle-Kit Design Configuration Options
 #
-CONFIG_SOC_FPGA_DESIGN_XML="boards/mpfs-orbsight-v2/soc_fpga_design/xml/ORBSIGHT-2-v1.2.3.xml"
+CONFIG_SOC_FPGA_DESIGN_XML="boards/mpfs-orbsight-v2/soc_fpga_design/xml/ORBSIGHT-2.xml"
 CONFIG_DEFAULT_DEVICE_TREE="boards/mpfs-orbsight-v2/mpfs_minimal_uboot_orbsight-v2.dtb"
 # end of Icicle-Kit Design Configuration Options
 # end of Board/Design Configuration Options
