@@ -98,11 +98,14 @@ endif
 ifdef CONFIG_SERVICE_QSPI_INFINEON_S25FL
 INCLUDES += \
 	-Ibaremetal/drivers/infineon_s25fl \
+	-Ibaremetal/drivers/fpga_ip/CoreQSPI \
 
 EXTRA_SRCS-$(CONFIG_SERVICE_QSPI) += \
-	baremetal/drivers/infineon_s25fl/infineon_s25fl.c
+	baremetal/drivers/infineon_s25fl/infineon_s25fl.c \
+	baremetal/drivers/fpga_ip/CoreQSPI/core_qspi.c
 
 $(BINDIR)/baremetal/drivers/infineon_s25fl/infineon_s25fl.o: CFLAGS=$(CFLAGS_GCCEXT)
+$(BINDIR)/baremetal/drivers/fpga_ip/CoreQSPI/core_qspi.o: CFLAGS=$(CFLAGS_GCCEXT)
 endif
 
 

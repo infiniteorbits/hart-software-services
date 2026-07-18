@@ -24,7 +24,12 @@
 
 #include "qspi_service.h"
 #include "encoding.h"
-#include "mss_qspi.h"
+#if !IS_ENABLED(CONFIG_SERVICE_QSPI_INFINEON_S25FL)
+/* the infineon_s25fl driver is CoreQSPI-based; its register definitions
+ * collide with the MSS QSPI ones, so only pull these in for the drivers
+ * that actually use the MSS QSPI driver interface */
+#  include "mss_qspi.h"
+#endif
 #include "mss_sys_services.h"
 
 #include "mss_peripherals.h"
@@ -39,6 +44,34 @@
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_WDOG)
 #  include "wdog_service.h"
+#endif
+
+#if IS_ENABLED(CONFIG_SERVICE_QSPI_INFINEON_S25FL)
+/*
+ * The infineon_s25fl driver is generic and instance-based: it holds no board
+ * knowledge. The device served by this service is the QSPI NOR Flash on the
+ * MSS QSPI controller, which runs from the 150 MHz AHB clock, /16 = 9.4 MHz.
+ */
+static flash_device_t mssQspiFlashDevice = {
+    .ctrl_base   = 0x21000000u,
+    .clk_div     = QSPI_CLK_DIV_16,
+    .is_mss_qspi = 1u,
+};
+
+/*
+ * Map the legacy single-device Flash_*() calls shared with the other QSPI
+ * Flash drivers onto the instance-based API. (A function-like macro is not
+ * re-expanded inside its own replacement, so reusing the function names is
+ * safe.)
+ */
+#  define Flash_init(io_format)          Flash_init(&mssQspiFlashDevice)
+#  define Flash_readid(buf)              Flash_readid(&mssQspiFlashDevice, (buf))
+#  define Flash_read(buf, addr, len)     Flash_read(&mssQspiFlashDevice, (buf), (addr), (len))
+#  define Flash_program(buf, addr, len)  Flash_program(&mssQspiFlashDevice, (buf), (addr), (len))
+/* erase the single 64 KB sector containing addr */
+#  define Flash_sector_erase(addr)       Flash_64KByte_erase(&mssQspiFlashDevice, (addr), 1u)
+/* full-device erase: S25FL256 is 32 MB */
+#  define Flash_erase()                  Flash_64KByte_erase(&mssQspiFlashDevice, 0u, 0x02000000u)
 #endif
 
 /*

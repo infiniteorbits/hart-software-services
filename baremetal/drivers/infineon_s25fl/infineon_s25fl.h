@@ -1,296 +1,179 @@
 /***************************************************************************//**
+ * Copyright 2019 - 2022 Microchip FPGA Embedded Systems Solutions.
  *
- * Driver for Infineon s25fl QSPI flash memory.
- * This driver uses the MPFS MSS QSPI driver interface.
- * 
- * This driver is based on the Micron MT25Q Driver
+ * SPDX-License-Identifier: MIT
+ *
+ * Generic driver for Infineon S25FL-class QSPI NOR Flash memories sitting
+ * behind register-compatible QSPI controllers (CoreQSPI RTL v2 layout),
+ * driven through the CoreQSPI bare metal driver.
+ *
+ * The driver holds no board knowledge: each physical Flash device is
+ * described by a caller-owned flash_device_t instance carrying the QSPI
+ * controller base address and SPI clock configuration. Board support code
+ * defines one instance per on-board device and passes it to every API call.
+ *
+ * Command sequences follow the RFIM YMODEM Autoprogram reference
+ * implementation: write enable (0x06) before every program and erase, WIP
+ * polling on RDSR1 (0x05), error detection on RDSR2 (0x07, E_ERR bit 6 /
+ * P_ERR bit 5), error clearing with CLSR (0x30). The dedicated stateless
+ * 4-byte-address opcodes are used (0x13 read, 0x12 page program, 0xDC 64 KB
+ * erase), so the device addressing mode is never changed and boot agents
+ * (e.g. the PolarFire SoC System Controller) always find the Flash in its
+ * default state.
+ *
+ * All functions initialize the controller of the given device lazily on
+ * first use, so calling Flash_init() explicitly is optional.
+ *
+ * Adapted by RFIM Space, 2026 (Koksal Kurt | koksal@rfim.co.uk).
  */
 
-#ifndef MSS_INFINEON_S25FL_H_
-#define MSS_INFINEON_S25FL_H_
+#ifndef INFINEON_S25FL_H_
+#define INFINEON_S25FL_H_
 
 #include <stdint.h>
-#include "drivers/mss/mss_qspi/mss_qspi.h"
+#include "core_qspi.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /*-------------------------------------------------------------------------*//**
-  The Flash_init() function initializes the MSS QSPI and the flash memory to
-  normal SPI operations. The g_qspi_config.io_format is used for the read/write
-  operations to choose the Flash memory commands accordingly.
-  This function must be called before calling any other function provided by
-  this driver.
+  Describes one S25FL QSPI NOR Flash device. The caller owns the instance:
+  set ctrl_base, clk_div and is_mss_qspi, and zero-initialize the remaining
+  fields. The same instance must be passed to every API call targeting the
+  device.
+*/
+typedef struct flash_device {
+    uint32_t        ctrl_base;    /**< QSPI controller register base address */
+    qspi_clk_div    clk_div;      /**< SPI clock divider from the controller
+                                       input clock                           */
+    uint8_t         is_mss_qspi;  /**< Non-zero when the controller is the MSS
+                                       QSPI, whose subblock clock must be
+                                       enabled before register access        */
+    uint8_t         initialized;  /**< Set by Flash_init(); zero-initialize  */
+    qspi_instance_t controller;   /**< CoreQSPI driver instance; owned by the
+                                       driver, zero-initialize               */
+} flash_device_t;
 
-  @param io_format
-  The io_format parameter provides the SPI IO format that needs to be used for
-  read/write operations.
+/*-------------------------------------------------------------------------*//**
+  The Flash_init() function initializes the QSPI controller of the given
+  Flash device for normal (1-bit) SPI operations. Only the controller is
+  configured; no Flash device state (addressing mode, configuration
+  registers) is modified.
+
+  @param device
+  Target Flash device.
 
   @return
-    This function does not returns any value
-
-  @example
-
-  ##### Example1
-
-  Example
-
-  @code
-
-  @endcode
-
+    This function does not return a value.
 */
 void
 Flash_init
 (
-    mss_qspi_io_format io_format
+    flash_device_t* device
 );
 
 /*-------------------------------------------------------------------------*//**
-  The Flash_readid() function returns first 1 byte of data of the device JEDEC ID.
+  The Flash_readid() function reads the first 3 bytes of the device JEDEC ID.
+
+  @param device
+  Target Flash device.
 
   @param buf
-  The rd_buf parameter provides a pointer to the buffer in which the driver will
-  copy the JEDEC ID data. The buffer must be at least 1 bytes long.
+  Buffer of at least 3 bytes receiving the JEDEC ID.
 
   @return
-    This function does not returns any value
-
-  @example
-
-  ##### Example1
-
-  Example
-
-  @code
-
-  @endcode
-
+    This function does not return a value.
 */
 void
 Flash_readid
 (
+    flash_device_t* device,
     uint8_t* buf
 );
 
 /*-------------------------------------------------------------------------*//**
-  The Flash_read() function reads data from the flash memory.
+  The Flash_read() function reads data from the given Flash device.
+
+  @param device
+  Target Flash device.
 
   @param buf
-  The buf parameter is a pointer to the buffer in which the driver will
-  copy the data read from the flash memory.
+  Destination buffer.
 
   @param addr
-  The addr parameter is the address in the flash memory from which the driver
-  will read the data.
+  Flash byte address to read from.
 
   @param len
-  The len parameter is the number of 8-bit bytes that will be read from the flash
-  memory starting with the address indicated by the addr parameter.
+  Number of bytes to read.
 
   @return
-    This function does not returns any value
-
-  @example
-
-  ##### Example1
-
-  Example
-
-  @code
-
-  @endcode
-
+    This function does not return a value.
 */
 void
 Flash_read
 (
+    flash_device_t* device,
     uint8_t* buf,
     uint32_t addr,
     uint32_t len
 );
 
 /*-------------------------------------------------------------------------*//**
-  The Flash_erase() function erases the complete device.
+  The Flash_program() function writes data into the given Flash device.
+  The target range must have been erased beforehand. The buffer is split
+  into 256-byte page programs internally.
 
-  @return
-    This function returns a non-zero value if there was an error during erase
-    operation. A zero return value indicates success.
-
-  @example
-
-  ##### Example1
-
-  Example
-
-  @code
-
-  @endcode
-
-*/
-uint8_t
-Flash_erase
-(
-    void
-);
-
-uint8_t
-Flash_sector_erase(uint32_t addr);
-
-/*-------------------------------------------------------------------------*//**
-  The Flash_program() function writes data into the flash memory.
+  @param device
+  Target Flash device.
 
   @param buf
-  The rd_buf parameter provides a pointer to the buffer from which the data
-  needs to be written into the flash memory.
+  Source buffer.
 
   @param addr
-  The addr parameter is an address in the flash memory to which the data will be
-  written to.
+  Flash byte address to program.
 
   @param len
-  The len parameter indicates the number of 8-bit bytes that will be written to
-  the flash memory starting from the address indicated by the addr parameter.
+  Number of bytes to program.
 
   @return
-    This function returns a non-zero value if there was an error during program
-    operation. A zero return value indicates success.
-
-  @example
-
-  ##### Example1
-
-  Example
-
-  @code
-
-  @endcode
-
+    0 on success, non-zero on program error or timeout.
 */
-uint8_t Flash_program
+uint8_t
+Flash_program
 (
-    uint8_t* buf,
+    flash_device_t* device,
+    const uint8_t* buf,
     uint32_t addr,
     uint32_t len
 );
 
 /*-------------------------------------------------------------------------*//**
-  The Flash_read_status_regs() function reads all three status registers
+  The Flash_64KByte_erase() function erases the 64 KB sectors of the given
+  Flash device covering [addr, addr + len).
 
-  @param buf
-  The buf parameter is a pointer to the buffer in which the driver will
-  copy the status register values. The buffer should be large enough to store 6
-  8-bit bytes. The sequence is
-    - Status register
-    - Non-volatile configuration registers (2 bytes)
-    - Volatile configuration registers
-    - Enhanced volatile configuration register
-    - Flag status register
+  @param device
+  Target Flash device.
 
-  @return
-    This function does not return any value.
+  @param addr
+  Flash byte address (aligned down to a 64 KB boundary internally).
 
-  @example
-
-  ##### Example1
-
-  Example
-
-  @code
-
-  @endcode
-
-*/
-void
-Flash_read_status_regs
-(
-    uint8_t * buf
-);
-
-void
-Flash_read_flag_status_v_regs
-(
-    uint8_t * buf
-);
-
-/*-------------------------------------------------------------------------*//**
-  The Flash_enter_xip() function puts the flash memory into the XIP mode. To exit
-  XIP, use Flash_exit_xip() function or reset the device.
-  After entering into the XIP mode, any AHB access to MSS QSPI register space
-  will result into reading a byte from the flash memory over QSPI interface.
-  The XIP mode uses 3 byte addressing.
+  @param len
+  Number of bytes to erase (rounded up to full sectors).
 
   @return
-    This function does not return any value.
-
-  @example
-
-  ##### Example1
-
-  Example
-
-  @code
-
-  @endcode
-
+    0 on success, non-zero on erase error or timeout.
 */
-void
-Flash_enter_xip
+uint8_t
+Flash_64KByte_erase
 (
-    void
-);
-
-/*-------------------------------------------------------------------------*//**
-  The Flash_exit_xip() function brings the Flash memory out of the XIP mode.
-
-  @return
-    This function does not return any value.
-
-  @example
-
-  ##### Example1
-
-  Example
-
-  @code
-
-  @endcode
-
-*/
-void
-Flash_exit_xip
-(
-    void
-);
-
-/*-------------------------------------------------------------------------*//**
-  The Flash_clr_flagstatusreg() function can be used in case there were errors
-  in erase/program operations. This function will clear the error status so that
-  subsequent erase/program operations can be initiated.
-
-  @return
-    This function does not return any value.
-
-  @example
-
-  ##### Example1
-
-  Example
-
-  @code
-
-  @endcode
-
-*/
-void
-Flash_clr_flagstatusreg
-(
-    void
+    flash_device_t* device,
+    uint32_t addr,
+    uint32_t len
 );
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* MSS_INFINEON_S25FL_H_*/
+#endif /* INFINEON_S25FL_H_*/

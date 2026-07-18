@@ -1,139 +1,201 @@
-/***************************************************************************//** * *
- * Driver for infineon_s25fl QSPI flash memory.
- * This driver uses the MPFS MSS QSPI driver interface.
+/***************************************************************************//**
+ * Copyright 2019 - 2022 Microchip FPGA Embedded Systems Solutions.
  *
+ * SPDX-License-Identifier: MIT
+ *
+ * Generic driver for Infineon S25FL-class QSPI NOR Flash memories, driven
+ * through the CoreQSPI bare metal driver. See infineon_s25fl.h for the API
+ * description. Board support code owns the flash_device_t instances; the
+ * driver holds no board knowledge.
+ *
+ * Adapted by RFIM Space, 2026 (Koksal Kurt | koksal@rfim.co.uk):
+ * reworked from the original single-device MSS QSPI implementation into a
+ * generic instance-based layer supporting any number of devices behind
+ * CoreQSPI-compatible controllers.
  */
-#include "drivers/infineon_s25fl/infineon_s25fl.h"
-#include "drivers/mss/mss_mmuart/mss_uart.h"
 
-/*Following constant must be defined if you want to use the interrupt mode
-  transfers provided by the MSS QSPI driver. Comment this out to use the polling
-  mode transfers.*/
-//#define USE_QSPI_INTERRUPT      1u
+#include "infineon_s25fl.h"
+#include "core_qspi.h"
+
+#include "mss_peripherals.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef  USE_QSPI_INTERRUPT
-#define QSPI_TRANSFER_BLOCK(num_addr_bytes, tx_buffer, tx_byte_size, rd_buffer, rd_byte_size, num_idle_cycles) \
-        {\
-            MSS_QSPI_irq_transfer_block((num_addr_bytes), (tx_buffer), (tx_byte_size), (rd_buffer), (rd_byte_size), (num_idle_cycles));\
-            if((tx_buffer && !rd_buffer)) \
-            {wait_for_tx_complete();} \
-            if((rd_buffer && !tx_buffer)) \
-            {wait_for_tx_complete();} \
-            if((tx_buffer && rd_byte_size && rd_buffer && tx_byte_size)) \
-              {wait_for_rx_complete();\
-              wait_for_tx_complete(); \
-              } \
-        }
-#else
-#define QSPI_TRANSFER_BLOCK(num_addr_bytes, tx_buffer, tx_byte_size, rd_buffer, rd_byte_size, num_idle_cycles) \
-    MSS_QSPI_polled_transfer_block((num_addr_bytes), (tx_buffer), (tx_byte_size), (rd_buffer), (rd_byte_size), (num_idle_cycles));
-#endif
+/*******************************************************************************
+ * Private configuration
+ */
 
-#define PAGE_LENGTH                             256u
+/* Flash page program granularity in bytes. */
+#define FLASH_PAGE_LENGTH                       (256u)
 
-#define INFINEON_RESET_ENABLE                     0x66
-#define INFINEON_RESET_MEMORY                     0x99
+/* Bounded wait for WIP to clear (status register poll iterations). Each
+ * iteration is a full status-read transaction, so this covers the worst-case
+ * 64 KB sector erase time with ample margin. */
+#define FLASH_WIP_TIMEOUT                       (3000000u)
 
-#define INFINEON_READ_ID_OPCODE                   0x9F
-#define INFINEON_MIO_READ_ID_OPCODE               0xAF
+/* Flash sector size for the 64 KB erase command. */
+#define FLASH_SECTOR_SIZE                       (0x00010000u)
 
-#define INFINEON_READ                             0x03
-#define INFINEON_FAST_READ                        0x0B
+/* Flash command opcodes */
+#define FLASH_READ_ID_OPCODE                    (0x9Fu)
+#define FLASH_WRITE_ENABLE                      (0x06u)   /* WREN  */
+#define FLASH_READ_STATUS_REG                   (0x05u)   /* RDSR1 */
+#define FLASH_READ_STATUS_REG2                  (0x07u)   /* RDSR2 */
+#define FLASH_CLR_STATUS_REG                    (0x30u)   /* CLSR  */
+#define FLASH_4BYTE_READ                        (0x13u)
+#define FLASH_4BYTE_PAGE_PROG                   (0x12u)
+#define FLASH_4BYTE_SECTOR_ERASE                (0xDCu)
 
-#define INFINEON_4BYTE_READ                       0x13
-#define INFINEON_4BYTE_FAST_READ                  0x0C
-#define INFINEON_4BYTE_DUALO_FAST_READ            0x3C
-#define INFINEON_4BYTE_DUALIO_FAST_READ           0xBC
-#define INFINEON_4BYTE_QUADO_FAST_READ            0x6C
-#define INFINEON_4BYTE_QUADIO_FAST_READ           0xEC
+/* Status register 1 WIP (write in progress) bit. */
+#define FLASH_STATUS_WIP_MASK                   (0x01u)
 
-#define INFINEON_WRITE_ENABLE                     0x06
-#define INFINEON_WRITE_DISABLE                    0x04
+/* Status register 2 erase error bit (E_ERR). */
+#define FLASH_STATUS2_EFAIL_MASK                (0x40u)
 
-#define INFINEON_READ_STATUS_REG                  0x05
-#define INFINEON_READ_FLAG_STATUS_REG             0x07
-#define INFINEON_READ_ENH_V_CONFIG_REG            0x65
+/* Status register 2 program error bit (P_ERR). */
+#define FLASH_STATUS2_PFAIL_MASK                (0x20u)
 
-#define INFINEON_WR_STATUS_REG                    0x01
-#define INFINEON_WR_NV_CONFIG_REG                 0xB1
-#define INFINEON_WR_V_CONFIG_REG                  0x81
-#define INFINEON_WR_ENH_V_CONFIG_REG              0x61
-#define INFINEON_WR_EXT_ADDR_REG                  0xC5
-#define INFINEON_CLR_FLAG_STATUS_REG              0x30
+/*******************************************************************************
+ * Private data
+ */
 
-#define INFINEON_PAGE_PROGRAM                     0x02
-#define INFINEON_DUAL_INPUT_FAST_PROG             0xA2
-#define INFINEON_EXT_DUAL_INPUT_FAST_PROG         0xD2
-#define INFINEON_QUAD_INPUT_FAST_PROG             0x32
-#define INFINEON_EXT_QUAD_INPUT_FAST_PROG         0x38
-
-#define INFINEON_4BYTE_PAGE_PROG                  0x12
-#define INFINEON_4BYTE_QUAD_INPUT_FAST_PROG       0x34
-#define INFINEON_4BYTE_QUAD_INPUT_EXT_FAST_PROG   0x3E
-
-#define INFINEON_SECTOR_ERASE                     0xDC
-#define INFINEON_BULK_ERASE                       0xC7
-
-#define INFINEON_ENTER_4BYTE_ADDR_MODE            0xB7
-#define INFINEON_EXIT_4BYTE_ADDR_MODE             0x29
-
-#define INFINEON_JEDEC_ID                         0x01u
-
-mss_qspi_config_t beforexip_qspi_config={0};
-mss_qspi_config_t g_qspi_config = {0};
-mss_qspi_config_t qspi_config_read={0};
-#ifdef NVDEBUG
-extern uint8_t g_ui_buf[500];
-extern mss_uart_instance_t *g_uart;
-#endif
-volatile uint8_t g_rx_complete = 0u;
-volatile uint8_t g_tx_complete = 0u;
-static volatile uint8_t g_enh_v_val __attribute__ ((aligned (4))) = 0x0u;
+/* Command buffer for page program: opcode + 4 address bytes + page. */
+static uint8_t g_flash_cmd_buf[5u + FLASH_PAGE_LENGTH]                       \
+        __attribute__ ((aligned (4))) = {0};
 
 /*******************************************************************************
  * Local functions
  */
-static void read_statusreg(uint8_t* rd_buf);
 
-static void read_enh_v_cfgreg(uint8_t* rd_buf);
-static void read_flagstatusreg(uint8_t* rd_buf);
-static void enable_4byte_addressing(void);
-static void disable_4byte_addressing(void);
-static void device_reset(void);
-static void write_enh_v_confreg(uint8_t* enh_v_val);
-static mss_qspi_io_format probe_io_format(void);
-static mss_qspi_io_format update_io_format(mss_qspi_io_format t_io_format);
-static uint8_t program_page(uint8_t* buf,uint32_t page,uint32_t len);
-
-#ifdef USE_QSPI_INTERRUPT
-void transfer_status_handler(uint32_t status)
+/*------------------------------------------------------------------------------
+ * Validates a device instance, initializing its controller on first use.
+ * Returns NULL for an invalid instance.
+ */
+static flash_device_t*
+flash_get_ctx(flash_device_t* device)
 {
-    if (STTS_RDONE_MASK == (STTS_RDONE_MASK & status))
+    if (device == (flash_device_t*)0)
     {
-        g_rx_complete = 1;
+        return (flash_device_t*)0;
     }
-    else if (STTS_TDONE_MASK == (STTS_TDONE_MASK & status))
+
+    if (device->initialized == 0u)
     {
-        g_tx_complete = 1;
+        Flash_init(device);
     }
+
+    return device;
 }
 
-static void wait_for_tx_complete(void)
+/*------------------------------------------------------------------------------
+ * Issues the WRITE ENABLE command. Required before every program or erase
+ * operation.
+ */
+static void
+flash_write_enable(flash_device_t* ctx)
 {
-    //while (0u == g_tx_complete);
-    g_tx_complete = 0u;
+    const uint8_t command_buf[1] __attribute__ ((aligned (4))) =             \
+            {FLASH_WRITE_ENABLE};
+
+    QSPI_polled_transfer_block(&ctx->controller, 0u, command_buf, 0u,        \
+            (uint8_t*)0, 0u, 0u);
 }
 
-static void wait_for_rx_complete(void)
+/*------------------------------------------------------------------------------
+ * Polls status register 1 until WIP clears or the bounded timeout expires.
+ * Returns 0 when WIP cleared, non-zero on timeout.
+ */
+static uint8_t
+flash_wait_wip_clear(flash_device_t* ctx)
 {
-    //while (0u == g_rx_complete);
-    g_rx_complete = 0u;
+    const uint8_t command_buf[1] __attribute__ ((aligned (4))) =             \
+            {FLASH_READ_STATUS_REG};
+    uint8_t  status_buf[4] __attribute__ ((aligned (4))) =                   \
+            {FLASH_STATUS_WIP_MASK};
+    uint32_t timeout = FLASH_WIP_TIMEOUT;
+
+    do
+    {
+        QSPI_polled_transfer_block(&ctx->controller, 0u, command_buf, 0u,    \
+                status_buf, 1u, 0u);
+
+        if ((status_buf[0] & FLASH_STATUS_WIP_MASK) == 0u)
+        {
+            return 0u;
+        }
+        timeout--;
+    } while (timeout > 0u);
+
+    return 1u;
 }
-#endif
+
+/*------------------------------------------------------------------------------
+ * Reads status register 2 and tests the given error bit, then clears the
+ * error flags. Returns 0 when no error, non-zero when the error bit was set.
+ */
+static uint8_t
+flash_error(flash_device_t* ctx, uint8_t error_mask)
+{
+    const uint8_t command_buf[1] __attribute__ ((aligned (4))) =             \
+            {FLASH_READ_STATUS_REG2};
+    const uint8_t command_buf_clsr[1] __attribute__ ((aligned (4))) =        \
+            {FLASH_CLR_STATUS_REG};
+    uint8_t status_buf[4] __attribute__ ((aligned (4))) = {0};
+    uint8_t error = 0u;
+
+    QSPI_polled_transfer_block(&ctx->controller, 0u, command_buf, 0u,        \
+            status_buf, 1u, 0u);
+
+    if ((status_buf[0] & error_mask) != 0u)
+    {
+        error = 1u;
+    }
+
+    QSPI_polled_transfer_block(&ctx->controller, 0u, command_buf_clsr, 0u,   \
+            (uint8_t*)0, 0u, 0u);
+
+    return error;
+}
+
+/*------------------------------------------------------------------------------
+ * Programs up to one 256-byte page. The address and length must not cross a
+ * page boundary. Returns 0 on success, non-zero on program error or timeout.
+ */
+static uint8_t
+flash_program_page(flash_device_t* ctx, const uint8_t* buf,                  \
+        uint32_t addr, uint32_t len)
+{
+    uint32_t idx;
+
+    flash_write_enable(ctx);
+
+    g_flash_cmd_buf[0] = FLASH_4BYTE_PAGE_PROG;
+    g_flash_cmd_buf[1] = (uint8_t)((addr >> 24u) & 0xFFu);
+    g_flash_cmd_buf[2] = (uint8_t)((addr >> 16u) & 0xFFu);
+    g_flash_cmd_buf[3] = (uint8_t)((addr >> 8u) & 0xFFu);
+    g_flash_cmd_buf[4] = (uint8_t)(addr & 0xFFu);
+
+    for (idx = 0u; idx < len; idx++)
+    {
+        g_flash_cmd_buf[5u + idx] = buf[idx];
+    }
+
+    QSPI_polled_transfer_block(&ctx->controller, 4u, g_flash_cmd_buf, len,   \
+            (uint8_t*)0, 0u, 0u);
+
+    if (flash_wait_wip_clear(ctx) != 0u)
+    {
+        return 1u;
+    }
+
+    return flash_error(ctx, FLASH_STATUS2_PFAIL_MASK);
+}
+
+/*******************************************************************************
+ * Public API
+ */
 
 /***************************************************************************//**
  * See infineon_s25fl.h for details of how to use this function.
@@ -141,67 +203,39 @@ static void wait_for_rx_complete(void)
 void
 Flash_init
 (
-    mss_qspi_io_format io_format
+    flash_device_t* device
 )
 {
-    volatile mss_qspi_io_format t_io_format = MSS_QSPI_NORMAL;
+    qspi_config_t qspi_cfg = {0};
 
-    MSS_QSPI_init();
-
-#ifdef USE_QSPI_INTERRUPT
-    MSS_QSPI_set_status_handler(transfer_status_handler);
-#endif
-
-    g_qspi_config.clk_div =  MSS_QSPI_CLK_DIV_30;     //Tested OK INFINEON_FAST_READ command at MSS_QSPI_CLK_DIV_12
-    g_qspi_config.sample = MSS_QSPI_SAMPLE_POSAGE_SPICLK;
-    g_qspi_config.spi_mode = MSS_QSPI_MODE3;
-    g_qspi_config.xip = MSS_QSPI_DISABLE;
-    g_qspi_config.io_format = MSS_QSPI_NORMAL;
-    MSS_QSPI_configure(&g_qspi_config);
-
-    device_reset();
-
-    /* Find out the current mode of the flash memory device
-     * and configure qspi controller to that mode.*/
-    t_io_format = probe_io_format();
-
-    g_qspi_config.io_format = t_io_format;
-    MSS_QSPI_configure(&g_qspi_config);
-
-    /* If the desired IO format is same as the currently configured IO Format
-     * Then we are done. Otherwise configure the Flash and QSPI controller
-     * to the IO format provided by the user.
-     */
-    if (io_format != t_io_format)
+    if (device == (flash_device_t*)0)
     {
-        g_qspi_config.io_format = t_io_format;
-        MSS_QSPI_configure(&g_qspi_config);
-
-        read_enh_v_cfgreg((uint8_t*)&g_enh_v_val);
-
-        if (io_format == MSS_QSPI_QUAD_FULL)
-        {
-            g_enh_v_val |= 0x40u; /* set the dual mode bit*/
-            g_enh_v_val &= ~0x80u; /*clear the quad mode bit*/
-        }
-        else if (io_format == MSS_QSPI_DUAL_FULL)
-        {
-            g_enh_v_val |= 0x80u;  /*set the quad mode bit*/
-            g_enh_v_val &= ~0x40u; /*clear the dual mode but*/
-        }
-        else
-        {
-            g_enh_v_val |= 0xC0u; /*normal*/
-        }
-        write_enh_v_confreg((uint8_t*)&g_enh_v_val);
-        read_enh_v_cfgreg((uint8_t*)&g_enh_v_val);
+        return;
     }
 
-    g_qspi_config.io_format = io_format;
-    MSS_QSPI_configure(&g_qspi_config);
-    enable_4byte_addressing();
+    /* The MSS QSPI subblock clock must be enabled before its registers are
+     * touched; other controllers (e.g. the SC QSPI) are clocked already.
+     * The HSS accesses the QSPI Flash from the E51, so the clock is
+     * requested for hart 0. */
+    if (device->is_mss_qspi != 0u)
+    {
+        (void)mss_config_clk_rst(MSS_PERIPH_QSPIXIP, (uint8_t)0u,            \
+                PERIPHERAL_ON);
+    }
 
-    MSS_QSPI_enable();
+    QSPI_init(&device->controller, (addr_t)device->ctrl_base);
+
+    /* Normal (1-bit) SPI format, mode 3. Only the controller is configured;
+     * no Flash device state (addressing mode, configuration registers) is
+     * modified. */
+    qspi_cfg.clk_div   = device->clk_div;
+    qspi_cfg.sample    = QSPI_SAMPLE_POSAGE_SPICLK;
+    qspi_cfg.spi_mode  = QSPI_MODE3;
+    qspi_cfg.xip       = QSPI_DISABLE;
+    qspi_cfg.io_format = QSPI_NORMAL;
+    QSPI_configure(&device->controller, &qspi_cfg);
+
+    device->initialized = 1u;
 }
 
 /***************************************************************************//**
@@ -210,21 +244,21 @@ Flash_init
 void
 Flash_readid
 (
+    flash_device_t* device,
     uint8_t* buf
 )
 {
-    uint8_t command_buf[1] __attribute__ ((aligned (4))) = {INFINEON_READ_ID_OPCODE};
-    volatile mss_qspi_io_format t_io_format;
+    const uint8_t command_buf[1] __attribute__ ((aligned (4))) =             \
+            {FLASH_READ_ID_OPCODE};
+    flash_device_t* ctx = flash_get_ctx(device);
 
-    t_io_format = g_qspi_config.io_format;
-    if ((t_io_format != MSS_QSPI_QUAD_FULL) && (t_io_format != MSS_QSPI_DUAL_FULL)) {
-        t_io_format = update_io_format(MSS_QSPI_NORMAL);
-        QSPI_TRANSFER_BLOCK(0, command_buf, 0, buf, 3, 0);
-        update_io_format(t_io_format);
-    } else {
-        command_buf[0] = INFINEON_MIO_READ_ID_OPCODE;
-        QSPI_TRANSFER_BLOCK(0, command_buf, 0, buf, 3, 0);
+    if (ctx == (flash_device_t*)0)
+    {
+        return;
     }
+
+    QSPI_polled_transfer_block(&ctx->controller, 0u, command_buf, 0u,        \
+            buf, 3u, 0u);
 }
 
 /***************************************************************************//**
@@ -233,568 +267,132 @@ Flash_readid
 void
 Flash_read
 (
+    flash_device_t* device,
     uint8_t* buf,
     uint32_t addr,
     uint32_t len
 )
 {
-    uint8_t dummy_cycles = 0u;
-    uint8_t command_buf[10] __attribute__ ((aligned (4))) = {0u};
+    uint8_t command_buf[5] __attribute__ ((aligned (4))) = {0};
+    flash_device_t* ctx = flash_get_ctx(device);
 
-    command_buf[1] = (addr >> 24u) & 0xFFu;
-    command_buf[2] = (addr >> 16u) & 0xFFu;
-    command_buf[3] = (addr >> 8u) & 0xFFu;
-    command_buf[4] = addr & 0xFFu;
-
-    switch(g_qspi_config.io_format)
+    if (ctx == (flash_device_t*)0)
     {
-       case MSS_QSPI_NORMAL:
-           command_buf[0] = INFINEON_4BYTE_FAST_READ;
-           dummy_cycles = 8u;
-           break;
-       case MSS_QSPI_DUAL_EX_RO:
-           command_buf[0] = INFINEON_4BYTE_DUALO_FAST_READ;   /* 1-1-2 */
-           dummy_cycles = 8u;
-           break;
-       case MSS_QSPI_QUAD_EX_RO:
-           command_buf[0] = INFINEON_4BYTE_QUADO_FAST_READ;   /* 1-1-4 */
-           dummy_cycles = 8u;
-           break;
-       case MSS_QSPI_DUAL_EX_RW:
-           command_buf[0] = INFINEON_4BYTE_DUALIO_FAST_READ;   /* 1-2-2 */
-           dummy_cycles = 8u;
-           break;
-       case MSS_QSPI_QUAD_EX_RW:
-           command_buf[0] = INFINEON_4BYTE_QUADIO_FAST_READ;   /* 1-4-4 */
-           dummy_cycles = 8u;
-           break;
-       case MSS_QSPI_DUAL_FULL:
-           command_buf[0] = INFINEON_4BYTE_FAST_READ;
-           dummy_cycles = 8u;
-           break;
-       case MSS_QSPI_QUAD_FULL:
-           command_buf[0] = INFINEON_4BYTE_FAST_READ;
-           dummy_cycles = 8u;                              /* For Quad mode */
-           break;
-       default:
-           ASSERT(0);
-           break;
+        return;
     }
 
-    QSPI_TRANSFER_BLOCK(4, command_buf, 0, buf, len, dummy_cycles);
+    command_buf[0] = FLASH_4BYTE_READ;
+    command_buf[1] = (uint8_t)((addr >> 24u) & 0xFFu);
+    command_buf[2] = (uint8_t)((addr >> 16u) & 0xFFu);
+    command_buf[3] = (uint8_t)((addr >> 8u) & 0xFFu);
+    command_buf[4] = (uint8_t)(addr & 0xFFu);
+
+    QSPI_polled_transfer_block(&ctx->controller, 4u, command_buf, 0u,        \
+            buf, len, 0u);
 }
 
 /***************************************************************************//**
- * See infineon_s25fl for details of how to use this function.
+ * See infineon_s25fl.h for details of how to use this function.
  */
 uint8_t
 Flash_program
 (
-    uint8_t* buf,
+    flash_device_t* device,
+    const uint8_t* buf,
     uint32_t addr,
     uint32_t len
 )
 {
-    int32_t remaining_length = (int32_t)len;
-    uint32_t target_offset = addr;
-    uint8_t status = 0xFF;
+    uint32_t       remaining   = len;
+    uint32_t       target_addr = addr;
+    const uint8_t* source      = buf;
+    flash_device_t* ctx        = flash_get_ctx(device);
 
-    while(remaining_length > 0)
+    if (ctx == (flash_device_t*)0)
     {
-        uint32_t page_length;
-
-        if(remaining_length >= PAGE_LENGTH)
-        {
-            page_length = PAGE_LENGTH;
-        }
-        else
-        {
-            page_length = remaining_length;
-        }
-
-        status = program_page(buf, target_offset, page_length);
-
-        remaining_length -= page_length;
-        target_offset += page_length;
-        buf += page_length;
+        return 1u;
     }
 
-    return (status);
-}
+    while (remaining > 0u)
+    {
+        /* Never cross a 256-byte page boundary within one program command. */
+        uint32_t page_offset = target_addr % FLASH_PAGE_LENGTH;
+        uint32_t chunk       = FLASH_PAGE_LENGTH - page_offset;
 
-/***************************************************************************//**
- * See infineon_s25fl.h for details of how to use this function.
- */
-uint8_t
-Flash_erase(void)
-{
-    uint8_t status = 0xFFu;
-    uint8_t command_buf[5] __attribute__ ((aligned (4))) = {INFINEON_WRITE_ENABLE};
-    /*Both Write enable and Die erase can work in all modes*/
-
-    /* Write enable command must be executed before erase
-     * WRITE ENABLE 06h 1-0-0 2-0-0 4-0-0 0 no dummy cycles.
-     * */
-    volatile mss_qspi_io_format t_io_format;
-
-    t_io_format = update_io_format(MSS_QSPI_NORMAL);
-
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, (uint8_t*)0, 0,0);
-
-    /* Erase the die. This will write 1 to all bits
-     * DIE ERASE C4h 1-1-0 2-2-0 4-4-0 no dummy cycles
-     * */
-    command_buf[0] = INFINEON_BULK_ERASE;
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, (uint8_t*)0, 0,0);
-    update_io_format(t_io_format);
-
-    while (1){
-        read_statusreg(&status);
-        if (!(status & 0x1))        // wait until Bit [0] WIP = 0
-            break;
-    }
-
-    read_flagstatusreg(&status);
-
-    return(status & (0x1 << 6));    /// E_ERR
-
-}
-
-uint8_t
-Flash_sector_erase(uint32_t addr)
-{
-    uint8_t status = 0u;
-    uint8_t command_buf[5] __attribute__ ((aligned (4))) = {0};
-    /*execute Enter 4-byte mode command */
-    command_buf[0] = INFINEON_ENTER_4BYTE_ADDR_MODE;
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, (uint8_t*)0, 0,0);
-
-    /*execute Write enable command again for writing the data*/
-//    command_buf[0] = INFINEON_WRITE_ENABLE;
-//    QSPI_TRANSFER_BLOCK(0, command_buf, 0, (uint8_t*)0, 0,0);
-
-        /*execute Write enable command again for writing the data*/
-        command_buf[0] = INFINEON_WRITE_ENABLE;
-        QSPI_TRANSFER_BLOCK(0, command_buf, 0, (uint8_t*)0, 0,0);
-
-        command_buf[1] = (addr >> 24) & 0xFFu;
-        command_buf[2] = (addr >> 16) & 0xFFu;
-        command_buf[3] = (addr >> 8) & 0xFFu;
-        command_buf[4] = addr & 0xFFu;
-        command_buf[0] = INFINEON_SECTOR_ERASE;   // erase one 64KByte Block
-        QSPI_TRANSFER_BLOCK(4, command_buf, 0, (uint8_t*)0u, 0u, 0u);
-
-        while (1){
-            read_statusreg(&status);
-            if (!(status & 0x1))        // wait until Bit [0] WIP = 0
-                break;
+        if (chunk > remaining)
+        {
+            chunk = remaining;
         }
 
-        read_flagstatusreg(&status);
-        if (status & (0x1 << 6))    /// E_ERR
-            status = 1u;
+        if (flash_program_page(ctx, source, target_addr, chunk) != 0u)
+        {
+            return 1u;
+        }
+
+        remaining   -= chunk;
+        target_addr += chunk;
+        source      += chunk;
+    }
 
     return 0u;
-
-}
-
-
-
-/***************************************************************************//**
- * See infineon_s25fl.h for details of how to use this function.
- */
-void
-Flash_enter_xip
-(
-    void
-)
-{
-    disable_4byte_addressing();
-
-    uint8_t command_buf[5] __attribute__ ((aligned (4))) = {INFINEON_WRITE_ENABLE};
-    uint32_t temp;
-
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, (uint8_t*)0, 0, 0);
-
-    command_buf[0] = INFINEON_WR_V_CONFIG_REG;
-    command_buf[1] = 0xF3u;     /*Enable XIP*/
-
-    /*Enable XIP by writing to volatile configuration register*/
-    QSPI_TRANSFER_BLOCK(0, command_buf, 1, (uint8_t*)0, 0, 0);
-    /*Drive XIP confirmation using FAST read and keeping DQ0 to 0 during idle cycle*/
-    command_buf[0] = INFINEON_FAST_READ;
-    command_buf[1] = 0x00u;
-    command_buf[2] = 0x00u;
-    command_buf[3] = 0x00u;
-
-    /*Following command must be sent in polling method only.
-      Using interrupt method is not possible here because, after sending this
-      command flash memory immediately goes into the XIP mode and reading the
-      status register in the IRQ returns the flash memory value instead of
-      register value and this will not allow interrupt to be processed properly.*/
-    if ((MSS_QSPI_QUAD_FULL == g_qspi_config.io_format) ||
-            (MSS_QSPI_QUAD_EX_RW == g_qspi_config.io_format) ||
-            (MSS_QSPI_QUAD_EX_RO == g_qspi_config.io_format))
-    {
-        QSPI_TRANSFER_BLOCK(3, command_buf, 1, (uint8_t*)&temp, 4, 10);
-    }
-    else
-    {
-        QSPI_TRANSFER_BLOCK(3, command_buf, 1, (uint8_t*)&temp, 4, 8);
-    }
-
-    MSS_QSPI_get_config(&beforexip_qspi_config);
-
-    /*Force the XIP to work correctly, we must use QSPI_SAMPLE_NEGAGE_SPICLK per spec*/
-    beforexip_qspi_config.sample = MSS_QSPI_SAMPLE_NEGAGE_SPICLK;
-    beforexip_qspi_config.xip = MSS_QSPI_ENABLE;
-
-    MSS_QSPI_configure(&beforexip_qspi_config);
 }
 
 /***************************************************************************//**
  * See infineon_s25fl.h for details of how to use this function.
  */
-void
-Flash_read_status_regs
+uint8_t
+Flash_64KByte_erase
 (
-    uint8_t* buf
-)
-{
-    read_statusreg(&buf[0]);
-    /// read_nv_cfgreg(&buf[1]); /* 2bytes */
-    /// read_v_cfgreg(&buf[3]);
-    /// read_enh_v_cfgreg(&buf[4]);
-    /// read_flagstatusreg(&buf[5]);
-}
-
-/***************************************************************************//**
- * See infineon_s25fl.h for details of how to use this function.
- */
-void
-Flash_exit_xip
-(
-    void
-)
-{
-    uint8_t command_buf[5] __attribute__ ((aligned (4))) = {INFINEON_FAST_READ};
-    uint32_t temp = 0u;
-
-    beforexip_qspi_config.sample = MSS_QSPI_SAMPLE_POSAGE_SPICLK;
-    beforexip_qspi_config.xip = MSS_QSPI_DISABLE;
-    MSS_QSPI_configure(&beforexip_qspi_config);
-
-    /* Drive XIP confirmation bit using FAST read and keeping DQ0 to 1 during
-     * idle cycle this will exit the XIP*/
-
-    command_buf[0] = INFINEON_FAST_READ;
-    command_buf[1] = 0x00u;
-    command_buf[2] = 0x00u;
-    command_buf[3] = 0xFFu;
-
-    QSPI_TRANSFER_BLOCK(3, command_buf, 0, (uint8_t*)&temp, 1, 8);
-
-    enable_4byte_addressing();
-}
-
-void
-Flash_clr_flagstatusreg
-(
-    void
-)
-{
-    const uint8_t command_buf[1] __attribute__ ((aligned (4))) = {INFINEON_CLR_FLAG_STATUS_REG};
-    volatile mss_qspi_io_format t_io_format;
-
-    t_io_format = update_io_format(MSS_QSPI_NORMAL);
-
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, 0, 0,0);
-    update_io_format(t_io_format);
-}
-
-
-/*******************************************************************************
- * Local functions
- */
-static void
-read_statusreg
-(
-    uint8_t* rd_buf
-)
-{
-    const uint8_t command_buf[1] __attribute__ ((aligned (4))) = {INFINEON_READ_STATUS_REG};
-    volatile mss_qspi_io_format t_io_format;
-
-    t_io_format = update_io_format(MSS_QSPI_NORMAL);
-
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, rd_buf, 1,0);
-    update_io_format(t_io_format);
-}
-
-
-static void
-enable_4byte_addressing
-(
-    void
-)
-{
-    uint8_t command_buf[1] __attribute__ ((aligned (4))) = {INFINEON_WRITE_ENABLE};
-    volatile mss_qspi_io_format t_io_format;
-
-    t_io_format = update_io_format(MSS_QSPI_NORMAL);
-
-    /* Write enable command must be executed before writing extended addr reg. */
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, (uint8_t*)0, 0, 0);
-
-    command_buf[0] =  INFINEON_ENTER_4BYTE_ADDR_MODE;
-
-    /* This command works for all modes. No Dummy cycles */
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, (uint8_t*)0, 0, 0);
-    update_io_format(t_io_format);
-}
-
-static void
-disable_4byte_addressing
-(
-    void
-)
-{
-    uint8_t command_buf[2] __attribute__ ((aligned (4))) = {INFINEON_WRITE_ENABLE};
-    volatile mss_qspi_io_format t_io_format;
-
-    t_io_format = update_io_format(MSS_QSPI_NORMAL);
-
-    /* Write enable command must be executed before writing extended addr reg. */
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, (uint8_t*)0, 0, 0);
-
-    command_buf[0] =  INFINEON_EXIT_4BYTE_ADDR_MODE;
-
-    /* This command works for all modes. No Dummy cycles */
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, (uint8_t*)0, 0, 0);
-    update_io_format(t_io_format);
-
-}
-
-static void
-device_reset(void)
-{
-    uint8_t command_buf[2] __attribute__ ((aligned (4))) = {INFINEON_RESET_ENABLE};
-
-    QSPI_TRANSFER_BLOCK(0, (void *)command_buf, 0, 0, 0,0);
-    for(volatile uint32_t idx =0u; idx < 1000u ; idx++);    /* delay */
-
-    command_buf[1] = INFINEON_RESET_MEMORY;
-    QSPI_TRANSFER_BLOCK(0, (void *)command_buf, 0, 0, 0,0);
-    for(volatile uint32_t idx =0u; idx < 1000u ; idx++);    /* delay */
-}
-
-static void
-read_enh_v_cfgreg
-(
-    uint8_t* rd_buf
-)
-{
-    const uint8_t command_buf[1] __attribute__ ((aligned (4))) = {INFINEON_READ_ENH_V_CONFIG_REG};
-    volatile mss_qspi_io_format t_io_format;
-
-    t_io_format = update_io_format(MSS_QSPI_NORMAL);
-
-    /*This command works for all modes. No Dummy cycles*/
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, rd_buf, 1,0);
-
-    update_io_format(t_io_format);
-}
-
-static void
-write_enh_v_confreg
-(
-    uint8_t* enh_v_val
-)
-{
-    uint8_t command_buf[2] __attribute__ ((aligned (4))) = {INFINEON_WRITE_ENABLE};
-    volatile mss_qspi_io_format t_io_format;
-
-    t_io_format = update_io_format(MSS_QSPI_NORMAL);
-    /*execute Write enable command again for writing the data*/
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, (uint8_t*)0, 0, 0);
-    command_buf[0] =  INFINEON_WR_ENH_V_CONFIG_REG;
-    command_buf[1] =  *enh_v_val;
-
-    /*This command works for all modes. No Dummy cycles*/
-    QSPI_TRANSFER_BLOCK(0, command_buf, 1, (uint8_t*)0, 0, 0);
-    update_io_format(t_io_format);
-
-}
-
-void
-Flash_read_flag_status_v_regs
-(
-    uint8_t* rd_buf
-)
-{
-    read_flagstatusreg(rd_buf);
-}
-
-
-static void
-read_flagstatusreg
-(
-    uint8_t* rd_buf
-)
-{
-    const uint8_t command_buf[1] __attribute__ ((aligned (4))) = {INFINEON_READ_FLAG_STATUS_REG};
-    volatile mss_qspi_io_format t_io_format;
-
-    t_io_format = update_io_format(MSS_QSPI_NORMAL);
-
-    /*This command works for all modes. No Dummy cycles*/
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, rd_buf, 1,0);
-    update_io_format(t_io_format);
-}
-
-static
-mss_qspi_io_format
-update_io_format
-(
-        mss_qspi_io_format io_format
-)
-{
-    volatile mss_qspi_io_format t_io_format;
-    t_io_format = g_qspi_config.io_format;
-
-    if ((t_io_format != MSS_QSPI_QUAD_FULL) && (t_io_format != MSS_QSPI_DUAL_FULL)) {
-        if (t_io_format != io_format) {
-            g_qspi_config.io_format = io_format;
-            MSS_QSPI_configure(&g_qspi_config);
-        }
-    }
-
-    return t_io_format;
-}
-
-static
-mss_qspi_io_format
-probe_io_format
-(
-    void
-)
-{
-    volatile uint8_t device_id __attribute__ ((aligned (4))) = 0x0u;
-    mss_qspi_io_format io_format = MSS_QSPI_NORMAL;
-
-    for(uint8_t idx = 0u; idx < 8u; idx++)
-    {
-        g_qspi_config.io_format = (MSS_QSPI_QUAD_FULL - idx);
-        MSS_QSPI_configure(&g_qspi_config);
-
-        Flash_readid((uint8_t*)&device_id);
-
-        if (INFINEON_JEDEC_ID == device_id)
-        {
-            io_format = (MSS_QSPI_QUAD_FULL - idx);
-            break;
-        }
-    }
-
-    return(io_format);
-}
-
-/* Any address within the page is valid.
- * If len -> PAGE_LENGTH :
- *       Bytes more than PAGE_LENGTH are ignored
- * If addr -> page start addr and len > more than remaining bytes in the page :
- *       Bytes overflowing the page boundary are ignored
- * if len < pag_size :
- *       Only len bytes are modified, rest remain unchanged.
- */
-static uint8_t
-program_page
-(
-    uint8_t* buf,
+    flash_device_t* device,
     uint32_t addr,
     uint32_t len
 )
 {
-    uint8_t status = 0u;
-    uint8_t command_buf[300] __attribute__ ((aligned (4))) = {0};
-    uint32_t length = len;
-    uint32_t offset = addr % PAGE_LENGTH;
-    if(addr == 0)
+    uint8_t  command_buf[5] __attribute__ ((aligned (4))) = {0};
+    uint32_t target_addr;
+    uint32_t erase_end;
+    flash_device_t* ctx = flash_get_ctx(device);
+
+    if (ctx == (flash_device_t*)0)
     {
-
+        return 1u;
     }
-    if (len > PAGE_LENGTH)
+
+    if (len == 0u)
     {
-        length = PAGE_LENGTH;
+        return 0u;
     }
 
-    if (offset && ((length + offset) > PAGE_LENGTH))
+    target_addr = addr & ~(FLASH_SECTOR_SIZE - 1u);
+    erase_end   = addr + len;
+
+    do
     {
-        length = PAGE_LENGTH - offset;
-    }
-    volatile mss_qspi_io_format t_io_format;
+        flash_write_enable(ctx);
 
-    t_io_format = update_io_format(MSS_QSPI_NORMAL);
+        command_buf[0] = FLASH_4BYTE_SECTOR_ERASE;
+        command_buf[1] = (uint8_t)((target_addr >> 24u) & 0xFFu);
+        command_buf[2] = (uint8_t)((target_addr >> 16u) & 0xFFu);
+        command_buf[3] = (uint8_t)((target_addr >> 8u) & 0xFFu);
+        command_buf[4] = (uint8_t)(target_addr & 0xFFu);
 
+        QSPI_polled_transfer_block(&ctx->controller, 4u, command_buf, 0u,    \
+                (uint8_t*)0, 0u, 0u);
 
-    /*execute Write enable command again for writing the data*/
-    command_buf[0] = INFINEON_WRITE_ENABLE;
-    QSPI_TRANSFER_BLOCK(0, command_buf, 0, (uint8_t*)0, 0,0);
-    update_io_format(t_io_format);
+        if (flash_wait_wip_clear(ctx) != 0u)
+        {
+            return 1u;
+        }
 
-    command_buf[1] = (addr >> 24) & 0xFFu;
-    command_buf[2] = (addr >> 16) & 0xFFu;
-    command_buf[3] = (addr >> 8) & 0xFFu;
-    command_buf[4] = addr & 0xFFu;
+        if (flash_error(ctx, FLASH_STATUS2_EFAIL_MASK) != 0u)
+        {
+            return 1u;
+        }
 
-    for (uint16_t idx=0; idx< length;idx++)
-    {
-        command_buf[5 + idx] = *(uint8_t*)(buf+idx);
-    }
-    /* Dummy cycles for all program commands are 0.
-     * DUAL EX_RO and DUAL EX_RW commands dont have 4 BYTE in their name but
-     * they take 4 byte address when Flash is configured in 4byte mode.
-     * Refer command set in the flash memory datasheet*/
-    switch(g_qspi_config.io_format)
-    {
-       case MSS_QSPI_NORMAL     :
-           command_buf[0] = INFINEON_4BYTE_PAGE_PROG;
-           break;
-       case MSS_QSPI_DUAL_EX_RO :
-           command_buf[0] = INFINEON_DUAL_INPUT_FAST_PROG;              /* 1-1-2 */
-           break;
-       case MSS_QSPI_QUAD_EX_RO :
-           Flash_init(MSS_QSPI_QUAD_EX_RW);
-           command_buf[0] = 0x38;        /* 1-1-4 */
-           break;
-       case MSS_QSPI_DUAL_EX_RW :
-           command_buf[0] = INFINEON_EXT_DUAL_INPUT_FAST_PROG;          /* 1-2-2 */
-           break;
-       case MSS_QSPI_QUAD_EX_RW :
-           command_buf[0] = INFINEON_4BYTE_QUAD_INPUT_EXT_FAST_PROG;    /* 1-4-4 */
-           break;
-       case MSS_QSPI_DUAL_FULL  :
-           command_buf[0] = INFINEON_4BYTE_PAGE_PROG;
-           break;
-       case MSS_QSPI_QUAD_FULL  :
-           command_buf[0] = INFINEON_4BYTE_PAGE_PROG;
-           break;
-       default:
-           ASSERT(0);
-           break;
-    }
+        target_addr += FLASH_SECTOR_SIZE;
+    } while (target_addr < erase_end);
 
-    QSPI_TRANSFER_BLOCK(4, command_buf, length, (uint8_t*)0u, 0u, 0u);
-
-    while (1){
-        read_statusreg(&status);
-        if (!(status & 0x1))        // wait until Bit [0] WIP = 0
-            break;
-    }
-
-    read_flagstatusreg(&status);
-
-    return(status & (0x1 << 5));    /// P_ERR
+    return 0u;
 }
 
 #ifdef __cplusplus
