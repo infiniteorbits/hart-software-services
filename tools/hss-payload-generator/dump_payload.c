@@ -39,6 +39,8 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
+#include <openssl/evp.h>
+
 #include "hss_types.h"
 #include "debug_printf.h"
 #include "dump_payload.h"
@@ -170,6 +172,67 @@ void dump_payload(const char *filename_input, const char *public_key_filename)
 		if (pBootImage->headerCrc != calculatedCrc) {
 			printf("calculatedCrc:          0x%08x\n", calculatedCrc);
 			printf(" **** CRCs do not match!!! ****\n\n");
+		}
+	}
+
+	// display and verify the embedded MD5 digest, if present
+	// (the md5Sum field aliases the signature, so it is only meaningful when
+	// the remainder of the signature region is zero, i.e. an unsigned image)
+	{
+		const uint8_t *pSigBytes = (const uint8_t *)&(pBootImage->signature);
+		bool md5Present = false;
+		bool signaturePresent = false;
+
+		for (size_t i = 0u; i < sizeof(pBootImage->md5Sum); i++) {
+			if (pSigBytes[i] != 0u) {
+				md5Present = true;
+				break;
+			}
+		}
+
+		for (size_t i = sizeof(pBootImage->md5Sum); i < sizeof(struct HSS_Signature); i++) {
+			if (pSigBytes[i] != 0u) {
+				signaturePresent = true;
+				break;
+			}
+		}
+
+		if (md5Present && !signaturePresent) {
+			printf("md5Sum:             ");
+			for (size_t i = 0u; i < sizeof(pBootImage->md5Sum); i++) {
+				printf("%02x", (unsigned int)pBootImage->md5Sum[i]);
+			}
+			printf("\n");
+
+			// sanity check: recompute the digest over the image with the
+			// signature/md5Sum region zeroed (see hss_types.h);
+			// bootImageLength is untrusted file data, so bound it before
+			// using it to size the shadow buffer the fixed-offset memset
+			// below writes into...
+			if ((pBootImage->bootImageLength < sizeof(struct HSS_BootImage))
+				|| (pBootImage->bootImageLength > fileSize)) {
+				printf(" **** implausible bootImageLength,"
+					" skipping MD5 verification!!! ****\n\n");
+			} else {
+				uint8_t *pShadowBuffer = malloc(pBootImage->bootImageLength);
+				assert(pShadowBuffer != NULL);
+
+				memcpy(pShadowBuffer, raw_image, pBootImage->bootImageLength);
+				memset(pShadowBuffer + offsetof(struct HSS_BootImage, signature), 0,
+					sizeof(struct HSS_Signature));
+
+				uint8_t digest[EVP_MAX_MD_SIZE];
+				unsigned int digest_len = 0u;
+				assert(EVP_Digest(pShadowBuffer, pBootImage->bootImageLength, digest,
+					&digest_len, EVP_md5(), NULL) == 1);
+				assert(digest_len == sizeof(pBootImage->md5Sum));
+
+				if (memcmp(digest, pBootImage->md5Sum, sizeof(pBootImage->md5Sum)) != 0) {
+					printf(" **** MD5 digests do not match!!! ****\n\n");
+				}
+
+				free(pShadowBuffer);
+			}
 		}
 	}
 

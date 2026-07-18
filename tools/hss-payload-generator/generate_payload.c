@@ -121,6 +121,7 @@ static void generate_ziChunks(FILE *pFileOut) __attribute__((nonnull));
 static void generate_blobs(FILE *pFileOut) __attribute__((nonnull));
 static void sign_payload(FILE *pFileOut, char const * const private_key_filename,
 	char const * const public_key_filename) __attribute__((nonnull(1)));
+static void md5_payload(FILE *pFileOut) __attribute__((nonnull));
 
 extern struct HSS_BootImage bootImage;
 
@@ -471,6 +472,47 @@ static void sign_payload(FILE *pFileOut, char const * const private_key_filename
 	}
 }
 
+static void md5_payload(FILE *pFileOut)
+{
+	debug_printf(0, "Calculating Payload MD5\n");
+
+	assert(pFileOut);
+
+	//
+	// at this point the file on disk is final except for the signature/md5Sum
+	// union region, which is still zeroed - exactly the state the digest is
+	// defined over (see hss_types.h) - so hash the file as-is...
+	//
+	uint8_t *pEntirePayloadBuffer = malloc(bootImage.bootImageLength);
+	assert(pEntirePayloadBuffer != NULL);
+
+	if (fseek(pFileOut, 0, SEEK_SET) != 0) {
+		perror("fseek()");
+		exit(EXIT_SUCCESS);
+	}
+
+	size_t fileSize = fread((void *)pEntirePayloadBuffer, 1u, bootImage.bootImageLength, pFileOut);
+	assert(fileSize == bootImage.bootImageLength);
+
+	uint8_t digest[EVP_MAX_MD_SIZE];
+	unsigned int digest_len = 0u;
+	assert(EVP_Digest(pEntirePayloadBuffer, bootImage.bootImageLength, digest,
+		&digest_len, EVP_md5(), NULL) == 1);
+	assert(digest_len == ARRAY_SIZE(bootImage.md5Sum));
+
+	memcpy(bootImage.md5Sum, digest, sizeof(bootImage.md5Sum));
+
+	printf("Payload MD5: ");
+	for (size_t i = 0u; i < ARRAY_SIZE(bootImage.md5Sum); i++) {
+		printf("%02x", (unsigned int)bootImage.md5Sum[i]);
+	}
+	printf("\n");
+
+	generate_header(pFileOut, &bootImage); // rewrite header to embed MD5...
+
+	free(pEntirePayloadBuffer);
+}
+
 void generate_payload(char const * const filename_output, char const * const private_key_filename, char const * const public_key_filename)
 {
 	assert(filename_output);
@@ -504,6 +546,12 @@ void generate_payload(char const * const filename_output, char const * const pri
 		CRC32_calculate((const unsigned char *)&bootImage, sizeof(struct HSS_BootImage));
 
 	generate_header(pFileOut, &bootImage); // rewrite header for CRC...
+
+	if (!private_key_filename) {
+		md5_payload(pFileOut);
+	} else {
+		printf("Code signing requested: skipping MD5 digest (md5Sum aliases the signature)\n");
+	}
 
 	sign_payload(pFileOut, private_key_filename, public_key_filename);
 

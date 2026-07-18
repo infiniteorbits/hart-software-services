@@ -197,7 +197,25 @@ struct HSS_BootImage {
     } hart[MAX_NUM_HARTS-1]; // E51 is not counted, only U54s
     char set_name[BOOT_IMAGE_MAX_NAME_LEN];
     size_t bootImageLength;
-    struct HSS_Signature signature;
+    //
+    // The final header field holds either the code-signing signature (when
+    // built/generated with crypto signing) or an MD5 digest of the boot
+    // image (otherwise) - the two are mutually exclusive as they alias.
+    //
+    // md5Sum is computed over the entire image [0, bootImageLength) with
+    // this whole union region treated as zeros - i.e. the state of the
+    // image before the digest (or signature) is inserted. A verifier must
+    // zero these sizeof(struct HSS_Signature) bytes when re-computing it.
+    //
+    // Aliasing the signature keeps sizeof(struct HSS_BootImage) and all
+    // field offsets unchanged, and since headerCrc is always computed and
+    // checked with the signature region zeroed, images carrying an MD5
+    // remain compatible with existing HSS builds.
+    //
+    union {
+        struct HSS_Signature signature;
+        uint8_t md5Sum[16];
+    };
 };
 
 
