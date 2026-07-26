@@ -29,7 +29,9 @@
 extern "C" {
 #endif
 
-#include <stdbool.h>
+/* bool comes from hss_types.h (OpenSBI sbi_types bool on CONFIG_OPENSBI
+ * builds): do NOT include <stdbool.h> here, its bool macro would make
+ * this prototype clash with the registry's function-pointer types */
 
 bool HSS_StagedUpdateInit(void);
 

@@ -104,6 +104,11 @@ EXTRA_SRCS-$(CONFIG_SERVICE_QSPI) += \
 	baremetal/drivers/infineon_s25fl/infineon_s25fl.c \
 	baremetal/drivers/fpga_ip/CoreQSPI/core_qspi.c
 
+# CoreQSPI register access goes through the HAL HW_get/set_32bit_reg*
+# helpers, implemented in assembly in the bare-metal library HAL
+ASM_SRCS += \
+	baremetal/polarfire-soc-bare-metal-library/src/platform/hal/hw_reg_access.S
+
 $(BINDIR)/baremetal/drivers/infineon_s25fl/infineon_s25fl.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/baremetal/drivers/fpga_ip/CoreQSPI/core_qspi.o: CFLAGS=$(CFLAGS_GCCEXT)
 endif

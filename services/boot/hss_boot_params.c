@@ -47,10 +47,22 @@
 #include "BSP_Boot_Params.h"
 #include "BSP_Boot_Loader0.h"
 
+#if IS_ENABLED(CONFIG_OPENSBI)
+/*
+ * The BSP headers pull in <stdbool.h>, whose bool macro would make every
+ * declaration below _Bool, while hss_types.h (OpenSBI sbi_types) and the
+ * prototypes parsed above use the OpenSBI int bool: drop the macro so
+ * bool falls back to the sbi_types typedef and the definitions below
+ * match their prototypes. stdbool's true/false (1/0) remain valid.
+ */
+#  undef bool
+#endif
+
 /*
  * Guard the cross-repo store contract: the application writes the record
  * this build reads. boot_params_t must stay 29 bytes packed (enums 4
- * bytes - neither tree builds with -fshort-enums).
+ * bytes - neither tree builds with -fshort-enums; integrity_check_en is
+ * a 1-byte C99 bool inside the packed struct in both trees).
  */
 _Static_assert(sizeof(boot_params_t) == 29u,
     "boot_params_t layout drifted from the application BSP contract");
