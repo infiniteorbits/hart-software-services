@@ -21,6 +21,10 @@
 #include "hss_progress.h"
 #include "hss_trigger.h"
 
+#if IS_ENABLED(CONFIG_BOOT_PARAMS)
+#  include "hss_boot_params.h"
+#endif
+
 #include <string.h> //memset
 #include <assert.h>
 
@@ -162,7 +166,11 @@ static void tinycli_doboot_handler(struct StateMachine * const pMyMachine)
 #if IS_ENABLED(CONFIG_SERVICE_BOOT)
     if (!HSS_DDR_IsAddrInDDR(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR) || HSS_Trigger_IsNotified(EVENT_DDR_TRAINED)) {
         if (!HSS_Trigger_IsNotified(EVENT_POST_BOOT)) {
+#    if IS_ENABLED(CONFIG_BOOT_PARAMS)
+            if (HSS_BootParamsBootInit()) { HSS_BootHarts(); } // attempt boot
+#    else
             if (HSS_BootInit()) { HSS_BootHarts(); } // attempt boot
+#    endif
         }
 
 #    if IS_ENABLED(CONFIG_UART_SURRENDER)

@@ -29,7 +29,11 @@
 SRCS-$(CONFIG_SERVICE_REBOOT) += \
 	services/reboot/reboot_service.c \
 
+SRCS-$(CONFIG_STAGED_AUTO_UPDATE) += \
+	services/reboot/staged_update.c \
+
 INCLUDES +=\
 	-I./services/reboot \
 
 $(BINDIR)/services/reboot/reboot_service.o: CFLAGS=$(CFLAGS_GCCEXT)
+$(BINDIR)/services/reboot/staged_update.o: CFLAGS=$(CFLAGS_GCCEXT)

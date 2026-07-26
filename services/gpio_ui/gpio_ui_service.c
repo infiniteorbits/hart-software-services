@@ -29,6 +29,9 @@
 #include "hss_trigger.h"
 #if IS_ENABLED(CONFIG_SERVICE_BOOT)
 #  include "hss_boot_init.h"
+#  if IS_ENABLED(CONFIG_BOOT_PARAMS)
+#    include "hss_boot_params.h"
+#  endif
 #endif
 
 static void gpio_ui_init_onEntry(struct StateMachine * const pMyMachine);
@@ -177,7 +180,11 @@ static void gpio_ui_idle_onEntry(struct StateMachine * const pMyMachine)
     HSS_GPIO_UI_ReportUSBProgress(0u, 0u);
 #endif
 #if !IS_ENABLED(CONFIG_SERVICE_TINYCLI)
+#  if IS_ENABLED(CONFIG_BOOT_PARAMS)
+    if (HSS_BootParamsBootInit()) { HSS_BootHarts(); } // attempt boot
+#  else
     if (HSS_BootInit()) { HSS_BootHarts(); } // attempt boot
+#  endif
 #endif
 }
 

@@ -21,6 +21,10 @@
 #include "hss_trigger.h"
 #include "hss_progress.h"
 
+#if IS_ENABLED(CONFIG_BOOT_PARAMS)
+#  include "hss_boot_params.h"
+#endif
+
 #include "ssmb_ipi.h"
 #include "hss_registry.h"
 #include <assert.h>
@@ -121,7 +125,11 @@ static void startup_boot_handler(struct StateMachine * const pMyMachine)
 {
 #if !IS_ENABLED(CONFIG_SERVICE_TINYCLI) && !IS_ENABLED(CONFIG_SERVICE_GPIO_UI)
     if (!HSS_DDR_IsAddrInDDR(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR) || HSS_Trigger_IsNotified(EVENT_DDR_TRAINED)) {
+#  if IS_ENABLED(CONFIG_BOOT_PARAMS)
+        if (HSS_BootParamsBootInit()) { HSS_BootHarts(); } // attempt boot
+#  else
         if (HSS_BootInit()) { HSS_BootHarts(); } // attempt boot
+#  endif
         pMyMachine->state++;
     }
 #endif

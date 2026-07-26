@@ -108,6 +108,32 @@ $(BINDIR)/baremetal/drivers/infineon_s25fl/infineon_s25fl.o: CFLAGS=$(CFLAGS_GCC
 $(BINDIR)/baremetal/drivers/fpga_ip/CoreQSPI/core_qspi.o: CFLAGS=$(CFLAGS_GCCEXT)
 endif
 
+################################################################################################
+#
+# Shared Bootloader 0 BSP modules (copies of the application BSP files;
+# see boards/mpfs-orbsight-v2/bsp/). Used by the Boot Parameters driven
+# boot (services/boot/hss_boot_params.c) and the staged Auto Update check
+# (services/reboot/staged_update.c). BSP_Boot_Loader0.c additionally needs
+# the MSS MMC driver (CONFIG_SERVICE_MMC) when its eMMC verify path is
+# referenced; unreferenced functions are dropped by --gc-sections.
+#
+
+ifdef CONFIG_BOOT_PARAMS
+INCLUDES += \
+	-I$(BOARD_DIR)/bsp \
+
+EXTRA_SRCS-$(CONFIG_BOOT_PARAMS) += \
+	$(BOARD_DIR)/bsp/BSP_Boot_Params.c \
+	$(BOARD_DIR)/bsp/BSP_Boot_Loader0.c \
+	$(BOARD_DIR)/bsp/BSP_Flash.c \
+	$(BOARD_DIR)/bsp/BSP_Nand_Flash.c \
+
+$(BINDIR)/$(BOARD_DIR)/bsp/BSP_Boot_Params.o: CFLAGS=$(CFLAGS_GCCEXT)
+$(BINDIR)/$(BOARD_DIR)/bsp/BSP_Boot_Loader0.o: CFLAGS=$(CFLAGS_GCCEXT)
+$(BINDIR)/$(BOARD_DIR)/bsp/BSP_Flash.o: CFLAGS=$(CFLAGS_GCCEXT)
+$(BINDIR)/$(BOARD_DIR)/bsp/BSP_Nand_Flash.o: CFLAGS=$(CFLAGS_GCCEXT)
+endif
+
 
 ################################################################################################
 #
