@@ -93,10 +93,6 @@
 #  include "lockdown_service.h"
 #endif
 
-#if IS_ENABLED(CONFIG_STAGED_AUTO_UPDATE)
-#  include "staged_update.h"
-#endif
-
 #include "startup_service.h"
 
 #include "hss_debug.h"
@@ -316,12 +312,6 @@ const struct InitFunction /*@null@*/ globalInitFunctions[] = {
     { "Design_Version_Info_Init",      Design_Version_Info_Init,      false, false },
 #endif
     { "HSS_BoardLateInit",             HSS_BoardLateInit,             false, false },
-#if IS_ENABLED(CONFIG_STAGED_AUTO_UPDATE)
-    /* must run after board init (Flash reachable) and before the state
-     * machine superloop starts booting payloads: on a staged update
-     * request this reprograms the FPGA and resets the device */
-    { "HSS_StagedUpdateInit",          HSS_StagedUpdateInit,          false, false },
-#endif
 };
 const size_t spanOfGlobalInitFunctions = ARRAY_SIZE(globalInitFunctions);
 

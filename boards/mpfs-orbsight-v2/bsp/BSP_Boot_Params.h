@@ -8,8 +8,9 @@
  * @date        February 2026 - July 2026
  * @version     1.3.0       /// Implemented the slot-based parameter store
  *                          /// with the NAND/QSPI backend switch.
- *                          /// The staged FPGA update request lives in its
- *                          /// own store (BSP_Update_Request), not here.
+ *                          /// The staged FPGA update request is a flag
+ *                          /// in the golden SW Flash
+ *                          /// (BSP_Bitstream_Update), not stored here.
  * @version     1.0.0
  *
  * @copyright   RFIM Space 2026

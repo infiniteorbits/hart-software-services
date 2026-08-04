@@ -179,23 +179,6 @@ config BOOT_PARAMS
 
 		If you do not know what to do here, say N.
 
-config STAGED_AUTO_UPDATE
-	bool "Check for an application-staged Auto Update request at boot"
-	default n
-	depends on SERVICE_QSPI && SERVICE_QSPI_INFINEON_S25FL
-	help
-		If enabled, the HSS checks the update request flag on the
-		golden SW QSPI Flash at startup for an FPGA update request
-		staged by the application (BSP_bitstream_execute_iap). When
-		a request is found it is cleared, the staged UPDATE
-		bitstream (SPI directory entry 1) is authenticated, and the
-		System Controller Auto Update service is initiated before
-		any payload is booted. On success the device is reprogrammed
-		and reset; on failure boot continues normally on the current
-		design.
-
-		If you do not know what to do here, say N.
-
 config ALLOW_COLDREBOOT_ON_OPENSBI_FAULT
 	bool "Trigger a cold reboot on OpenSBI fault"
 	default n

@@ -57,7 +57,6 @@ void QSPI_init(qspi_instance_t * this_qspi, addr_t addr)
  */
 void QSPI_configure(qspi_instance_t * this_qspi, const qspi_config_t * config)
 {
-    /* Configure QSPI. Called from infineon_S25FL.c Flash_init() */
     uint32_t temp_reg_read = 0u;
 
     temp_reg_read = (uint32_t) ((config->sample) << CTRL_SAMPLE_SHIFT) |

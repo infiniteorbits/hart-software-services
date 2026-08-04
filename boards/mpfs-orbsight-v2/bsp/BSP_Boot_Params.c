@@ -25,8 +25,11 @@
  *                          /// Fixed the QSPI backend to target the golden
  *                          /// SW Flash device instead of the bitstream
  *                          /// Flash, matching the documented design.
- *                          /// The staged FPGA update request lives in its
- *                          /// own store (BSP_Update_Request), not here.
+ *                          /// integrity_check_en is serialized in the
+ *                          /// stored record as a 32-bit magic word
+ *                          /// ("enabled" only on exact match), so a
+ *                          /// corrupted record can never read back as
+ *                          /// enabled.
  * @version     1.0.0
  *
  * @copyright   RFIM Space 2025-2026
@@ -102,14 +105,31 @@ extern "C" {
  *  never aliases erased Flash. */
 #define BOOT_PARAMS_MAGIC               (0x424F4F54u)
 
-/** @brief Stored record layout: [magic:4][boot_params_t][crc32:4]. The
- *  CRC32 covers the boot_params_t payload bytes only. */
+/** @brief Stored record layout: [magic:4][payload][crc32:4]. The CRC32
+ *  covers the payload bytes only. The payload serializes boot_params_t
+ *  as: the fields up to and including current_try copied as-is, followed
+ *  by a 32-bit little-endian integrity word - integrity_check_en is
+ *  stored as BOOT_PARAMS_INTEGRITY_MAGIC when true and reads back as
+ *  enabled ONLY on an exact magic match, so a corrupted record can never
+ *  read back as enabled. The magic is a storage detail private to this
+ *  module; the API keeps the plain bool field. */
 #define BOOT_PARAMS_MAGIC_SIZE          (4u)
 #define BOOT_PARAMS_CRC_SIZE            (4u)
-#define BOOT_PARAMS_PAYLOAD_SIZE        ((uint32_t)sizeof(boot_params_t))
+#define BOOT_PARAMS_TRACKED_SIZE        ((uint32_t)offsetof(boot_params_t,   \
+                                            integrity_check_en))
+#define BOOT_PARAMS_INTEGRITY_SIZE      (4u)
+#define BOOT_PARAMS_PAYLOAD_SIZE        (BOOT_PARAMS_TRACKED_SIZE +          \
+                                            BOOT_PARAMS_INTEGRITY_SIZE)
 #define BOOT_PARAMS_RECORD_SIZE         (BOOT_PARAMS_MAGIC_SIZE +            \
                                             BOOT_PARAMS_PAYLOAD_SIZE +       \
                                             BOOT_PARAMS_CRC_SIZE)
+
+/** @brief Stored integrity word for "check enabled" ("INTG" in ASCII).
+ *  Any other stored value reads back as disabled. */
+#define BOOT_PARAMS_INTEGRITY_MAGIC     (0x494E5447u)
+
+/** @brief Stored integrity word for "check disabled". */
+#define BOOT_PARAMS_INTEGRITY_OFF       (0x00000000u)
 
 /** @brief Value of an erased Flash byte. */
 #define BOOT_PARAMS_ERASED_BYTE         (0xFFu)
@@ -118,8 +138,7 @@ extern "C" {
  *  the CRC32 used elsewhere in the application. */
 #define BOOT_PARAMS_CRC32_POLY          (0xEDB88320u)
 
-_Static_assert((BOOT_PARAMS_MAGIC_SIZE + sizeof(boot_params_t) +
-        BOOT_PARAMS_CRC_SIZE) <= BOOT_PARAMS_SLOT_SIZE,
+_Static_assert(BOOT_PARAMS_RECORD_SIZE <= BOOT_PARAMS_SLOT_SIZE,
         "boot_params_t record must fit in one store slot");
 
 /* -----------------------------------------------------------------------------
@@ -395,7 +414,14 @@ params_scan(boot_params_t* latest, uint8_t* found_valid,                     \
         if (params_record_valid(g_record_buf) == 1u)
         {
             (void)memcpy(latest, &g_record_buf[BOOT_PARAMS_MAGIC_SIZE],      \
-                    sizeof(boot_params_t));
+                    BOOT_PARAMS_TRACKED_SIZE);
+
+            /* Enabled only on an exact stored-magic match                  */
+            latest->integrity_check_en = (params_load_u32(                   \
+                    &g_record_buf[BOOT_PARAMS_MAGIC_SIZE +                   \
+                        BOOT_PARAMS_TRACKED_SIZE]) ==                        \
+                    BOOT_PARAMS_INTEGRITY_MAGIC) ? true : false;
+
             *found_valid = 1u;
         }
     }
@@ -537,10 +563,15 @@ BOOT_params_write(const boot_params_t* params)
         free_off = 0u;
     }
 
-    /* Serialize the record: [magic][payload][crc32(payload)]               */
+    /* Serialize the record: [magic][payload][crc32(payload)]; the
+     * integrity flag is stored as its 32-bit magic word.                   */
     params_store_u32(&g_record_buf[0], BOOT_PARAMS_MAGIC);
     (void)memcpy(&g_record_buf[BOOT_PARAMS_MAGIC_SIZE], params,              \
-            sizeof(boot_params_t));
+            BOOT_PARAMS_TRACKED_SIZE);
+    params_store_u32(                                                        \
+            &g_record_buf[BOOT_PARAMS_MAGIC_SIZE + BOOT_PARAMS_TRACKED_SIZE],\
+            (params->integrity_check_en) ?                                   \
+                    BOOT_PARAMS_INTEGRITY_MAGIC : BOOT_PARAMS_INTEGRITY_OFF);
 
     crc = params_crc32(&g_record_buf[BOOT_PARAMS_MAGIC_SIZE],                \
             BOOT_PARAMS_PAYLOAD_SIZE);
