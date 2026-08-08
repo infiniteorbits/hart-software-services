@@ -24,11 +24,15 @@
  *      again and verify its MD5 per the HSS payload MD5 contract
  *      (BOOT_verify_md5 hashes the header signature/md5Sum window as
  *      zeros). A failing image is deregistered and never booted.
- *   4. Record last_successful / last_failed and stop at the first entry
- *      that yields a bootable image.
+ *   4. Record last_successful / last_failed (with last_failed_error, the
+ *      boot_error_status_t that describes why that entry was rejected)
+ *      and stop at the first entry that yields a bootable image.
  *
  * The tracking fields hold boot_source_t values (10 / 20 / 255); 0 means
- * "none recorded yet". Store write failures are logged but never block
+ * "none recorded yet". last_failed_error belongs to last_failed and is
+ * left in place on a successful boot, so the pair always describes the
+ * last rejection seen, not the last attempt. Store write failures are
+ * logged but never block
  * the boot itself. If the store cannot be read at all, the stock
  * HSS_BootInit() flow runs unchanged (it tries every registered storage).
  *
@@ -60,11 +64,11 @@
 
 /*
  * Guard the cross-repo store contract: the application writes the record
- * this build reads. boot_params_t must stay 29 bytes packed (enums 4
+ * this build reads. boot_params_t must stay 33 bytes packed (enums 4
  * bytes - neither tree builds with -fshort-enums; integrity_check_en is
  * a 1-byte C99 bool inside the packed struct in both trees).
  */
-_Static_assert(sizeof(boot_params_t) == 29u,
+_Static_assert(sizeof(boot_params_t) == 33u,
     "boot_params_t layout drifted from the application BSP contract");
 
 /* -------------------------------------------------------------------------
@@ -86,6 +90,39 @@ static const char *boot_source_name_(boot_source_t src)
 
     case BOOT_SRC_GOLDEN:
         pResult = "Golden (QSPI)";
+        break;
+
+    default:
+        pResult = "unknown";
+        break;
+    }
+
+    return pResult;
+}
+
+static const char *boot_error_name_(boot_error_status_t error)
+{
+    const char *pResult;
+
+    switch (error) {
+    case BOOT_OK:
+        pResult = "none";
+        break;
+
+    case BOOT_ERR_INVALID_PARAM:
+        pResult = "invalid parameter";
+        break;
+
+    case BOOT_ERR_STORAGE_FAIL:
+        pResult = "storage failure / no image";
+        break;
+
+    case BOOT_ERR_BOOT_SOURCE:
+        pResult = "unsupported boot source";
+        break;
+
+    case BOOT_ERR_MD5_VERIFY:
+        pResult = "MD5 verification failed";
         break;
 
     default:
@@ -132,8 +169,11 @@ static bool storage_select_(boot_source_t src)
 /*!
  * \brief Verifies the MD5 of the just-loaded boot image per the HSS
  * payload MD5 contract, streaming it from its storage backend.
+ *
+ * \return BOOT_OK when the image verifies, otherwise the
+ * boot_error_status_t to record in last_failed_error.
  */
-static bool integrity_check_(boot_source_t src)
+static boot_error_status_t integrity_check_(boot_source_t src)
 {
     struct HSS_BootImage const * const pBootImage =
         (struct HSS_BootImage *)(uintptr_t)CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR;
@@ -144,7 +184,7 @@ static bool integrity_check_(boot_source_t src)
         mHSS_DEBUG_PRINTF(LOG_ERROR,
             "bootparams: invalid boot image length %lu\n",
             pBootImage->bootImageLength);
-        return false;
+        return BOOT_ERR_INVALID_PARAM;
     }
 
     mHSS_DEBUG_PRINTF(LOG_NORMAL,
@@ -157,11 +197,28 @@ static bool integrity_check_(boot_source_t src)
     if (status != BOOT_OK) {
         mHSS_DEBUG_PRINTF(LOG_ERROR,
             "bootparams: image MD5 verification failed: %d\n", status);
-        return false;
+        return status;
     }
 
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "bootparams: image MD5 verified\n");
-    return true;
+    return BOOT_OK;
+}
+
+/*!
+ * \brief Records a rejected boot entry and persists the parameters.
+ *
+ * last_failed and last_failed_error are written as a pair, so a host
+ * reading the store always sees which entry was rejected alongside the
+ * reason it was rejected.
+ */
+static void params_record_failure_(boot_params_t *pParams, boot_source_t src,
+    boot_error_status_t error)
+{
+    pParams->last_failed       = src;
+    pParams->last_failed_error = error;
+
+    mHSS_DEBUG_PRINTF(LOG_ERROR, "bootparams: %s rejected: %s (%d)\n",
+        boot_source_name_(src), boot_error_name_(error), error);
 }
 
 static void params_store_(boot_params_t *pParams)
@@ -190,6 +247,7 @@ bool HSS_BootParamsBootInit(void)
 
     for (unsigned int i = 0u; i < (unsigned int)BOOT_SEQ_MAX_ENTRIES; i++) {
         boot_source_t const src = params.boot_sequence[i];
+        boot_error_status_t status;
 
         /* skip immediate repeats (e.g. the default ... Golden, Golden)  */
         if ((i > 0u) && (src == params.boot_sequence[i - 1u])) {
@@ -200,10 +258,9 @@ bool HSS_BootParamsBootInit(void)
             i, boot_source_name_(src));
 
         if (!storage_select_(src)) {
-            mHSS_DEBUG_PRINTF(LOG_ERROR,
-                "bootparams: %s is not supported, skipping\n",
-                boot_source_name_(src));
-            params.last_failed = src;
+            /* no HSS storage behind this source: params_record_failure_
+             * logs it as BOOT_ERR_BOOT_SOURCE                            */
+            params_record_failure_(&params, src, BOOT_ERR_BOOT_SOURCE);
             params_store_(&params);
             continue;
         }
@@ -215,8 +272,13 @@ bool HSS_BootParamsBootInit(void)
 
         booted = HSS_BootInit();
 
+        /* no image loaded: the storage held nothing usable            */
+        status = booted ? BOOT_OK : BOOT_ERR_STORAGE_FAIL;
+
         if (booted && params.integrity_check_en) {
-            if (!integrity_check_(src)) {
+            status = integrity_check_(src);
+
+            if (status != BOOT_OK) {
                 /* never boot an image that failed verification         */
                 HSS_Register_Boot_Image(NULL);
                 booted = false;
@@ -229,7 +291,7 @@ bool HSS_BootParamsBootInit(void)
             break;
         }
 
-        params.last_failed = src;
+        params_record_failure_(&params, src, status);
         params_store_(&params);
     }
 

@@ -4,7 +4,8 @@
  *
  *              Parameters are kept in a slot-based, append-only record store
  *              so that frequent updates (current_try, last_failed,
- *              last_successful on every boot attempt) do not wear the Flash:
+ *              last_failed_error, last_successful on every boot attempt)
+ *              do not wear the Flash:
  *              each BOOT_params_write() programs a CRC32-protected record
  *              into the next free slot, BOOT_params_read() returns the most
  *              recent valid record, and the region is erased only once all
@@ -30,6 +31,10 @@
  *                          /// ("enabled" only on exact match), so a
  *                          /// corrupted record can never read back as
  *                          /// enabled.
+ *                          /// Added last_failed_error to the tracked
+ *                          /// fields: it is serialized and CRC-protected
+ *                          /// with the rest of the record and defaults to
+ *                          /// BOOT_OK ("no failure recorded yet").
  * @version     1.0.0
  *
  * @copyright   RFIM Space 2025-2026
@@ -107,8 +112,8 @@ extern "C" {
 
 /** @brief Stored record layout: [magic:4][payload][crc32:4]. The CRC32
  *  covers the payload bytes only. The payload serializes boot_params_t
- *  as: the fields up to and including current_try copied as-is, followed
- *  by a 32-bit little-endian integrity word - integrity_check_en is
+ *  as: the fields up to and including last_failed_error copied as-is,
+ *  followed by a 32-bit little-endian integrity word - integrity_check_en is
  *  stored as BOOT_PARAMS_INTEGRITY_MAGIC when true and reads back as
  *  enabled ONLY on an exact magic match, so a corrupted record can never
  *  read back as enabled. The magic is a storage detail private to this
@@ -148,14 +153,16 @@ _Static_assert(BOOT_PARAMS_RECORD_SIZE <= BOOT_PARAMS_SLOT_SIZE,
 
 /** @brief Defaults returned by BOOT_params_read() when the store holds no
  *  valid record yet (virgin or fully corrupted Flash). The three index
- *  fields are 0 ("no attempt recorded yet"); integrity checking defaults
- *  to enabled. */
+ *  fields are 0 ("no attempt recorded yet") and last_failed_error is
+ *  BOOT_OK ("no failure recorded yet"); integrity checking defaults to
+ *  enabled. */
 static const boot_params_t g_boot_params_defaults = {
     .boot_sequence      = { BOOT_SRC_PRIMARY, BOOT_SRC_SECONDARY,
                             BOOT_SRC_GOLDEN,  BOOT_SRC_GOLDEN },
     .last_failed        = (boot_source_t)0,
     .last_successful    = (boot_source_t)0,
     .current_try        = (boot_source_t)0,
+    .last_failed_error  = BOOT_OK,
     .integrity_check_en = true
 };
 
@@ -461,7 +468,8 @@ params_boot_source_valid(boot_source_t src)
 * Returns the most recent valid record in the store. If the store holds no
 * valid record (virgin Flash, or every record torn/corrupted), the
 * documented defaults are returned instead: boot sequence Primary,
-* Secondary, Golden, Golden; index fields 0; integrity check enabled.
+* Secondary, Golden, Golden; index fields 0; last_failed_error BOOT_OK;
+* integrity check enabled.
 *
 * @param[inout] params
 * Pointer to a boot_params_t structure that will be populated with the

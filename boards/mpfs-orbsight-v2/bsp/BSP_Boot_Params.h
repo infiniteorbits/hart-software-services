@@ -78,6 +78,7 @@ typedef enum {
  * - current_try: Boot source value being attempted by Bootloader 0,
  * written before each attempt: after an unexpected reset,
  * current_try != last_successful identifies the interrupted attempt.
+ * - last_failed_error: Error status of the last failed boot attempt.
  * - integrity_check_en: Enables (1) or disables (0) MD5 integrity verification
  * for Linux and Fabric images before execution.
  * -----------------------------------------------------------------------------
@@ -87,6 +88,7 @@ typedef struct __attribute__((packed)) {
     boot_source_t last_failed;
     boot_source_t last_successful;
     boot_source_t current_try;
+    boot_error_status_t last_failed_error;
     bool integrity_check_en;
 } boot_params_t;
 
