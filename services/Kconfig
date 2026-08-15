@@ -2,6 +2,7 @@ menu "Services"
 
 source "services/beu/Kconfig"
 source "services/boot/Kconfig"
+source "services/coremmc/Kconfig"
 source "services/crypto/Kconfig"
 source "services/ddr/Kconfig"
 source "services/goto/Kconfig"

@@ -21,7 +21,7 @@
  * each boot source in order until one provides a valid boot image:
  *
  *   - BOOT_SRC_PRIMARY   (10)  MSS eMMC
- *   - BOOT_SRC_SECONDARY (20)  Fabric eMMC - no HSS driver yet, skipped
+ *   - BOOT_SRC_SECONDARY (20)  Fabric eMMC, via the CoreMMC service
  *   - BOOT_SRC_GOLDEN    (255) golden SW QSPI NOR Flash
  *
  * Attempt tracking is recorded back into the store (current_try before

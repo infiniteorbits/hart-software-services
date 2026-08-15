@@ -46,7 +46,7 @@
 
 #include "clocks/hw_mss_clks.h" // LIBERO_SETTING_MSS_RTC_TOGGLE_CLK
 
-#if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
+#if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_COREMMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
 #    include "usbdmsc_service.h"
 #endif
 
@@ -148,11 +148,12 @@ static void output_duration_(char const * const description, const uint32_t val,
 static void tinyCLI_DumpStateMachines_(void);
 static void tinyCLI_IPIDumpStats_(void);
 static void tinyCLI_EMMC_(void);
+static void tinyCLI_CoreMMC_(void);
 static void tinyCLI_MMC_(void);
 static void tinyCLI_SDCARD_(void);
 static void tinyCLI_Payload_(void);
 static void tinyCLI_SPI_(void);
-#if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
+#if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_COREMMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
 static void tinyCLI_USBDMSC_(void);
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_BEU)
@@ -185,6 +186,7 @@ enum CmdId {
     CMD_MEMTEST,
     CMD_QSPI,
     CMD_EMMC,
+    CMD_COREMMC,
     CMD_SDCARD,
     CMD_MMC,
     CMD_PAYLOAD,
@@ -293,12 +295,13 @@ static const struct tinycli_cmd toplevelCmds[] = {
 #endif
     { CMD_QSPI,    "QSPI",    "Select boot via QSPI.", tinyCLI_QSPI_ },
     { CMD_EMMC,    "EMMC",    "Select boot via eMMC.", tinyCLI_EMMC_ },
+    { CMD_COREMMC, "SECONDARY", "Select boot via the secondary eMMC (fabric CoreMMC).", tinyCLI_CoreMMC_ },
     { CMD_MMC,     "MMC",     "Select boot via SDCARD/eMMC.", tinyCLI_MMC_ },
     { CMD_SDCARD,  "SDCARD",  "Select boot via SDCARD.", tinyCLI_SDCARD_ },
     { CMD_PAYLOAD, "PAYLOAD", "Select boot via payload.", tinyCLI_Payload_ },
     { CMD_SPI,     "SPI",     "Select boot via SPI.", tinyCLI_SPI_ },
-#if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
-    { CMD_USBDMSC, "USBDMSC", "Export eMMC as USBD Mass Storage Class.", tinyCLI_USBDMSC_ },
+#if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_COREMMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
+    { CMD_USBDMSC, "USBDMSC", "Export the selected boot storage as USBD Mass Storage Class.", tinyCLI_USBDMSC_ },
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_SCRUB)
     { CMD_SCRUB,   "SCRUB",   "Dump Scrub service stats.", tinyCLI_Scrub_ },
@@ -325,11 +328,12 @@ static struct tinycli_toplevel_cmd_safe toplevelCmdsSafeAfterBootFlags[] = {
 #endif
     { CMD_QSPI,    true },
     { CMD_EMMC,    true },
+    { CMD_COREMMC, true },
     { CMD_MMC,     true },
     { CMD_SDCARD,  true },
     { CMD_PAYLOAD, true },
     { CMD_SPI,     true },
-#if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
+#if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_COREMMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
     { CMD_USBDMSC, true },
 #endif
 #if IS_ENABLED(CONFIG_SERVICE_SCRUB)
@@ -903,6 +907,15 @@ static void tinyCLI_EMMC_(void)
 #endif
 }
 
+static void tinyCLI_CoreMMC_(void)
+{
+#if IS_ENABLED(CONFIG_SERVICE_COREMMC)
+    HSS_BootSelectCoreMMC();
+#else
+    tinyCLI_UnsupportedBootMechanism_("secondary eMMC (CoreMMC)");
+#endif
+}
+
 static void tinyCLI_MMC_(void)
 {
 #if IS_ENABLED(CONFIG_SERVICE_MMC)
@@ -939,7 +952,7 @@ static void tinyCLI_SPI_(void)
 #endif
 }
 
-#if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
+#if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_COREMMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
 static void tinyCLI_USBDMSC_(void)
 {
     //USBDMSC_Init();
@@ -1051,7 +1064,7 @@ bool HSS_TinyCLI_Parser(void)
 
         {
             RunStateMachine(&tinycli_service);
-#if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
+#if IS_ENABLED(CONFIG_SERVICE_USBDMSC) && (IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_COREMMC) || IS_ENABLED(CONFIG_SERVICE_QSPI))
             RunStateMachine(&usbdmsc_service);
 #endif
 

@@ -1,0 +1,68 @@
+config SERVICE_COREMMC
+	bool "Secondary eMMC (fabric CoreMMC) support"
+	default n
+	help
+                This feature enables support for the secondary eMMC device,
+                which is attached to a CoreMMC instance in the FPGA fabric
+                rather than to the hardened MSS MMC controller.
+
+                It adds a boot source (selectable from the TinyCLI and from
+                the Boot Parameters store as BOOT_SRC_SECONDARY), and lets
+                the USBDMSC service export that device instead of the
+                primary one.
+
+                The device is reached one 512-byte block at a time - the
+                CoreMMC instance has a 512-byte FIFO and no DMA path - so
+                it is markedly slower than the primary eMMC.
+
+		If you do not know what to do here, say N.
+
+menu "Secondary eMMC (CoreMMC)"
+	visible if SERVICE_COREMMC
+
+config SERVICE_COREMMC_BASE_ADDR
+	hex "CoreMMC instance base address"
+	default 0xE0000000
+	depends on SERVICE_COREMMC
+	help
+                Base address of the CoreMMC register file on the fabric AHB
+                slave. The register file is 128 bytes deep and aliases
+                throughout the bridge's slave range, so software must only
+                access it at this base address.
+
+                Must match BSP_COREMMC_BASE_ADDR in the application tree.
+
+config SERVICE_COREMMC_CLK_RATE_DIV
+	int "CoreMMC clock divider for data transfers"
+	default 0
+	range 0 255
+	depends on SERVICE_COREMMC
+	help
+                MMC clock = HCLK / (2 * (this + 1)), where HCLK is the fabric
+                AHB clock feeding the CoreMMC instance.
+
+                Must match BSP_COREMMC_CLK_RATE_DIV in the application tree.
+
+config SERVICE_COREMMC_INIT_CLK_RATE_DIV
+	int "CoreMMC clock divider during device initialization"
+	default 49
+	range 0 255
+	depends on SERVICE_COREMMC
+	help
+                The eMMC clock must not exceed 400 kHz while the device is
+                being identified. MMC clock = HCLK / (2 * (this + 1)).
+
+                Must match BSP_COREMMC_INIT_CLK_RATE_DIV in the application
+                tree.
+
+config SERVICE_COREMMC_DATA_TIMEOUT
+	hex "CoreMMC data timeout, in HCLK cycles"
+	default 0x7FFFFFFF
+	depends on SERVICE_COREMMC
+	help
+                How long the CoreMMC hardware waits on a data transfer before
+                flagging a timeout. This is what ends a transfer to a device
+                that has stopped answering: the driver's own poll loops are
+                not otherwise bounded.
+
+endmenu

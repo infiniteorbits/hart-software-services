@@ -42,6 +42,7 @@
 
 #include <drivers/mss/mss_mmc/mss_mmc.h>
 
+#include "BSP_CoreMMC.h"
 #include "BSP_Flash.h"
 
 #ifdef BOOT_PARAMS_NAND
@@ -745,7 +746,9 @@ BOOT_compute_md5(const void* data, uint32_t len, uint8_t md5[16])
  * - BOOT_SRC_PRIMARY: MSS eMMC, starting at sector MSS_EMMC_SECTOR_NUMBER.
  *   The eMMC controller must already be initialized (see mmc_init()).
  * - BOOT_SRC_GOLDEN: golden SW QSPI NOR Flash, starting at address 0x0.
- * - BOOT_SRC_SECONDARY: not supported (no Fabric eMMC controller wired up).
+ * - BOOT_SRC_SECONDARY: fabric CoreMMC eMMC, starting at sector
+ *   BSP_COREMMC_SECTOR_NUMBER. The controller is brought up here if it is
+ *   not already; the read is one block per transfer.
  *
  * Per the HSS payload MD5 contract, bytes overlapping the header's
  * signature/md5Sum window [BOOT_HSS_SIG_OFFSET, BOOT_HSS_SIG_OFFSET +
@@ -842,6 +845,36 @@ BOOT_verify_md5(boot_source_t boot_src, uint32_t size,                      \
             break;
 
         case BOOT_SRC_SECONDARY:
+            /* The fabric CoreMMC device. Unlike the primary path the
+             * controller is brought up here rather than assumed: nothing
+             * else in a Bootloader 0 run necessarily touches the secondary
+             * eMMC first, and the lazy init costs nothing once it is up. */
+            if (BSP_coremmc_init() != BSP_COREMMC_OK)
+            {
+                return BOOT_ERR_STORAGE_FAIL;
+            }
+
+            sector = BSP_COREMMC_SECTOR_NUMBER;
+
+            while (remaining != 0u)
+            {
+                if (BSP_coremmc_read_block(sector, g_chunk_buf)              \
+                        != BSP_COREMMC_OK)
+                {
+                    return BOOT_ERR_STORAGE_FAIL;
+                }
+
+                chunk = (remaining > BSP_COREMMC_BLOCK_SIZE) ?               \
+                        BSP_COREMMC_BLOCK_SIZE : remaining;
+
+                md5_update_payload(&ctx, g_chunk_buf, chunk, payload_off);
+
+                sector++;
+                payload_off += chunk;
+                remaining   -= chunk;
+            }
+            break;
+
         default:
             return BOOT_ERR_BOOT_SOURCE;
     }

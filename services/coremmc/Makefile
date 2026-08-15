@@ -1,7 +1,7 @@
 #
 # MPFS HSS Embedded Software
 #
-# Copyright 2019-2021 Microchip Corporation.
+# Copyright 2026 RFIM Space.
 #
 # SPDX-License-Identifier: MIT
 #
@@ -24,29 +24,24 @@
 # IN THE SOFTWARE.
 #
 #
-# Services
+# CoreMMC Service - secondary eMMC on the fabric CoreMMC instance
+# (NOTE: not a traditional super-loop service)
+#
+# The vendor CoreMMC driver is built here rather than from the board
+# Makefile: it has no users outside this service, and its register access
+# goes through the same HAL HW_get/set_*bit_reg helpers CoreQSPI uses
+# (implemented in assembly in the bare-metal library HAL, added to ASM_SRCS
+# by the board Makefile).
 
-include services/beu/Makefile
-include services/boot/Makefile
-include services/coremmc/Makefile
-include services/crypto/Makefile
-include services/ddr/Makefile
-include services/goto/Makefile
-include services/healthmon/Makefile
-include services/gpio_ui/Makefile
-include services/ipi_poll/Makefile
-include services/lockdown/Makefile
-include services/mmc/Makefile
-include services/opensbi/Makefile
-include services/powermode/Makefile
-include services/qspi/Makefile
-include services/reboot/Makefile
-include services/scrub/Makefile
-include services/sgdma/Makefile
-include services/spi/Makefile
-include services/startup/Makefile
-include services/tinycli/Makefile
-include services/uart/Makefile
-include services/usbdmsc/Makefile
-include services/wdog/Makefile
-include services/ymodem/Makefile
+EXTRA_SRCS-$(CONFIG_SERVICE_COREMMC) += \
+	services/coremmc/coremmc_api.c \
+	baremetal/drivers/fpga_ip/CoreMMC/core_mmc.c \
+	baremetal/drivers/fpga_ip/CoreMMC/core_mmc_if.c \
+
+INCLUDES +=\
+	-Iservices/coremmc \
+	-Ibaremetal/drivers/fpga_ip/CoreMMC \
+
+$(BINDIR)/services/coremmc/coremmc_api.o: CFLAGS=$(CFLAGS_GCCEXT)
+$(BINDIR)/baremetal/drivers/fpga_ip/CoreMMC/core_mmc.o: CFLAGS=$(CFLAGS_GCCEXT)
+$(BINDIR)/baremetal/drivers/fpga_ip/CoreMMC/core_mmc_if.o: CFLAGS=$(CFLAGS_GCCEXT)

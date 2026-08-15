@@ -104,13 +104,19 @@ EXTRA_SRCS-$(CONFIG_SERVICE_QSPI) += \
 	baremetal/drivers/infineon_s25fl/infineon_s25fl.c \
 	baremetal/drivers/fpga_ip/CoreQSPI/core_qspi.c
 
-# CoreQSPI register access goes through the HAL HW_get/set_32bit_reg*
-# helpers, implemented in assembly in the bare-metal library HAL
-ASM_SRCS += \
-	baremetal/polarfire-soc-bare-metal-library/src/platform/hal/hw_reg_access.S
-
 $(BINDIR)/baremetal/drivers/infineon_s25fl/infineon_s25fl.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/baremetal/drivers/fpga_ip/CoreQSPI/core_qspi.o: CFLAGS=$(CFLAGS_GCCEXT)
+endif
+
+#
+# Fabric IP register access (CoreQSPI, CoreMMC) goes through the HAL
+# HW_get/set_*bit_reg helpers, which are implemented in assembly in the
+# bare-metal library HAL. Added once here rather than from each driver's
+# block, so enabling a second fabric IP does not link the same object twice.
+#
+ifneq ($(CONFIG_SERVICE_QSPI_INFINEON_S25FL)$(CONFIG_SERVICE_COREMMC),)
+ASM_SRCS += \
+	baremetal/polarfire-soc-bare-metal-library/src/platform/hal/hw_reg_access.S
 endif
 
 ################################################################################################
@@ -130,11 +136,13 @@ INCLUDES += \
 EXTRA_SRCS-$(CONFIG_BOOT_PARAMS) += \
 	$(BOARD_DIR)/bsp/BSP_Boot_Params.c \
 	$(BOARD_DIR)/bsp/BSP_Boot_Loader0.c \
+	$(BOARD_DIR)/bsp/BSP_CoreMMC.c \
 	$(BOARD_DIR)/bsp/BSP_Flash.c \
 	$(BOARD_DIR)/bsp/BSP_Nand_Flash.c \
 
 $(BINDIR)/$(BOARD_DIR)/bsp/BSP_Boot_Params.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/$(BOARD_DIR)/bsp/BSP_Boot_Loader0.o: CFLAGS=$(CFLAGS_GCCEXT)
+$(BINDIR)/$(BOARD_DIR)/bsp/BSP_CoreMMC.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/$(BOARD_DIR)/bsp/BSP_Flash.o: CFLAGS=$(CFLAGS_GCCEXT)
 $(BINDIR)/$(BOARD_DIR)/bsp/BSP_Nand_Flash.o: CFLAGS=$(CFLAGS_GCCEXT)
 endif

@@ -56,4 +56,32 @@
  */
 #define MSS_EMMC_BLOCK_SIZE              (512u)
 
+/** * @brief Starting sector number (LBA) of the secondary SW image, on the
+ * fabric CoreMMC device.
+ *
+ * @note Must match BSP_COREMMC_SECTOR_NUMBER in the application tree: the
+ * application programs the image, this build boots and verifies it.
+ *
+ * @note TWEAKABLE macro
+ */
+#define BSP_COREMMC_SECTOR_NUMBER        (0u)
+
+/**
+ * @brief Block size of the secondary eMMC device.
+ * Fixed at 512 bytes per the eMMC specification, and also the block size
+ * the CoreMMC driver is built around.
+ *
+ * @note CONST macro
+ */
+#define BSP_COREMMC_BLOCK_SIZE           (512u)
+
+/**
+ * @note The CoreMMC base address and clock dividers are NOT carried here.
+ * In this tree they are Kconfig options of the CoreMMC service
+ * (CONFIG_SERVICE_COREMMC_BASE_ADDR and friends), so that the HSS build
+ * configuration stays in one place; they must match BSP_COREMMC_BASE_ADDR /
+ * BSP_COREMMC_CLK_RATE_DIV / BSP_COREMMC_INIT_CLK_RATE_DIV /
+ * BSP_COREMMC_DATA_TIMEOUT in the application tree.
+ */
+
 #endif

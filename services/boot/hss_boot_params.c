@@ -36,8 +36,9 @@
  * the boot itself. If the store cannot be read at all, the stock
  * HSS_BootInit() flow runs unchanged (it tries every registered storage).
  *
- * BOOT_SRC_SECONDARY (fabric eMMC via CoreMMC) has no HSS driver yet and
- * is skipped with a log message.
+ * BOOT_SRC_SECONDARY is the fabric eMMC behind the CoreMMC instance,
+ * served by services/coremmc. It is skipped only when that service is
+ * not compiled in.
  */
 
 #include "config.h"
@@ -136,8 +137,8 @@ static const char *boot_error_name_(boot_error_status_t error)
 /*!
  * \brief Selects the HSS storage backing a boot source.
  *
- * \return false when the source has no usable HSS storage (fabric eMMC,
- * or the matching service is not compiled in).
+ * \return false when the source has no usable HSS storage, i.e. its
+ * service is not compiled into this build.
  */
 static bool storage_select_(boot_source_t src)
 {
@@ -151,6 +152,13 @@ static bool storage_select_(boot_source_t src)
 #endif
         break;
 
+    case BOOT_SRC_SECONDARY:
+#if IS_ENABLED(CONFIG_SERVICE_COREMMC)
+        HSS_BootSelectCoreMMC();
+        result = true;
+#endif
+        break;
+
     case BOOT_SRC_GOLDEN:
 #if IS_ENABLED(CONFIG_SERVICE_QSPI)
         HSS_BootSelectQSPI();
@@ -158,7 +166,6 @@ static bool storage_select_(boot_source_t src)
 #endif
         break;
 
-    case BOOT_SRC_SECONDARY:  /* no HSS CoreMMC driver yet               */
     default:
         break;
     }

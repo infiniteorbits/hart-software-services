@@ -43,6 +43,10 @@
 #  include "gpt.h"
 #endif
 
+#if IS_ENABLED(CONFIG_SERVICE_COREMMC)
+#  include "coremmc_service.h"
+#endif
+
 #if (SPI_FLASH_BOOT_ENABLED)
 #  include "mss_sys_services.h"
 #endif
@@ -81,6 +85,7 @@ static bool tryBootFunction_(struct HSS_Storage *pStorage, HSS_GetBootImageFnPtr
 
 static bool getBootImageFromQSPI_(struct HSS_Storage *pStorage, struct HSS_BootImage **ppBootImage);
 static bool getBootImageFromMMC_(struct HSS_Storage *pStorage, struct HSS_BootImage **ppBootImage);
+static bool getBootImageFromCoreMMC_(struct HSS_Storage *pStorage, struct HSS_BootImage **ppBootImage);
 static bool getBootImageFromSpiFlash_(struct HSS_Storage *pStorage, struct HSS_BootImage **ppBootImage);
 static bool getBootImageFromPayload_(struct HSS_Storage *pStorage, struct HSS_BootImage **ppBootImage);
 
@@ -107,6 +112,27 @@ static struct HSS_Storage mmcStorage_ = {
     .readBlock = HSS_MMC_ReadBlock,
     .writeBlock = HSS_MMC_WriteBlockSDMA,
     .getInfo = HSS_MMC_GetInfo,
+    .flushWriteBuffer = NULL
+};
+#endif
+#if IS_ENABLED(CONFIG_SERVICE_COREMMC)
+/*
+ * The secondary eMMC, on a CoreMMC instance in the fabric. Deliberately a
+ * separate storage provider rather than a mode of mmcStorage_: it is a
+ * different controller with its own state, and both devices can be present
+ * and usable at the same time. Selecting it (HSS_BootSelectCoreMMC) is
+ * therefore also what points HSS_Storage_* - and so the USBDMSC gadget - at
+ * the secondary device.
+ *
+ * No flushWriteBuffer: writes go straight to the device, block by block.
+ */
+static struct HSS_Storage coreMmcStorage_ = {
+    .name = "CoreMMC",
+    .getBootImage = getBootImageFromCoreMMC_,
+    .init = HSS_CoreMMC_Init,
+    .readBlock = HSS_CoreMMC_ReadBlock,
+    .writeBlock = HSS_CoreMMC_WriteBlock,
+    .getInfo = HSS_CoreMMC_GetInfo,
     .flushWriteBuffer = NULL
 };
 #endif
@@ -141,6 +167,9 @@ static struct HSS_Storage *pStorages[] =
 #if IS_ENABLED(CONFIG_SERVICE_MMC)
 	&mmcStorage_,
 #endif
+#if IS_ENABLED(CONFIG_SERVICE_COREMMC)
+	&coreMmcStorage_,
+#endif
 #if IS_ENABLED(CONFIG_SERVICE_QSPI)
 	&qspiStorage_,
 #endif
@@ -151,7 +180,7 @@ static struct HSS_Storage *pStorages[] =
 
 static struct HSS_Storage *pDefaultStorage = NULL;
 
-#if IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_QSPI) || (IS_ENABLED(CONFIG_SERVICE_SPI) && (SPI_FLASH_BOOT_ENABLED))
+#if IS_ENABLED(CONFIG_SERVICE_MMC) || IS_ENABLED(CONFIG_SERVICE_COREMMC) || IS_ENABLED(CONFIG_SERVICE_QSPI) || (IS_ENABLED(CONFIG_SERVICE_SPI) && (SPI_FLASH_BOOT_ENABLED))
 struct HSS_BootImage bootImage __attribute__((aligned(8)));
 #elif IS_ENABLED(CONFIG_SERVICE_BOOT_USE_PAYLOAD)
 //
@@ -454,6 +483,79 @@ void HSS_BootSelectEMMC(void)
 #  endif
 #else
     (void)getBootImageFromMMC_;
+#endif
+}
+
+/*
+ * Reads the boot image header and payload from the secondary eMMC.
+ *
+ * Deliberately no GPT support, unlike the MMC path: the secondary device
+ * carries a raw HSS payload written by the application's SW update path
+ * (BSP_sw_write_full_image(SW_SECONDARY, ...)), which always programs from
+ * the start of the image region with no partition table in front of it.
+ */
+static bool getBootImageFromCoreMMC_(struct HSS_Storage *pStorage, struct HSS_BootImage **ppBootImage)
+{
+    bool result = false;
+
+#if IS_ENABLED(CONFIG_SERVICE_BOOT) && IS_ENABLED(CONFIG_SERVICE_COREMMC)
+    assert(ppBootImage);
+
+    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Preparing to copy from CoreMMC to DDR ...\n");
+
+    size_t srcLBAOffset = 0u;
+    assert(pStorage);
+
+    uint32_t blockSize, eraseSize, blockCount;
+    pStorage->getInfo(&blockSize, &eraseSize, &blockCount);
+
+    mHSS_DEBUG_PRINTF(LOG_NORMAL, "Attempting to read image header (%d bytes) ...\n",
+        sizeof(struct HSS_BootImage));
+    result = HSS_CoreMMC_ReadBlock(&bootImage, srcLBAOffset * blockSize,
+        sizeof(struct HSS_BootImage));
+
+    if (!result) {
+        mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_CoreMMC_ReadBlock() failed\n");
+    } else {
+        result = HSS_Boot_VerifyMagic(&bootImage);
+
+        if (!result) {
+            mHSS_DEBUG_PRINTF(LOG_ERROR, "HSS_Boot_VerifyMagic() failed\n");
+        } else {
+            int perf_ctr_index = PERF_CTR_UNINITIALIZED;
+            HSS_PerfCtr_Allocate(&perf_ctr_index, "Boot Image CoreMMC Copy");
+
+            result = copyBootImageToDDR_(&bootImage,
+                (char *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR), srcLBAOffset * blockSize,
+                HSS_CoreMMC_ReadBlock);
+            *ppBootImage = (struct HSS_BootImage *)(CONFIG_SERVICE_BOOT_DDR_TARGET_ADDR);
+
+            HSS_PerfCtr_Lap(perf_ctr_index);
+
+            if (!result) {
+                 mHSS_DEBUG_PRINTF(LOG_ERROR, "copyBootImageToDDR_() failed\n");
+            }
+        }
+    }
+#else
+    (void)pStorage;
+    (void)ppBootImage;
+#endif
+
+    return result;
+}
+
+void HSS_BootSelectCoreMMC(void)
+{
+#if IS_ENABLED(CONFIG_SERVICE_COREMMC)
+    mHSS_DEBUG_PRINTF(LOG_NORMAL,
+        "Selecting secondary eMMC (CoreMMC) as boot source ...\n");
+    pDefaultStorage = &coreMmcStorage_;
+#  if IS_ENABLED(CONFIG_SERVICE_BOOT)
+    HSS_Register_Boot_Image(NULL);
+#  endif
+#else
+    (void)getBootImageFromCoreMMC_;
 #endif
 }
 
