@@ -4,7 +4,7 @@
  *              backend is selected by BOOT_PARAMS_NAND (BSP_Config.h):
  *              NAND Flash when defined, golden SW QSPI NOR Flash otherwise.
  * @author      Trajce Nikolov | nick@rfim.co.uk
- *              Koksal Kurt    | koksal@rfim.co.uk
+ *              Koksal Kurt    | koksal.kurt@outlook.com
  * @date        February 2026 - July 2026
  * @version     1.3.0       /// Implemented the slot-based parameter store
  *                          /// with the NAND/QSPI backend switch.

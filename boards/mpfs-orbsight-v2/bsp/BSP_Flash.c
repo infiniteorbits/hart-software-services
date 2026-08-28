@@ -2,7 +2,7 @@
  * @file        BSP_Flash.c
  * @brief       QSPI NOR Flash device definitions of the OrbSight-2 board for
  *              the generic infineon_S25FL driver.
- * @author      Koksal Kurt | koksal@rfim.co.uk
+ * @author      Koksal Kurt | koksal.kurt@outlook.com
  * @date        July 2026
  * @version     1.3.0       /// Initial version
  *

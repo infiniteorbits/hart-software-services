@@ -1,7 +1,7 @@
 /** ----------------------------------------------------------------------------
  * @file        BSP_Nand_Flash.h
  * @brief
- * @author      Koksal Kurt | koksal@rfim.co.uk
+ * @author      Koksal Kurt | koksal.kurt@outlook.com
  * @date        July 2026
  * @version     1.3.0
  *

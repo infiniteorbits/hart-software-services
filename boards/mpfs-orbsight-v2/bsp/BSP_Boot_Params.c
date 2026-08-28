@@ -18,7 +18,7 @@
  *              QSPI NOR Flash (MSS QSPI @ 0x21000000, sector 0x01FF0000).
  *
  * @author      Trajce Nikolov | nick@rfim.co.uk
- *              Koksal Kurt    | koksal@rfim.co.uk
+ *              Koksal Kurt    | koksal.kurt@outlook.com
  * @date        February 2026 - July 2026
  *
  * @version     1.3.0       /// Implemented the slot-based parameter store

@@ -24,7 +24,7 @@
  * All functions initialize the controller of the given device lazily on
  * first use, so calling Flash_init() explicitly is optional.
  *
- * Adapted by RFIM Space, 2026 (Koksal Kurt | koksal@rfim.co.uk).
+ * Adapted by RFIM Space, 2026 (Koksal Kurt | koksal.kurt@outlook.com).
  */
 
 #ifndef INFINEON_S25FL_H_

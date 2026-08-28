@@ -11,7 +11,7 @@
  *                @ 0x21000000) through the infineon_S25FL driver
  *                (BSP_Flash device FLASH_DEVICE_GOLDEN_SW).
  * @author      Trajce Nikolov | nick@rfim.co.uk
- *              Koksal Kurt    | koksal@rfim.co.uk
+ *              Koksal Kurt    | koksal.kurt@outlook.com
  * @date        February 2026 - July 2026
  *
  * @version     1.3.0       /// Implemented MD5 compute/verify and the

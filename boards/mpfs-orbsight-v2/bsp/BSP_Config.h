@@ -6,8 +6,7 @@
  *              carried here. The full configuration lives in the
  *              application tree (src/application/bsp/BSP_Config.h); the
  *              macros below must be kept in sync with it.
- * @author      Trajce Nikolov | nick@rfim.co.uk
- *              Koksal Kurt    | koksal@rfim.co.uk
+ * @author      Koksal Kurt    | koksal.kurt@outlook.com
  * @date        July 2026
  * @version     1.3.0       /// Initial version (HSS port)
  *

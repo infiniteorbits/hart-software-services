@@ -8,7 +8,7 @@
  * description. Board support code owns the flash_device_t instances; the
  * driver holds no board knowledge.
  *
- * Adapted by RFIM Space, 2026 (Koksal Kurt | koksal@rfim.co.uk):
+ * Adapted by RFIM Space, 2026 (Koksal Kurt | koksal.kurt@outlook.com):
  * reworked from the original single-device MSS QSPI implementation into a
  * generic instance-based layer supporting any number of devices behind
  * CoreQSPI-compatible controllers.
