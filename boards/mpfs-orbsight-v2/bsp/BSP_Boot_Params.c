@@ -19,8 +19,13 @@
  *
  * @author      Trajce Nikolov | nick@rfim.co.uk
  *              Koksal Kurt    | koksal.kurt@outlook.com
- * @date        February 2026 - July 2026
+ * @date        February 2026 - October 2026
  *
+ * @version     1.3.1       /// boot_sequence[0] is a one-shot override,
+ *                          /// cleared by Bootloader 0 once attempted:
+ *                          /// BOOT_SRC_NONE (no override) is accepted
+ *                          /// there only, and the defaults are None,
+ *                          /// Primary, Secondary, Golden.
  * @version     1.3.0       /// Implemented the slot-based parameter store
  *                          /// with the NAND/QSPI backend switch.
  *                          /// Fixed the QSPI backend to target the golden
@@ -152,13 +157,13 @@ _Static_assert(BOOT_PARAMS_RECORD_SIZE <= BOOT_PARAMS_SLOT_SIZE,
 */
 
 /** @brief Defaults returned by BOOT_params_read() when the store holds no
- *  valid record yet (virgin or fully corrupted Flash). The three index
- *  fields are 0 ("no attempt recorded yet") and last_failed_error is
- *  BOOT_OK ("no failure recorded yet"); integrity checking defaults to
- *  enabled. */
+ *  valid record yet (virgin or fully corrupted Flash). No one-shot
+ *  override is pending in boot_sequence[0]; the three index fields are 0
+ *  ("no attempt recorded yet") and last_failed_error is BOOT_OK ("no
+ *  failure recorded yet"); integrity checking defaults to enabled. */
 static const boot_params_t g_boot_params_defaults = {
-    .boot_sequence      = { BOOT_SRC_PRIMARY, BOOT_SRC_SECONDARY,
-                            BOOT_SRC_GOLDEN,  BOOT_SRC_GOLDEN },
+    .boot_sequence      = { BOOT_SRC_NONE,      BOOT_SRC_PRIMARY,
+                            BOOT_SRC_SECONDARY, BOOT_SRC_GOLDEN },
     .last_failed        = (boot_source_t)0,
     .last_successful    = (boot_source_t)0,
     .current_try        = (boot_source_t)0,
@@ -456,6 +461,30 @@ params_boot_source_valid(boot_source_t src)
     return 0u;
 }
 
+/**
+ * @brief Validates a boot_sequence entry.
+ *
+ * boot_sequence[0] is the one-shot override slot, where BOOT_SRC_NONE
+ * means "no override". Every other entry must name a boot source, so the
+ * fallback order is never empty once Bootloader 0 has consumed the
+ * override.
+ *
+ * @param index  Position of the entry in boot_sequence[].
+ * @param src    The value to validate.
+ *
+ * @return 1u if valid, 0u otherwise.
+ */
+static uint8_t
+params_boot_entry_valid(uint32_t index, boot_source_t src)
+{
+    if ((index == 0u) && (src == BOOT_SRC_NONE))
+    {
+        return 1u;
+    }
+
+    return params_boot_source_valid(src);
+}
+
 /* -----------------------------------------------------------------------------
  * Public functions
  * -----------------------------------------------------------------------------
@@ -467,9 +496,9 @@ params_boot_source_valid(boot_source_t src)
 *
 * Returns the most recent valid record in the store. If the store holds no
 * valid record (virgin Flash, or every record torn/corrupted), the
-* documented defaults are returned instead: boot sequence Primary,
-* Secondary, Golden, Golden; index fields 0; last_failed_error BOOT_OK;
-* integrity check enabled.
+* documented defaults are returned instead: boot sequence None (no
+* override), Primary, Secondary, Golden; index fields 0; last_failed_error
+* BOOT_OK; integrity check enabled.
 *
 * @param[inout] params
 * Pointer to a boot_params_t structure that will be populated with the
@@ -523,7 +552,8 @@ BOOT_params_read(boot_params_t* const params)
 * @return boot_error_status_t
 * BOOT_OK on success,
 * BOOT_ERR_INVALID_PARAM if params is NULL,
-* BOOT_ERR_BOOT_SOURCE if a boot_sequence entry is not a valid boot source,
+* BOOT_ERR_BOOT_SOURCE if a boot_sequence entry is not a valid boot source
+* (BOOT_SRC_NONE is valid in boot_sequence[0] only),
 * BOOT_ERR_STORAGE_FAIL if Flash erase/programming/verify fails.
 * ------------------------------------------------------------------------------
 */
@@ -546,7 +576,7 @@ BOOT_params_write(const boot_params_t* params)
 
     for (i = 0u; i < (uint32_t)BOOT_SEQ_MAX_ENTRIES; i++)
     {
-        if (params_boot_source_valid(params->boot_sequence[i]) == 0u)
+        if (params_boot_entry_valid(i, params->boot_sequence[i]) == 0u)
         {
             return BOOT_ERR_BOOT_SOURCE;
         }

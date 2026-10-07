@@ -24,6 +24,11 @@
  *   - BOOT_SRC_SECONDARY (20)  Fabric eMMC - no HSS driver yet, skipped
  *   - BOOT_SRC_GOLDEN    (255) golden SW QSPI NOR Flash
  *
+ * boot_sequence[0] is a one-shot override (BOOT_SRC_NONE = no override):
+ * it is attempted first and cleared back to BOOT_SRC_NONE before the
+ * attempt runs, so later boots fall through to boot_sequence[1..3]
+ * whatever the outcome.
+ *
  * Attempt tracking is recorded back into the store (current_try before
  * each attempt, last_failed / last_successful after it), and when
  * integrity_check_en is set the image MD5 is verified per the HSS payload

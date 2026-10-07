@@ -15,11 +15,16 @@
  * modules (boards/mpfs-orbsight-v2/bsp/, copies of the application BSP):
  *
  *   1. Read the Boot Parameters (most recent valid record, or the
- *      documented defaults: Primary, Secondary, Golden, Golden with the
- *      integrity check enabled).
- *   2. Walk boot_sequence[] in order. For each entry: record current_try,
- *      select the matching HSS storage, and run the stock boot-image load
- *      (HSS_BootInit: header read, magic check, copy to DDR, register).
+ *      documented defaults: no override, Primary, Secondary, Golden with
+ *      the integrity check enabled).
+ *   2. Walk boot_sequence[] in order. boot_sequence[0] is a one-shot
+ *      override (BOOT_SRC_NONE = no override): when set it is attempted
+ *      first and cleared back to BOOT_SRC_NONE in the same store write
+ *      that records current_try, i.e. before the attempt runs, so it is
+ *      never attempted again whatever the outcome. For each entry: record
+ *      current_try, select the matching HSS storage, and run the stock
+ *      boot-image load (HSS_BootInit: header read, magic check, copy to
+ *      DDR, register).
  *   3. When integrity_check_en is set, stream the image from its storage
  *      again and verify its MD5 per the HSS payload MD5 contract
  *      (BOOT_verify_md5 hashes the header signature/md5Sum window as
@@ -236,6 +241,7 @@ static void params_store_(boot_params_t *pParams)
 bool HSS_BootParamsBootInit(void)
 {
     boot_params_t params;
+    boot_source_t prev   = BOOT_SRC_NONE;
     bool          booted = false;
 
     if (BOOT_params_read(&params) != BOOT_OK) {
@@ -249,13 +255,26 @@ bool HSS_BootParamsBootInit(void)
         boot_source_t const src = params.boot_sequence[i];
         boot_error_status_t status;
 
-        /* skip immediate repeats (e.g. the default ... Golden, Golden)  */
-        if ((i > 0u) && (src == params.boot_sequence[i - 1u])) {
+        /* BOOT_SRC_NONE: no override in boot_sequence[0]. Also skip
+         * immediate repeats (e.g. ... Golden, Golden): prev holds the
+         * entry as read, unaffected by the override clear below         */
+        if ((src == BOOT_SRC_NONE) || (src == prev)) {
             continue;
         }
+        prev = src;
 
         mHSS_DEBUG_PRINTF(LOG_NORMAL, "bootparams: entry %u: %s\n",
             i, boot_source_name_(src));
+
+        if (i == 0u) {
+            /* boot_sequence[0] is a one-shot override: consume it before
+             * it is attempted, so it is tried at most once whatever the
+             * outcome - rejected, booted, or hung before the result could
+             * be recorded. Persisted by the store write that follows.   */
+            params.boot_sequence[0] = BOOT_SRC_NONE;
+            mHSS_DEBUG_PRINTF(LOG_NORMAL,
+                "bootparams: one-shot override, cleared for later boots\n");
+        }
 
         if (!storage_select_(src)) {
             /* no HSS storage behind this source: params_record_failure_

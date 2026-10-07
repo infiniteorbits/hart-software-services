@@ -5,12 +5,17 @@
  *              NAND Flash when defined, golden SW QSPI NOR Flash otherwise.
  * @author      Trajce Nikolov | nick@rfim.co.uk
  *              Koksal Kurt    | koksal.kurt@outlook.com
- * @date        February 2026 - July 2026
+ * @date        February 2026 - October 2026
+ * @version     1.3.1       /// boot_sequence[0] is a one-shot override:
+ *                          /// BOOT_SRC_NONE (no override) is accepted
+ *                          /// there only, and the defaults no longer put
+ *                          /// a boot source in it.
  * @version     1.3.0       /// Implemented the slot-based parameter store
  *                          /// with the NAND/QSPI backend switch.
  *                          /// The staged FPGA update request is a flag
  *                          /// in the golden SW Flash
  *                          /// (BSP_Bitstream_Update), not stored here.
+ *                          /// Added last_failed_error to the tracked fields
  * @version     1.0.0
  *
  * @copyright   RFIM Space 2026
@@ -51,6 +56,7 @@ typedef enum {
  * -----------------------------------------------------------------------------
 */
 typedef enum {
+    BOOT_SRC_NONE = 0,          // No boot source (boot_sequence[0] only)
     BOOT_SRC_PRIMARY = 10,      // MSS eMMC primary
     BOOT_SRC_SECONDARY = 20,    // Fabric eMMC secondary
     BOOT_SRC_GOLDEN = 255       // QSPI Flash Golden
@@ -67,10 +73,15 @@ typedef enum {
  *
  * - boot_sequence[]: Ordered list of boot entries. Typical configuration
  *                      includes:
- * - Configurable (Primary/Secondary/Golden)
+ * - One-shot override (Primary/Secondary/Golden, or BOOT_SRC_NONE for no
+ *   override)
  * - MSS Payload (Primary)
  * - Fabric Payload (Secondary)
  * - QSPI Flash Payload (Golden).
+ *   boot_sequence[0] is the one-shot override: Bootloader 0 attempts it
+ *   first and clears it back to BOOT_SRC_NONE before the attempt runs, so
+ *   it is tried on one boot only whatever the outcome. boot_sequence[1..3]
+ *   are the persistent order and must each name a boot source.
  * - last_failed: Boot source value (boot_source_t) of the last entry that
  * failed to boot; 0 = none recorded yet.
  * - last_successful: Boot source value of the last entry that provided a
@@ -98,8 +109,8 @@ typedef struct __attribute__((packed)) {
 *
 * Returns the most recent valid stored record. If the store holds no valid
 * record (virgin Flash, or every record torn/corrupted), documented
-* defaults are returned: boot sequence Primary, Secondary, Golden, Golden;
-* index fields 0; integrity check enabled.
+* defaults are returned: boot sequence None (no override), Primary,
+* Secondary, Golden; index fields 0; integrity check enabled.
 *
 * @param[inout] params
 * Pointer to a boot_params_t structure that will be populated with the
@@ -128,7 +139,8 @@ BOOT_params_read(boot_params_t* const params);
 * @return boot_error_status_t
 * BOOT_OK on success,
 * BOOT_ERR_INVALID_PARAM if params is NULL,
-* BOOT_ERR_BOOT_SOURCE if a boot_sequence entry is not a valid boot source,
+* BOOT_ERR_BOOT_SOURCE if a boot_sequence entry is not a valid boot source
+* (BOOT_SRC_NONE is valid in boot_sequence[0] only),
 * BOOT_ERR_STORAGE_FAIL if Flash erase/programming/verify fails.
 * ------------------------------------------------------------------------------
 */

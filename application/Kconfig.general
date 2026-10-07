@@ -172,10 +172,11 @@ config BOOT_PARAMS
 		record store, Bootloader log and payload MD5 verification) and
 		drives the automatic boot from the Boot Parameters: the
 		boot_sequence[] entries (MSS eMMC / fabric eMMC / golden QSPI)
-		are attempted in order, boot attempts are recorded back into
-		the store (current_try / last_failed / last_successful), and
-		when the integrity check is enabled the boot image MD5 is
-		verified before the image is allowed to boot.
+		are attempted in order (boot_sequence[0] is a one-shot
+		override, cleared once attempted), boot attempts are recorded
+		back into the store (current_try / last_failed /
+		last_successful), and when the integrity check is enabled the
+		boot image MD5 is verified before the image is allowed to boot.
 
 		If you do not know what to do here, say N.
 
