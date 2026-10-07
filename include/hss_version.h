@@ -40,7 +40,7 @@ extern "C" {
 
 #define HSS_VERSION_MAJOR 1
 #define HSS_VERSION_MINOR 3
-#define HSS_VERSION_PATCH 0
+#define HSS_VERSION_PATCH 1
 
 #ifdef VENDOR_STRING
     #undef VENDOR_STRING
