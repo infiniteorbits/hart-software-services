@@ -168,7 +168,15 @@ bool USBDMSC_Poll(void)
 
 void USBDMSC_Shutdown(void)
 {
-    reset_usb_block_();
+    // Leave the block held in reset with its clock gated (Orbsight2 change).
+    // reset_usb_block_() ends in HSS_USBInit(), which releases the block
+    // again with ADDR_UPPER set for this service's buffers. This function
+    // runs once on the way to idle at startup, so that is the state every
+    // payload would inherit: a running USB block whose DMA upper address
+    // bits belong to HSS. USBDMSC_Init() takes the block out of reset again
+    // when the service is actually used.
+    SYSREG->SOFT_RESET_CR |= SOFT_RESET_CR_USB_MASK;
+    SYSREG->SUBBLK_CLOCK_CR &= ~SUBBLK_CLOCK_CR_USB_MASK;
 
     // clear any residual MMC / main USB / DMA USB interrupts
     PLIC_ClearPendingIRQ();

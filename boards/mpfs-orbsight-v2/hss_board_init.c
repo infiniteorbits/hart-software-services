@@ -48,7 +48,10 @@ const struct InitFunction /*@null@*/ boardInitFunctions[] = {
 #ifdef CONFIG_USE_TAMPER
     { "HSS_TamperInit",         HSS_TamperInit,         false, false },
 #endif
-    { "HSS_USBInit",            HSS_USBInit,            false, false },
+    // HSS_USBInit is not run at boot: it only prepares the USB block for the
+    // USBDMSC service (release from reset, ADDR_UPPER for HSS buffers), and
+    // USBDMSC_Init() already calls it when the service is used. Run here, it
+    // left the block running with HSS's ADDR_UPPER for the payload to inherit.
 };
 
 /******************************************************************************************************/
