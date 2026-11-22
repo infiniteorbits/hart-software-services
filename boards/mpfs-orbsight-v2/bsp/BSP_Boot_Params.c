@@ -21,6 +21,10 @@
  *              Koksal Kurt    | koksal.kurt@outlook.com
  * @date        February 2026 - October 2026
  *
+ * @version     1.4.0       /// NAND backend on the BSP_Nand_Flash driver:
+ *                          /// one 1 MB block at 0xFFF00000 (block 4095),
+ *                          /// one record per 8 KB page, programmed with
+ *                          /// BSP_nand_program (no erase on append)
  * @version     1.3.1       /// boot_sequence[0] is a one-shot override,
  *                          /// cleared by Bootloader 0 once attempted:
  *                          /// BOOT_SRC_NONE (no override) is accepted
@@ -75,23 +79,22 @@ extern "C" {
 
 #ifdef BOOT_PARAMS_NAND
 
-/** @brief Base address of the Boot Parameters region: the topmost block
- *  reachable through the 32-bit NAND byte-address API. The NAND device is
- *  256 Gbit (32 GB), so only its first 4 GB window is addressable; this
- *  region ends exactly at the 4 GB boundary (last byte 0xFFFFFFFF), which
- *  requires the NAND driver's range checks to use overflow-safe math
- *  (addr + (len - 1u), never addr + len). The Bootloader log ring sits
- *  directly below (see BSP_Boot_Loader0.c). */
-#define BOOT_PARAMS_BASE_ADDR           (0xFFFE0000u)
+/** @brief Base address of the Boot Parameters region: block 4095, the
+ *  topmost block of the first 4 GB (LUN 0) of the 32 GB the NAND driver
+ *  addresses (this module addresses the store with 32-bit offsets). The
+ *  region ends exactly at the
+ *  4 GB boundary (last byte 0xFFFFFFFF); the NAND driver takes 64-bit
+ *  addresses, so its range checks do not overflow there. The Bootloader
+ *  log ring sits directly below (see BSP_Boot_Loader0.c). */
+#define BOOT_PARAMS_BASE_ADDR           (0xFFF00000u)
 
-/** @brief Size of the Boot Parameters region: one NAND erase block;
- *  adjust when the NAND driver geometry is final (placeholder: 128 KB). */
-#define BOOT_PARAMS_REGION_SIZE         (0x00020000u)
+/** @brief Size of the Boot Parameters region: one NAND erase block. */
+#define BOOT_PARAMS_REGION_SIZE         (BSP_NAND_BLOCK_SIZE)
 
-/** @brief Record slot size. One slot per NAND page (placeholder: 2 KB) so
- *  every record program is a single page-aligned operation and NAND
- *  partial-page programming (NOP) limits are never exceeded. */
-#define BOOT_PARAMS_SLOT_SIZE           (2048u)
+/** @brief Record slot size. One slot per NAND page so every record program
+ *  is a single page-aligned operation and no page is ever partially
+ *  reprogrammed (128 records per erase). */
+#define BOOT_PARAMS_SLOT_SIZE           (BSP_NAND_PAGE_SIZE)
 
 #else /* QSPI NOR backend */
 
@@ -203,15 +206,15 @@ params_storage_read(uint8_t* dst, uint32_t addr, uint32_t len)
 /**
  * @brief Programs the Boot Parameters storage backend (NAND).
  *
- * @note BSP_nand_write() is documented to handle erase internally; when
- * called from this module it must program into already-erased space
- * WITHOUT erasing the containing block, or appended records would
- * destroy earlier ones in the same block.
+ * BSP_nand_program() programs into an erased slot page WITHOUT erasing the
+ * containing block, so appended records keep the earlier ones. addr is
+ * page aligned (BOOT_PARAMS_SLOT_SIZE); the rest of the page is padded with
+ * 0xFF.
  */
 static uint8_t
 params_storage_program(const uint8_t* src, uint32_t addr, uint32_t len)
 {
-    return (uint8_t)((BSP_nand_write(src, addr,    \
+    return (uint8_t)((BSP_nand_program(src, addr,  \
             len) == BSP_NAND_OK) ? 0u : 1u);
 }
 

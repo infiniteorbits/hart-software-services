@@ -12,8 +12,13 @@
  *                (BSP_Flash device FLASH_DEVICE_GOLDEN_SW).
  * @author      Trajce Nikolov | nick@rfim.co.uk
  *              Koksal Kurt    | koksal.kurt@outlook.com
- * @date        February 2026 - July 2026
+ * @date        February 2026 - October 2026
  *
+ * @version     1.4.0       /// NAND log backend on the BSP_Nand_Flash
+ *                          /// driver: 1 MB sectors (blocks 4093-4094 at
+ *                          /// 0xFFD00000), the sequence header and each
+ *                          /// record on a page of their own, programmed
+ *                          /// with BSP_nand_program (no erase on append)
  * @version     1.3.0       /// Implemented MD5 compute/verify and the
  *                          /// QSPI-NOR-backed Bootloader log
  *                          /// BOOT_PARAMS_NAND switch selecting the log
@@ -63,24 +68,26 @@ extern "C" {
 
 #ifdef BOOT_PARAMS_NAND
 
-/** @brief NAND device holding the Bootloader log ring. */
-#define BOOT_LOG_NAND_DEVICE            (NAND1)
-
-/** @brief Log ring erase-unit size on NAND. Must equal (or be a multiple
- *  of) the NAND erase-block size so that erasing one ring sector never
- *  touches the other; adjust when the NAND driver geometry is final
- *  (placeholder: 128 KB blocks). */
-#define BOOT_LOG_SECTOR_SIZE            (0x00020000u)
+/** @brief Log ring erase-unit size on NAND: one erase block, so that
+ *  erasing one ring sector never touches the other. */
+#define BOOT_LOG_SECTOR_SIZE            (BSP_NAND_BLOCK_SIZE)
 
 /** @brief Number of erase units forming the Bootloader log ring. */
 #define BOOT_LOG_NUM_SECTORS            (2u)
 
-/** @brief Base address of the Bootloader log region: at the top of the
- *  32-bit-addressable NAND window (the 256 Gbit / 32 GB device exceeds
- *  32-bit byte addressing, so the first 4 GB window is used), directly
- *  below the Boot Parameters block at 0xFFFE0000
+/** @brief Base address of the Bootloader log region: blocks 4093-4094, at
+ *  the top of the 32-bit-addressable NAND window (the 32 GB the driver
+ *  addresses exceed 32-bit byte addressing, so the first 4 GB window - the
+ *  4096 blocks of LUN 0 - is used), directly below the Boot Parameters
+ *  block at 0xFFF00000
  *  (see BSP_Boot_Params.c). */
-#define BOOT_LOG_BASE_ADDR              (0xFFFA0000u)
+#define BOOT_LOG_BASE_ADDR              (0xFFD00000u)
+
+/** @brief Placement unit of the sequence header and of each log record.
+ *  NAND pages cannot be partially reprogrammed, so the header and every
+ *  record take a page of their own, padded with 0xFF
+ *  (127 records per sector). */
+#define BOOT_LOG_RECORD_ALIGN           (BSP_NAND_PAGE_SIZE)
 
 #else /* QSPI NOR backend */
 
@@ -96,6 +103,10 @@ extern "C" {
  *  (see BSP_Boot_Params.c). Golden SW payloads must not extend into this
  *  region. */
 #define BOOT_LOG_BASE_ADDR              (0x01FD0000u)
+
+/** @brief Placement unit of the sequence header and of each log record:
+ *  NOR is programmed byte by byte, so records are packed back to back. */
+#define BOOT_LOG_RECORD_ALIGN           (1u)
 
 #endif /* BOOT_PARAMS_NAND */
 
@@ -119,12 +130,21 @@ extern "C" {
 /** @brief Record terminator appended after every log message. */
 #define BOOT_LOG_MSG_TERMINATOR         ((uint8_t)'\n')
 
+/** @brief Sector offset of the first log record: the sequence header
+ *  rounded up to BOOT_LOG_RECORD_ALIGN (4 on NOR, one page on NAND). */
+#define BOOT_LOG_FIRST_REC_OFF                                              \
+        (((BOOT_LOG_SEQ_HDR_SIZE + BOOT_LOG_RECORD_ALIGN - 1u) /             \
+            BOOT_LOG_RECORD_ALIGN) * BOOT_LOG_RECORD_ALIGN)
+
 /** @brief Value of an erased NOR Flash byte; marks unused log space. */
 #define BOOT_FLASH_ERASED_BYTE          (0xFFu)
 
 /** @brief Chunk size for streamed Flash/eMMC reads. Matches the eMMC block
  *  size so one chunk holds exactly one eMMC sector. */
 #define BOOT_CHUNK_SIZE                 (512u)
+
+_Static_assert((BOOT_LOG_MAX_MSG_LEN + 1u) <= BOOT_CHUNK_SIZE,
+        "a whole log record must fit the chunk buffer");
 
 /** @brief Base address of the golden SW payload in the golden SW Flash. */
 #define BOOT_SPI_BASE_ADDR        (0x00000000u)
@@ -474,15 +494,15 @@ log_storage_read(uint8_t* dst, uint32_t addr, uint32_t len)
 /**
  * @brief Programs the log storage backend (NAND).
  *
- * @note BSP_nand_write() is documented to handle erase internally; when
- * called from this module it must program into already-erased space
- * WITHOUT erasing the containing block, or appended log records would
- * destroy earlier ones in the same block.
+ * BSP_nand_program() programs into erased pages WITHOUT erasing the
+ * containing block, so appended log records keep the earlier ones. addr is
+ * page aligned (BOOT_LOG_RECORD_ALIGN); the rest of the page is padded with
+ * 0xFF.
  */
 static uint8_t
 log_storage_program(const uint8_t* src, uint32_t addr, uint32_t len)
 {
-    return (uint8_t)((BSP_nand_write(src, addr, len)   \
+    return (uint8_t)((BSP_nand_program(src, addr, len) \
             == BSP_NAND_OK) ? 0u : 1u);
 }
 
@@ -617,6 +637,50 @@ log_find_active(uint8_t* found, uint32_t* active_idx, uint32_t* active_seq)
     return BOOT_OK;
 }
 
+#ifdef BOOT_PARAMS_NAND
+
+/**
+ * @brief Finds the append offset inside a log sector (NAND).
+ *
+ * Every record takes a page of its own and pages are consumed in order, so
+ * the write head is the first record page whose first byte reads erased
+ * (0xFF). Stored messages are sanitized so they never contain 0xFF.
+ *
+ * @param sector_addr  Absolute Flash address of the sector.
+ * @param[out] append_off  Offset of the first free record page relative to
+ * the sector start, or BOOT_LOG_SECTOR_SIZE if the sector is full.
+ *
+ * @return BOOT_OK on success, BOOT_ERR_STORAGE_FAIL if a read fails.
+ */
+static boot_error_status_t
+log_append_offset(uint32_t sector_addr, uint32_t* append_off)
+{
+    uint32_t offset;
+    uint8_t  head;
+
+    for (offset = BOOT_LOG_FIRST_REC_OFF; offset < BOOT_LOG_SECTOR_SIZE;     \
+            offset += BOOT_LOG_RECORD_ALIGN)
+    {
+        if (log_storage_read(&head, sector_addr + offset, 1u) != 0u)
+        {
+            return BOOT_ERR_STORAGE_FAIL;
+        }
+
+        if (head == BOOT_FLASH_ERASED_BYTE)
+        {
+            *append_off = offset;
+
+            return BOOT_OK;
+        }
+    }
+
+    *append_off = BOOT_LOG_SECTOR_SIZE;
+
+    return BOOT_OK;
+}
+
+#else /* QSPI NOR backend */
+
 /**
  * @brief Finds the append offset inside a log sector.
  *
@@ -669,6 +733,8 @@ log_append_offset(uint32_t sector_addr, uint32_t* append_off)
 
     return BOOT_OK;
 }
+
+#endif /* BOOT_PARAMS_NAND */
 
 /**
  * @brief Erases a log sector and stamps its sequence-number header.
@@ -933,7 +999,7 @@ BOOT_log_write(const char *msg)
         }
 
         sector_addr = log_sector_addr(0u);
-        append_off  = BOOT_LOG_SEQ_HDR_SIZE;
+        append_off  = BOOT_LOG_FIRST_REC_OFF;
     }
     else
     {
@@ -966,7 +1032,7 @@ BOOT_log_write(const char *msg)
             }
 
             sector_addr = log_sector_addr(next_idx);
-            append_off  = BOOT_LOG_SEQ_HDR_SIZE;
+            append_off  = BOOT_LOG_FIRST_REC_OFF;
         }
     }
 
@@ -1071,6 +1137,34 @@ BOOT_log_read(char *dst, uint32_t max_len, uint32_t* out_len)
             return BOOT_ERR_STORAGE_FAIL;
         }
 
+#ifdef BOOT_PARAMS_NAND
+
+        /* One record per page: copy each record up to the erased (0xFF)
+         * padding behind its '\n' terminator.                              */
+        for (offset = BOOT_LOG_FIRST_REC_OFF;                                \
+                (offset < used_end) && (copied < capacity);                  \
+                offset += BOOT_LOG_RECORD_ALIGN)
+        {
+            chunk = BOOT_LOG_MAX_MSG_LEN + 1u;      /* longest record       */
+
+            if (log_storage_read(g_chunk_buf, sector_addr + offset,          \
+                    chunk) != 0u)
+            {
+                dst[copied] = '\0';
+
+                return BOOT_ERR_STORAGE_FAIL;
+            }
+
+            for (i = 0u; (i < chunk) && (copied < capacity) &&               \
+                    (g_chunk_buf[i] != BOOT_FLASH_ERASED_BYTE); i++)
+            {
+                dst[copied] = (char)g_chunk_buf[i];
+                copied++;
+            }
+        }
+
+#else /* QSPI NOR backend */
+
         offset = BOOT_LOG_SEQ_HDR_SIZE;
 
         while ((offset < used_end) && (copied < capacity))
@@ -1103,6 +1197,8 @@ BOOT_log_read(char *dst, uint32_t max_len, uint32_t* out_len)
             copied += chunk;
             offset += chunk;
         }
+
+#endif /* BOOT_PARAMS_NAND */
     }
 
     dst[copied] = '\0';
