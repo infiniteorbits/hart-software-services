@@ -104,10 +104,6 @@ extern uint32_t g_bch_corrected;
  * Every target goes through the same steps and all of them use one
  * interface: NV-DDR only if it works on each.
  *
- * With BSP_NAND_FORCE_SYNC defined (BSP_Config.h) the SDR fallback is
- * never taken: the synchronous path is set up and used even on a part
- * without NV-DDR or when the synchronous READ ID fails.
- *
  * CE1 is always used. CE2..CE4 are used only on an SDR-capable PHY and only
  * if their RESET shows a busy pulse on the R/B# the PHY watches (it is
  * their own only with the per-CE R/B# FPGA change and NAND_RB2_N..RB4_N

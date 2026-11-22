@@ -25,10 +25,13 @@
  *      current_try, select the matching HSS storage, and run the stock
  *      boot-image load (HSS_BootInit: header read, magic check, copy to
  *      DDR, register).
- *   3. When integrity_check_en is set, stream the image from its storage
- *      again and verify its MD5 per the HSS payload MD5 contract
- *      (BOOT_verify_md5 hashes the header signature/md5Sum window as
- *      zeros). A failing image is deregistered and never booted.
+ *   3. When integrity_check_en is set and MD5 verification is built in
+ *      (menuconfig CONFIG_BOOT_PARAMS_MD5_VERIFY, default y), stream the
+ *      image from its storage again and verify its MD5 per the HSS
+ *      payload MD5 contract (BOOT_verify_md5 hashes the header
+ *      signature/md5Sum window as zeros). A failing image is
+ *      deregistered and never booted. With the option disabled the
+ *      image boots unverified and a warning is logged.
  *   4. Record last_successful / last_failed (with last_failed_error, the
  *      boot_error_status_t that describes why that entry was rejected)
  *      and stop at the first entry that yields a bootable image.
@@ -171,6 +174,13 @@ static bool storage_select_(boot_source_t src)
     return result;
 }
 
+/*
+ * MD5 verification is the menuconfig option CONFIG_BOOT_PARAMS_MD5_VERIFY.
+ * The code tests its hidden inverse, CONFIG_BOOT_PARAMS_MD5_VERIFY_DISABLED,
+ * so that a config.h generated before the option existed (no CONFIG_ line
+ * for either symbol) keeps the check built in (see services/boot/Kconfig).
+ */
+#if !IS_ENABLED(CONFIG_BOOT_PARAMS_MD5_VERIFY_DISABLED)
 /*!
  * \brief Verifies the MD5 of the just-loaded boot image per the HSS
  * payload MD5 contract, streaming it from its storage backend.
@@ -208,6 +218,7 @@ static boot_error_status_t integrity_check_(boot_source_t src)
     mHSS_DEBUG_PRINTF(LOG_NORMAL, "bootparams: image MD5 verified\n");
     return BOOT_OK;
 }
+#endif /* !CONFIG_BOOT_PARAMS_MD5_VERIFY_DISABLED */
 
 /*!
  * \brief Records a rejected boot entry and persists the parameters.
@@ -295,6 +306,7 @@ bool HSS_BootParamsBootInit(void)
         status = booted ? BOOT_OK : BOOT_ERR_STORAGE_FAIL;
 
         if (booted && params.integrity_check_en) {
+#if !IS_ENABLED(CONFIG_BOOT_PARAMS_MD5_VERIFY_DISABLED)
             status = integrity_check_(src);
 
             if (status != BOOT_OK) {
@@ -302,6 +314,13 @@ bool HSS_BootParamsBootInit(void)
                 HSS_Register_Boot_Image(NULL);
                 booted = false;
             }
+#else
+            mHSS_DEBUG_PRINTF(LOG_WARN,
+                "bootparams: integrity check requested, but MD5 "
+                "verification is disabled in this build "
+                "(CONFIG_BOOT_PARAMS_MD5_VERIFY): %s boots unverified\n",
+                boot_source_name_(src));
+#endif
         }
 
         if (booted) {

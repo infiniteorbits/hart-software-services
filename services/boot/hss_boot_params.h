@@ -32,7 +32,9 @@
  * Attempt tracking is recorded back into the store (current_try before
  * each attempt, last_failed / last_successful after it), and when
  * integrity_check_en is set the image MD5 is verified per the HSS payload
- * MD5 contract (BOOT_verify_md5) before the image is allowed to boot.
+ * MD5 contract (BOOT_verify_md5) before the image is allowed to boot,
+ * unless MD5 verification is disabled in menuconfig
+ * (CONFIG_BOOT_PARAMS_MD5_VERIFY).
  */
 
 #ifdef __cplusplus

@@ -62,4 +62,59 @@ config SERVICE_BOOT_MMC_USE_GPT
                 parsing of a GUID Partition Table (GPT) in search of the boot image starting
                 sector..
 
+menuconfig BOOT_PARAMS
+	bool "Boot Parameters (Bootloader 0)"
+	default n
+	depends on SERVICE_BOOT && SERVICE_MMC && SERVICE_QSPI && SERVICE_QSPI_INFINEON_S25FL
+	help
+		If enabled, the HSS builds the Bootloader 0 BSP modules shared
+		with the application (boards/<board>/bsp/: Boot Parameters
+		record store, Bootloader log and payload MD5 verification) and
+		drives the automatic boot from the Boot Parameters: the
+		boot_sequence[] entries (MSS eMMC / fabric eMMC / golden QSPI)
+		are attempted in order (boot_sequence[0] is a one-shot
+		override, cleared once attempted) and boot attempts are
+		recorded back into the store (current_try / last_failed /
+		last_successful). If the Boot Parameters cannot be read, the
+		stock boot flow runs instead.
+
+		Requires the MMC service and the QSPI service with the
+		Infineon S25FL driver.
+
+		If disabled, the stock HSS boot flow is used.
+
+		If you do not know what to do here, say N.
+
+config BOOT_PARAMS_MD5_VERIFY
+	bool "Verify boot image MD5 before booting"
+	default y
+	depends on BOOT_PARAMS
+	help
+		If enabled, each boot image loaded from a boot_sequence[] entry
+		is streamed again from its storage and its MD5 digest checked
+		against the md5Sum in the HSS image header (written by
+		hss-payload-generator). An image that fails is never booted:
+		the entry is recorded in last_failed with BOOT_ERR_MD5_VERIFY
+		and the next boot_sequence[] entry is tried.
+
+		Verification also requires integrity_check_en in the Boot
+		Parameters (enabled by default), so the application can still
+		turn it off at run time. It is not applied to the stock boot
+		flow used when the Boot Parameters cannot be read.
+
+		If disabled, the MD5 check is not built in and images boot
+		unverified; a warning is logged when the Boot Parameters
+		request the check.
+
+		If you do not know what to do here, say Y.
+
+# Hidden inverse of BOOT_PARAMS_MD5_VERIFY, which is what the C code tests.
+# Kconfig writes no CONFIG_ line for a disabled bool, so a config.h that
+# predates BOOT_PARAMS_MD5_VERIFY cannot be told apart from one with it
+# disabled. Keying the code off this inverse keeps the MD5 check built in
+# for such a stale config.h instead of silently dropping it.
+config BOOT_PARAMS_MD5_VERIFY_DISABLED
+	def_bool !BOOT_PARAMS_MD5_VERIFY
+	depends on BOOT_PARAMS
+
 endmenu
