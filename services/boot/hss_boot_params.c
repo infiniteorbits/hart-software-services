@@ -35,6 +35,11 @@
  *   4. Record last_successful / last_failed (with last_failed_error, the
  *      boot_error_status_t that describes why that entry was rejected)
  *      and stop at the first entry that yields a bootable image.
+ *   5. When the Flash boot log is enabled (menuconfig
+ *      CONFIG_BOOT_PARAMS_LOG), each boot event printed by
+ *      mBOOTPARAMS_LOG() within CONFIG_BOOT_PARAMS_LOG_LEVEL is also
+ *      appended to the Bootloader log (BOOT_log_write), which the
+ *      application reads back with BOOT_log_read.
  *
  * The tracking fields hold boot_source_t values (10 / 20 / 255); 0 means
  * "none recorded yet". last_failed_error belongs to last_failed and is
@@ -50,6 +55,12 @@
 
 #include "config.h"
 #include "hss_types.h"
+#if IS_ENABLED(CONFIG_BOOT_PARAMS_LOG)
+/* sbi_snprintf; before hss_debug.h, which declares the console functions
+ * itself only when this header has not been seen                          */
+#  include <sbi/sbi_console.h>
+#  include "hss_version.h"
+#endif
 #include "hss_debug.h"
 
 #include "hss_boot_params.h"
@@ -80,6 +91,91 @@ _Static_assert(sizeof(boot_params_t) == 33u,
     "boot_params_t layout drifted from the application BSP contract");
 
 /* -------------------------------------------------------------------------
+ * Flash boot log (menuconfig CONFIG_BOOT_PARAMS_LOG)
+ *
+ * mBOOTPARAMS_LOG(level, fmt, ...) prints a boot event on the console
+ * exactly like mHSS_DEBUG_PRINTF() and, when its severity is within
+ * CONFIG_BOOT_PARAMS_LOG_LEVEL, also appends it to the Bootloader log
+ * (BOOT_log_write; on NAND the ring at BOOT_LOG_NAND_BASE_ADDR /
+ * BOOT_LOG_NAND_SIZE, BSP_Config.h) as "<E|W|I> <message>". Only
+ * LOG_ERROR, LOG_WARN and LOG_NORMAL may be passed. Messages kept off the
+ * Flash log (progress, duplicates) use mHSS_DEBUG_PRINTF() directly.
+ *
+ * Every call runs after DDR training (BOOT_params_read already needs the
+ * NAND driver's DDR buffers), so the Flash is usable at each log point.
+ * ------------------------------------------------------------------------- */
+
+#if IS_ENABLED(CONFIG_BOOT_PARAMS_LOG)
+
+/* severities, most severe first; CONFIG_BOOT_PARAMS_LOG_LEVEL is the
+ * least severe one written (1 Error, 2 Warning, 3 Info)                    */
+#  define BOOTLOG_SEVERITY_LOG_ERROR    1u
+#  define BOOTLOG_SEVERITY_LOG_WARN     2u
+#  define BOOTLOG_SEVERITY_LOG_NORMAL   3u
+
+/* "<tag> " then the message; BOOT_log_write stores at most 256 bytes      */
+#  define BOOTLOG_TAG_LEN               2u
+#  define BOOTLOG_LINE_LEN              (BOOTLOG_TAG_LEN + 256u + 1u)
+
+static char bootlog_line_[BOOTLOG_LINE_LEN];
+static bool bootlog_disabled_ = false;
+
+static bool bootlog_wanted_(unsigned int severity)
+{
+    return !bootlog_disabled_
+        && (severity <= (unsigned int)CONFIG_BOOT_PARAMS_LOG_LEVEL);
+}
+
+/*!
+ * \brief Tags the message formatted into bootlog_line_ and appends it to
+ * the Flash boot log.
+ *
+ * A failed write disables the Flash log until the next reset, so the boot
+ * never waits on a failing Flash more than once. It never fails the boot.
+ */
+static void bootlog_commit_(unsigned int severity)
+{
+    static const char tags[] = { '?', 'E', 'W', 'I' };
+    unsigned int len = BOOTLOG_TAG_LEN;
+
+    bootlog_line_[0] = tags[severity];
+    bootlog_line_[1] = ' ';
+
+    /* drop the console line feed: BOOT_log_write terminates each record */
+    while (bootlog_line_[len] != '\0') {
+        len++;
+    }
+    while ((len > BOOTLOG_TAG_LEN) && (bootlog_line_[len - 1u] == '\n')) {
+        len--;
+        bootlog_line_[len] = '\0';
+    }
+
+    if (BOOT_log_write(bootlog_line_) != BOOT_OK) {
+        bootlog_disabled_ = true;
+        mHSS_DEBUG_PRINTF(LOG_ERROR,
+            "bootparams: boot log write failed, "
+            "Flash boot log disabled until reset\n");
+    }
+}
+
+#  define mBOOTPARAMS_LOG(logLevel, ...) {                                 \
+        mHSS_DEBUG_PRINTF(logLevel, __VA_ARGS__);                           \
+        if (bootlog_wanted_(BOOTLOG_SEVERITY_##logLevel)) {                 \
+            bootlog_line_[BOOTLOG_TAG_LEN] = '\0';                          \
+            (void)sbi_snprintf(&bootlog_line_[BOOTLOG_TAG_LEN],             \
+                BOOTLOG_LINE_LEN - BOOTLOG_TAG_LEN, __VA_ARGS__);           \
+            bootlog_commit_(BOOTLOG_SEVERITY_##logLevel);                   \
+        }                                                                   \
+    }
+
+#else
+
+#  define mBOOTPARAMS_LOG(logLevel, ...)                                   \
+        mHSS_DEBUG_PRINTF(logLevel, __VA_ARGS__)
+
+#endif
+
+/* -------------------------------------------------------------------------
  * Private functions
  * ------------------------------------------------------------------------- */
 
@@ -88,6 +184,10 @@ static const char *boot_source_name_(boot_source_t src)
     const char *pResult;
 
     switch (src) {
+    case BOOT_SRC_NONE:
+        pResult = "none";
+        break;
+
     case BOOT_SRC_PRIMARY:
         pResult = "Primary (MSS eMMC)";
         break;
@@ -196,12 +296,14 @@ static boot_error_status_t integrity_check_(boot_source_t src)
 
     if ((pBootImage->bootImageLength == 0u)
             || (pBootImage->bootImageLength > 0xFFFFFFFFu)) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR,
+        mBOOTPARAMS_LOG(LOG_ERROR,
             "bootparams: invalid boot image length %lu\n",
             pBootImage->bootImageLength);
         return BOOT_ERR_INVALID_PARAM;
     }
 
+    /* console only: progress, and the failure reason below reaches the
+     * Flash log through params_record_failure_()                          */
     mHSS_DEBUG_PRINTF(LOG_NORMAL,
         "bootparams: verifying image MD5 (%lu bytes) ...\n",
         pBootImage->bootImageLength);
@@ -215,7 +317,7 @@ static boot_error_status_t integrity_check_(boot_source_t src)
         return status;
     }
 
-    mHSS_DEBUG_PRINTF(LOG_NORMAL, "bootparams: image MD5 verified\n");
+    mBOOTPARAMS_LOG(LOG_NORMAL, "bootparams: image MD5 verified\n");
     return BOOT_OK;
 }
 #endif /* !CONFIG_BOOT_PARAMS_MD5_VERIFY_DISABLED */
@@ -233,14 +335,14 @@ static void params_record_failure_(boot_params_t *pParams, boot_source_t src,
     pParams->last_failed       = src;
     pParams->last_failed_error = error;
 
-    mHSS_DEBUG_PRINTF(LOG_ERROR, "bootparams: %s rejected: %s (%d)\n",
+    mBOOTPARAMS_LOG(LOG_ERROR, "bootparams: %s rejected: %s (%d)\n",
         boot_source_name_(src), boot_error_name_(error), error);
 }
 
 static void params_store_(boot_params_t *pParams)
 {
     if (BOOT_params_write(pParams) != BOOT_OK) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR,
+        mBOOTPARAMS_LOG(LOG_ERROR,
             "bootparams: Boot Parameters write failed\n");
     }
 }
@@ -256,11 +358,24 @@ bool HSS_BootParamsBootInit(void)
     bool          booted = false;
 
     if (BOOT_params_read(&params) != BOOT_OK) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR,
+        mBOOTPARAMS_LOG(LOG_ERROR,
             "bootparams: Boot Parameters read failed, "
             "falling back to the default boot flow\n");
         return HSS_BootInit();
     }
+
+#if IS_ENABLED(CONFIG_BOOT_PARAMS_LOG)
+    /* marks the start of each boot in the Flash log                       */
+    mBOOTPARAMS_LOG(LOG_NORMAL,
+        "bootparams: boot start (HSS %d.%d.%d): override %s, "
+        "sequence %s / %s / %s, integrity check %s\n",
+        HSS_VERSION_MAJOR, HSS_VERSION_MINOR, HSS_VERSION_PATCH,
+        boot_source_name_(params.boot_sequence[0]),
+        boot_source_name_(params.boot_sequence[1]),
+        boot_source_name_(params.boot_sequence[2]),
+        boot_source_name_(params.boot_sequence[3]),
+        params.integrity_check_en ? "on" : "off");
+#endif
 
     for (unsigned int i = 0u; i < (unsigned int)BOOT_SEQ_MAX_ENTRIES; i++) {
         boot_source_t const src = params.boot_sequence[i];
@@ -274,7 +389,7 @@ bool HSS_BootParamsBootInit(void)
         }
         prev = src;
 
-        mHSS_DEBUG_PRINTF(LOG_NORMAL, "bootparams: entry %u: %s\n",
+        mBOOTPARAMS_LOG(LOG_NORMAL, "bootparams: entry %u: %s\n",
             i, boot_source_name_(src));
 
         if (i == 0u) {
@@ -283,7 +398,7 @@ bool HSS_BootParamsBootInit(void)
              * outcome - rejected, booted, or hung before the result could
              * be recorded. Persisted by the store write that follows.   */
             params.boot_sequence[0] = BOOT_SRC_NONE;
-            mHSS_DEBUG_PRINTF(LOG_NORMAL,
+            mBOOTPARAMS_LOG(LOG_NORMAL,
                 "bootparams: one-shot override, cleared for later boots\n");
         }
 
@@ -315,7 +430,7 @@ bool HSS_BootParamsBootInit(void)
                 booted = false;
             }
 #else
-            mHSS_DEBUG_PRINTF(LOG_WARN,
+            mBOOTPARAMS_LOG(LOG_WARN,
                 "bootparams: integrity check requested, but MD5 "
                 "verification is disabled in this build "
                 "(CONFIG_BOOT_PARAMS_MD5_VERIFY): %s boots unverified\n",
@@ -326,6 +441,8 @@ bool HSS_BootParamsBootInit(void)
         if (booted) {
             params.last_successful = src;
             params_store_(&params);
+            mBOOTPARAMS_LOG(LOG_NORMAL, "bootparams: booting %s\n",
+                boot_source_name_(src));
             break;
         }
 
@@ -334,7 +451,7 @@ bool HSS_BootParamsBootInit(void)
     }
 
     if (!booted) {
-        mHSS_DEBUG_PRINTF(LOG_ERROR,
+        mBOOTPARAMS_LOG(LOG_ERROR,
             "bootparams: no boot sequence entry provided a bootable image\n");
     }
 

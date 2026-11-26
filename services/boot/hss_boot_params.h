@@ -35,6 +35,12 @@
  * MD5 contract (BOOT_verify_md5) before the image is allowed to boot,
  * unless MD5 verification is disabled in menuconfig
  * (CONFIG_BOOT_PARAMS_MD5_VERIFY).
+ *
+ * With CONFIG_BOOT_PARAMS_LOG the boot events are also appended to the
+ * Bootloader log in Flash (BOOT_log_write) down to the menuconfig level
+ * CONFIG_BOOT_PARAMS_LOG_LEVEL; the NAND log location and size come from
+ * menuconfig through BOOT_LOG_NAND_BASE_ADDR / BOOT_LOG_NAND_SIZE
+ * (boards/<board>/bsp/BSP_Config.h).
  */
 
 #ifdef __cplusplus

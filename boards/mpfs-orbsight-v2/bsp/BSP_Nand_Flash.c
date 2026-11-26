@@ -51,7 +51,11 @@
  *                          /// with an R/B# of their own (per-CE R/B# PHY
  *                          /// change).
  *                          /// BSP_NAND_FORCE_SYNC (BSP_Config.h): no SDR
- *                          /// fallback, the NV-DDR path is always used
+ *                          /// fallback, the NV-DDR path is always used.
+ *                          /// BSP_nand_profile(): step-by-step timing of
+ *                          /// the last page read / program on every path
+ *                          /// (replaces the g_sdr_rd_t, g_sdr_wr_t, g_wr_t
+ *                          /// and g_ecc_rd_t debugger arrays)
  * @version     1.3.0
  *
  * @copyright   RFIM Space 2025-2026
@@ -249,11 +253,7 @@ static uint32_t g_dbg_ctrl = 0u;                           /* software mirror of
 static uint32_t g_ce = 0u;                                 /* selected target, reg 0x0C[13:12]: 0 = CE1 .. 3 = CE4 (nand_select) */
 static uint32_t g_targets = 1u;                            /* bit t: target t passed the init check (CE1 always) */
 
-/* timing instrumentation [cycles], kept for the debugger */
-static uint64_t g_sdr_rd_t[5];                             /* last SDR page read: L2 flush, command, PHY read, DMA wait, flush+copy */
-static uint64_t g_sdr_wr_t[5];                             /* last SDR page program: fill, flush, MM2S start/wait, cmd+bus+tPROG, status */
-static uint64_t g_wr_t[6];                                 /* last NV-DDR page program: fill, L2 write-back + MM2S, encoder settle, command out, tPROG wait, wait timed out (0/1) */
-static uint64_t g_ecc_rd_t[4];                             /* last NV-DDR page read: L2 flush, command out, tR + transfer + DMA, copy */
+/* timing instrumentation: g_prof_rd / g_prof_wr (page-op profile, see prof_begin), also readable in the debugger */
 
 /* The SDR ops clear g_initialized: they leave the async clock mode, which the synchronous path cannot use. In SDR
  * fallback mode every access runs in that mode, so the driver stays initialized (re-running BSP_nand_init() here
@@ -368,6 +368,38 @@ static inline void     reg_wr32(uint64_t a, uint32_t v) { *((volatile uint32_t *
 static inline uint32_t reg_rd32(uint64_t a)             { return *((volatile uint32_t *)a); }
 
 static inline uint64_t cyc(void) { uint64_t c; __asm volatile("rdcycle %0" : "=r"(c)); return c; }
+
+/* ---- Page-op profile (BSP_nand_profile) ----
+ * nand_read_page() / nand_program_page() open a profile; every prof_mark() inside the page op closes a step: the
+ * cycles since the previous mark go to the step named by the mark. The steps therefore follow the path actually taken
+ * and add up to the whole page op. Outside a page op g_prof is NULL and marks only move the timestamp. */
+static bsp_nand_profile_t  g_prof_rd = { .path = "none" };   /* last page read    */
+static bsp_nand_profile_t  g_prof_wr = { .path = "none" };   /* last page program */
+static bsp_nand_profile_t *g_prof    = NULL;                 /* profile being recorded */
+static uint64_t            g_prof_t  = 0u;                   /* end of the previous step */
+
+static void prof_begin(bsp_nand_profile_t *p) {
+    p->steps = 0u;
+    p->path  = "none";
+    g_prof   = p;
+    g_prof_t = cyc();
+}
+static void prof_mark(const char *step) {
+    const uint64_t t = cyc();
+    if ((g_prof != NULL) && (g_prof->steps < BSP_NAND_PROFILE_STEPS)) {
+        g_prof->name[g_prof->steps]   = step;
+        g_prof->cycles[g_prof->steps] = t - g_prof_t;
+        g_prof->steps++;
+    }
+    g_prof_t = t;
+}
+static void prof_path(const char *path) { if (g_prof != NULL) g_prof->path = path; }
+static void prof_end(void)              { g_prof = NULL; }
+
+void BSP_nand_profile(bsp_nand_profile_t *read, bsp_nand_profile_t *program) {
+    if (read != NULL)    *read    = g_prof_rd;
+    if (program != NULL) *program = g_prof_wr;
+}
 
 /* The DMA buffers live in CACHED DDR (0x8100_0000) and the fabric ProtoConv
  * masters are NOT cache-coherent. SiFive L2 controller FLUSH64 (0x0201_0200):
@@ -724,9 +756,8 @@ static int sdr_program_page_dma(uint32_t block, uint32_t page, uint64_t src_ddr)
     nand_address_t a;
     if (!g_phy_unpack32) return -9;
     if ((src_ddr & 63u) != 0u || calc_addr(block, page, 0, &a) != 0) return -2;
-    uint64_t t0 = cyc();
     dcache_flush_range(src_ddr, NAND_PAGE_DATA_SIZE);                 /* CPU-written source data to DDR */
-    uint64_t t1 = cyc();
+    prof_mark("L2 flush of the staging buffer");
     sdr_cmd_begin();
     g_dbg_ctrl |= DBG_UNPACK32; reg_wr32(NAND_DBG_REG, g_dbg_ctrl);      /* before the MM2S: the encoder consumes at once */
     __asm volatile("fence" ::: "memory");
@@ -736,7 +767,7 @@ static int sdr_program_page_dma(uint32_t block, uint32_t page, uint64_t src_ddr)
         while (reg_rd32(NAND_CMD_NOF_BYTES) != nb) {}
     }
     pc_mm2s_start(MM2STREAM_DATA_BASE, src_ddr, NAND_PAGE_DATA_SIZE);     /* 2048 beats, two words each */
-    uint64_t t2 = cyc();
+    prof_mark("PHY setup + DMA start");
     cmd_reset();
     cmd_push(OP_BYTE_PACK(ONFI_OP_WAIT_TRHW,        0x00));
     cmd_push(OP_BYTE_PACK(ONFI_OP_ASYNC_CMD,        0x80));
@@ -752,14 +783,14 @@ static int sdr_program_page_dma(uint32_t block, uint32_t page, uint64_t src_ddr)
     int rc = 0;
     if (cmd_flush() != 0) rc = -4;
     else if (wait_cmd_bounded() != 0) { phy_abort(); rc = -6; }
-    uint64_t t3 = cyc();
+    prof_mark("command + data out + tPROG");
     if (rc == 0 && pc_wait_done_mm2s(MM2STREAM_DATA_BASE, 1000000u) != 0) rc = -3;
     g_dbg_ctrl = g_ce << 12; reg_wr32(NAND_DBG_REG, g_dbg_ctrl);
     __asm volatile("fence" ::: "memory");
+    prof_mark("DMA completion check");
     uint8_t st = 0xFFu;
     if (rc == 0 && sdr_status(&st) != 0) rc = -5;
-    uint64_t t4 = cyc();
-    g_sdr_wr_t[0] = 0; g_sdr_wr_t[1] = t1 - t0; g_sdr_wr_t[2] = t2 - t1; g_sdr_wr_t[3] = t3 - t2; g_sdr_wr_t[4] = t4 - t3;
+    prof_mark("status read (70h)");
     if (rc != 0) return rc;
     return (st & 0x01u) ? -8 : 0;
 }
@@ -775,7 +806,6 @@ static uint32_t g_bch_uncorrectable = 0u, g_bch_sectors_fixed = 0u;
 static int sdr_program_v9(uint32_t block, uint32_t page, uint64_t src) {
     nand_address_t a;
     if (calc_addr(block, page, 0, &a) != 0) return -2;
-    uint64_t t0 = cyc();
     sdr_cmd_begin();
     g_dbg_ctrl |= DBG_UNPACK32 | DBG_ECC_BCH; reg_wr32(NAND_DBG_REG, g_dbg_ctrl);    /* before the MM2S starts */
     __asm volatile("fence" ::: "memory");
@@ -785,7 +815,7 @@ static int sdr_program_v9(uint32_t block, uint32_t page, uint64_t src) {
         while (reg_rd32(NAND_CMD_NOF_BYTES) != nb) {}
     }
     pc_mm2s_start(MM2STREAM_DATA_BASE, src, NAND_PAGE_DATA_SIZE);
-    uint64_t t1 = cyc();
+    prof_mark("PHY setup + DMA start");
     cmd_reset();
     cmd_push(OP_BYTE_PACK(ONFI_OP_WAIT_TRHW,        0x00));
     cmd_push(OP_BYTE_PACK(ONFI_OP_ASYNC_CMD,        0x80));
@@ -801,11 +831,11 @@ static int sdr_program_v9(uint32_t block, uint32_t page, uint64_t src) {
     int rc = 0;
     if (cmd_flush() != 0) rc = -4;
     else if (wait_cmd_bounded() != 0) { phy_abort(); rc = -6; }
-    uint64_t t2 = cyc();
+    prof_mark("command + data out + tPROG");
     if (rc == 0 && pc_wait_done_mm2s(MM2STREAM_DATA_BASE, 1000000u) != 0) rc = -3;
     g_dbg_ctrl = g_ce << 12; reg_wr32(NAND_DBG_REG, g_dbg_ctrl);
     __asm volatile("fence" ::: "memory");
-    g_sdr_wr_t[0] = 0; g_sdr_wr_t[1] = 0; g_sdr_wr_t[2] = t1 - t0; g_sdr_wr_t[3] = t2 - t1;
+    prof_mark("DMA completion check");
     return rc;
 }
 
@@ -814,10 +844,13 @@ static int sdr_program_page_bch(uint32_t block, uint32_t page, uint64_t src_ddr)
     if (!g_phy_bch) return -9;
     if ((src_ddr & 63u) != 0u) return -2;
     dcache_flush_range(src_ddr, NAND_PAGE_DATA_SIZE);
+    prof_mark("L2 flush of the staging buffer");
     int rc = sdr_program_v9(block, page, src_ddr);
     if (rc != 0) return rc;
     uint8_t st = 0xFFu;
-    if (sdr_status(&st) != 0) return -5;
+    rc = sdr_status(&st);
+    prof_mark("status read (70h)");
+    if (rc != 0) return -5;
     return (st & 0x01u) ? -8 : 0;
 }
 
@@ -828,32 +861,28 @@ static int sdr_program_page_ecc(uint32_t block, uint32_t page, const uint16_t *s
     nand_address_t a;
     if (calc_addr(block, page, 0, &a) != 0) return -2;
     if (g_phy_bch) {                                                  /* v9: BCH-8 page from the DDR staging buffer */
+        prof_path("SDR, BCH-8 (v9+ PHY)");
         volatile uint64_t *d64 = (volatile uint64_t *)DMA_WRITE_BUF_ADDR;
         const uint64_t *s64 = (const uint64_t *)src;
-        uint64_t c0 = cyc();
         if (((uintptr_t)src & 7u) == 0u) { for (uint32_t i = 0; i < NAND_PAGE_DATA_SIZE / 8u; i++) d64[i] = s64[i]; }
         else { volatile uint16_t *d16 = (volatile uint16_t *)DMA_WRITE_BUF_ADDR; for (uint32_t i = 0; i < PAGE_DATA_WORDS; i++) d16[i] = src[i]; }
-        uint64_t c1 = cyc();
-        int r = sdr_program_page_bch(block, page, (uint64_t)DMA_WRITE_BUF_ADDR);
-        g_sdr_wr_t[0] = c1 - c0;
-        return r;
+        prof_mark("copy into the DMA staging buffer");
+        return sdr_program_page_bch(block, page, (uint64_t)DMA_WRITE_BUF_ADDR);
     }
     if (g_phy_unpack32) {                                             /* v8: contiguous 64-bit copy, encoder unpacks */
-        uint64_t c0 = cyc();
+        prof_path("SDR, Hamming, zero-copy (v8 PHY)");
         volatile uint64_t *d64 = (volatile uint64_t *)DMA_WRITE_BUF_ADDR;
         if (((uintptr_t)src & 7u) == 0u) { const uint64_t *s64 = (const uint64_t *)src; for (uint32_t i = 0; i < NAND_PAGE_DATA_SIZE / 8u; i++) d64[i] = s64[i]; }
         else { volatile uint16_t *d16 = (volatile uint16_t *)DMA_WRITE_BUF_ADDR; for (uint32_t i = 0; i < PAGE_DATA_WORDS; i++) d16[i] = src[i]; }
-        uint64_t c1 = cyc();
-        int r = sdr_program_page_dma(block, page, (uint64_t)DMA_WRITE_BUF_ADDR);
-        g_sdr_wr_t[0] = c1 - c0;
-        return r;
+        prof_mark("copy into the DMA staging buffer");
+        return sdr_program_page_dma(block, page, (uint64_t)DMA_WRITE_BUF_ADDR);
     }
-    uint64_t t0 = cyc();
+    prof_path("SDR, Hamming");
     uint32_t *buf = (uint32_t *)DMA_WRITE_BUF_ADDR;              /* cached alias, written back before the DMA */
     for (uint32_t i = 0; i < PAGE_DATA_WORDS; i++) buf[i] = (uint32_t)src[i];
-    uint64_t t1 = cyc();
+    prof_mark("widen to one word per 32-bit beat");
     dcache_flush_range(DMA_WRITE_BUF_ADDR, PAGE_DATA_WORDS * 4u);
-    uint64_t t2 = cyc();
+    prof_mark("L2 flush of the staging buffer");
     sdr_cmd_begin();
     {
         uint32_t nb = PAGE_NAND_WORDS | g_sdr_wr_timing;        /* words leaving the encoder, SDR write timing */
@@ -862,7 +891,7 @@ static int sdr_program_page_ecc(uint32_t block, uint32_t page, const uint16_t *s
     }
     /* the v5+ write engine waits for data: MM2S started without waiting, the encoder fills the FIFO while the command runs */
     pc_mm2s_start(MM2STREAM_DATA_BASE, (uint64_t)DMA_WRITE_BUF_ADDR, PAGE_DATA_WORDS * 4u);
-    uint64_t t3 = cyc();
+    prof_mark("PHY setup + DMA start");
     cmd_reset();
     cmd_push(OP_BYTE_PACK(ONFI_OP_WAIT_TRHW,        0x00));
     cmd_push(OP_BYTE_PACK(ONFI_OP_ASYNC_CMD,        0x80));
@@ -877,12 +906,12 @@ static int sdr_program_page_ecc(uint32_t block, uint32_t page, const uint16_t *s
     cmd_push(OP_BYTE_PACK(ONFI_OP_WAIT_RB_N,        0x00));
     if (cmd_flush() != 0) return -4;
     if (wait_cmd_bounded() != 0) { phy_abort(); return -6; }
-    uint64_t t4 = cyc();
+    prof_mark("command + data out + tPROG");
     if (pc_wait_done_mm2s(MM2STREAM_DATA_BASE, 1000000u) != 0) return -3;
+    prof_mark("DMA completion check");
     uint8_t st = 0xFFu;
     if (sdr_status(&st) != 0) return -5;
-    uint64_t t5 = cyc();
-    g_sdr_wr_t[0] = t1 - t0; g_sdr_wr_t[1] = t2 - t1; g_sdr_wr_t[2] = t3 - t2; g_sdr_wr_t[3] = t4 - t3; g_sdr_wr_t[4] = t5 - t4;
+    prof_mark("status read (70h)");
     return (st & 0x01u) ? -8 : 0;
 }
 
@@ -896,10 +925,9 @@ static int sdr_read_page_pack32(uint32_t block, uint32_t page, uint64_t dst) {  
     if (calc_addr(block, page, 0, &a) != 0) return -2;
     const uint32_t nbytes = PAGE_NAND_WORDS * 2u, nblk = PAGE_DATA_WORDS / ECC_BLK_WORDS;
     const uint64_t par = (uint64_t)DMA_SCRATCH_ADDR;
-    uint64_t t0 = cyc();
     dcache_flush_range(dst, NAND_PAGE_DATA_SIZE);                     /* no stale lines over the DMA data */
     dcache_flush_range(par, 64u);
-    uint64_t t1 = cyc();
+    prof_mark("L2 flush (invalidate) of the DMA buffer");
     sdr_cmd_begin();
     g_dbg_ctrl |= DBG_PACK32; reg_wr32(NAND_DBG_REG, g_dbg_ctrl);
     __asm volatile("fence" ::: "memory");
@@ -920,25 +948,23 @@ static int sdr_read_page_pack32(uint32_t block, uint32_t page, uint64_t dst) {  
     cmd_push(OP_BYTE_PACK(ONFI_OP_WAIT_RB_N,      0x00));
     cmd_push(OP_BYTE_PACK(ONFI_OP_SYNC_READ_DATA, 0x00));
     int rc = -4;
-    uint64_t t2 = 0, t3 = 0;
     if (cmd_flush() == 0) {
-        t2 = cyc(); rc = 0;
+        prof_mark("command + DMA arm");
+        rc = 0;
         for (uint32_t blk = 0; blk < nblk; blk++) {
             if (pc_wait_done_s2mm(STREAM2MM_BASE, 4000000u) != 0) { rc = -5; break; }
             pc_s2mm_arm(STREAM2MM_BASE, par, ECC_PAR_WORDS * 2u);             /* 10 parity words -> scratch */
             if (pc_wait_done_s2mm(STREAM2MM_BASE, 4000000u) != 0) { rc = -5; break; }
             if (blk + 1u < nblk) pc_s2mm_arm(STREAM2MM_BASE, dst + (uint64_t)(blk + 1u) * (ECC_BLK_WORDS * 2u), ECC_BLK_WORDS * 2u);
         }
-        t3 = cyc();
+        prof_mark("tR + page transfer + DMA (16 chunks)");
         if (rc == 0 && read_cmd_done_or_reset() != 0) rc = -6;
         if (rc != 0) phy_abort();
     }
     __asm volatile("fence" ::: "memory");
     g_dbg_ctrl = g_ce << 12; reg_wr32(NAND_DBG_REG, g_dbg_ctrl);
     __asm volatile("fence" ::: "memory");
-    uint64_t t4 = cyc();
-    g_sdr_rd_t[0] = t1 - t0; g_sdr_rd_t[1] = (t2 ? t2 - t1 : 0); g_sdr_rd_t[2] = (t3 ? t3 - t2 : 0);
-    g_sdr_rd_t[3] = (t3 ? t4 - t3 : 0); g_sdr_rd_t[4] = 0;
+    prof_mark("command completion check");
     return rc;
 }
 
@@ -947,10 +973,9 @@ static int sdr_read_v9(uint32_t block, uint32_t page, uint64_t dst, uint64_t tra
     nand_address_t a;
     if (!sdr_pack_ok()) return -11;
     if (calc_addr(block, page, 0, &a) != 0) return -2;
-    uint64_t t0 = cyc();
     dcache_flush_range(dst, NAND_PAGE_DATA_SIZE);
     dcache_flush_range(trailer, BCH_TRAILER);
-    uint64_t t1 = cyc();
+    prof_mark("L2 flush (invalidate) of the DMA buffer");
     sdr_cmd_begin();
     g_dbg_ctrl |= DBG_PACK32 | DBG_ECC_BCH; reg_wr32(NAND_DBG_REG, g_dbg_ctrl);
     __asm volatile("fence" ::: "memory");
@@ -971,24 +996,23 @@ static int sdr_read_v9(uint32_t block, uint32_t page, uint64_t dst, uint64_t tra
     cmd_push(OP_BYTE_PACK(ONFI_OP_WAIT_RB_N,      0x00));
     cmd_push(OP_BYTE_PACK(ONFI_OP_SYNC_READ_DATA, 0x00));
     int rc = -4;
-    uint64_t t2 = 0, t3 = 0;
     if (cmd_flush() == 0) {
-        t2 = cyc(); rc = 0;
+        prof_mark("command + DMA arm");
+        rc = 0;
         if (pc_wait_done_s2mm(STREAM2MM_BASE, 4000000u) != 0) rc = -5;
         else {
+            prof_mark("tR + data transfer + DMA");
             pc_s2mm_arm(STREAM2MM_BASE, trailer, BCH_TRAILER);
             if (pc_wait_done_s2mm(STREAM2MM_BASE, 4000000u) != 0) rc = -5;
+            prof_mark("BCH trailer transfer + DMA");
         }
-        t3 = cyc();
         if (rc == 0 && read_cmd_done_or_reset() != 0) rc = -6;
         if (rc != 0) phy_abort();
     }
     __asm volatile("fence" ::: "memory");
     g_dbg_ctrl = g_ce << 12; reg_wr32(NAND_DBG_REG, g_dbg_ctrl);
     __asm volatile("fence" ::: "memory");
-    uint64_t t4 = cyc();
-    g_sdr_rd_t[0] = t1 - t0; g_sdr_rd_t[1] = (t2 ? t2 - t1 : 0); g_sdr_rd_t[2] = (t3 ? t3 - t2 : 0);
-    g_sdr_rd_t[3] = (t3 ? t4 - t3 : 0); g_sdr_rd_t[4] = 0;
+    prof_mark("command completion check");
     return rc;
 }
 
@@ -1004,7 +1028,7 @@ static int sdr_read_page_bch(uint32_t block, uint32_t page, uint64_t dst_ddr) {
     uint64_t any = tr64[0] & ~0xFFFFull;                                  /* bytes 0..1 = marker */
     for (uint32_t i = 1; i < 26u; i++) any |= tr64[i];                    /* bytes 8..207 */
     any |= tr64[26] & 0xFFFFull;                                          /* bytes 208..209; 210..211 = pad */
-    if (any == 0u) return 0;
+    if (any == 0u) { prof_mark("BCH-8 check / correction"); return 0; }
     int total = 0, bad = 0;
     uint8_t *data = (uint8_t *)(uintptr_t)dst_ddr;
     for (uint32_t sct = 0; sct < 16u; sct++) {
@@ -1015,6 +1039,7 @@ static int sdr_read_page_bch(uint32_t block, uint32_t page, uint64_t dst_ddr) {
         if (n < 0) { bad++; g_bch_uncorrectable++; } else { total += n; g_bch_corrected += (uint32_t)n; g_bch_sectors_fixed++; }
     }
     dcache_flush_range(dst_ddr, NAND_PAGE_DATA_SIZE);                      /* corrections out to DDR for later DMA */
+    prof_mark("BCH-8 check / correction");
     return bad ? -10 : total;
 }
 
@@ -1024,22 +1049,22 @@ static int sdr_read_page_bch(uint32_t block, uint32_t page, uint64_t dst_ddr) {
 static int sdr_read_page_ecc(uint32_t block, uint32_t page, uint16_t *dst) {
     nand_address_t a;
     if (g_phy_bch || g_phy_pack32) {                                  /* contiguous in the staging buffer: 64-bit copy */
+        prof_path(g_phy_bch ? "SDR, BCH-8 (v9+ PHY)" : "SDR, Hamming, packed (v7 PHY)");
         int r = g_phy_bch ? sdr_read_page_bch(block, page, (uint64_t)DMA_READ_BUF_ADDR)
                           : sdr_read_page_pack32(block, page, (uint64_t)DMA_READ_BUF_ADDR);
         if (r > 0) r = 0;                                             /* corrected bits: data is good */
-        uint64_t c0 = cyc();
         const volatile uint64_t *s64 = (const volatile uint64_t *)DMA_READ_BUF_ADDR;
         if (((uintptr_t)dst & 7u) == 0u) { uint64_t *d64 = (uint64_t *)dst; for (uint32_t i = 0; i < NAND_PAGE_DATA_SIZE / 8u; i++) d64[i] = s64[i]; }
         else { const volatile uint16_t *s16 = (const volatile uint16_t *)DMA_READ_BUF_ADDR; for (uint32_t i = 0; i < PAGE_DATA_WORDS; i++) dst[i] = s16[i]; }
-        g_sdr_rd_t[4] = cyc() - c0;
+        prof_mark("copy out of the DMA buffer");
         return r;
     }
+    prof_path("SDR, Hamming");
     if (!sdr_pack_ok()) return -11;
     if (calc_addr(block, page, 0, &a) != 0) return -2;
     const uint32_t nbytes = PAGE_NAND_WORDS * 2u, beats = PAGE_NAND_WORDS;
-    uint64_t t0 = cyc();
     dcache_flush_range(DMA_READ_BUF_ADDR, beats * 4u);             /* no stale lines may be written back later */
-    uint64_t t1 = cyc();
+    prof_mark("L2 flush (invalidate) of the DMA buffer");
     sdr_cmd_begin();
     {
         uint32_t nb = nbytes | g_sdr_rd_timing | SDR_PACK;
@@ -1058,13 +1083,15 @@ static int sdr_read_page_ecc(uint32_t block, uint32_t page, uint16_t *dst) {
     cmd_push(OP_BYTE_PACK(ONFI_OP_WAIT_RB_N,      0x00));
     cmd_push(OP_BYTE_PACK(ONFI_OP_SYNC_READ_DATA, 0x00));
     int rc = -4;
-    uint64_t t2 = 0, t3 = 0;
     if (cmd_flush() == 0) {
-        t2 = cyc();
+        prof_mark("command + DMA arm");
         if (read_cmd_done_or_reset() != 0) rc = -6;
-        else { t3 = cyc(); rc = (pc_wait_done_s2mm(STREAM2MM_BASE, 4000000u) == 0) ? 0 : -5; }
+        else {
+            prof_mark("tR + page transfer (PHY)");
+            rc = (pc_wait_done_s2mm(STREAM2MM_BASE, 4000000u) == 0) ? 0 : -5;
+            prof_mark("DMA drain to DDR");
+        }
     }
-    uint64_t t4 = cyc();
     /* The Stream2MM writes the cached alias through the L2, which is the coherence point for the harts; the
      * lines were invalidated before the DMA, so the CPU reads below fetch the DMA data (no second flush).
      * 64-bit loads halve the number of memory accesses; each beat carries one 16-bit word. */
@@ -1081,9 +1108,7 @@ static int sdr_read_page_ecc(uint32_t block, uint32_t page, uint16_t *dst) {
     }
     g_dbg_ctrl = g_ce << 12; reg_wr32(NAND_DBG_REG, g_dbg_ctrl);
     __asm volatile("fence" ::: "memory");
-    uint64_t t5 = cyc();
-    g_sdr_rd_t[0] = t1 - t0; g_sdr_rd_t[1] = (t2 ? t2 - t1 : 0); g_sdr_rd_t[2] = (t3 ? t3 - t2 : 0);
-    g_sdr_rd_t[3] = (t3 ? t4 - t3 : 0); g_sdr_rd_t[4] = t5 - t4;
+    prof_mark("unpack beats to 16-bit words");
     return rc;
 }
 
@@ -1184,17 +1209,19 @@ static int ecc_write_page(uint32_t block, uint32_t page, const uint16_t *src)
     if (ensure_initialized() != BSP_NAND_OK) return -1;
     if (g_sdr_fallback) return sdr_program_page_ecc(block, page, src);
     if (calc_addr(block, page, 0, &a) != 0) return -2;
+    prof_path("NV-DDR, Hamming");
 
     /* Staged in the cached buffer and written back to DDR before the DMA: through the non-cached alias every 32-bit
      * store cost ~0.4 us (~1.6 ms per page on the NV-DDR board). Same pattern as the SDR page program. */
     uint32_t *buf = (uint32_t *)DMA_WRITE_BUF_ADDR;
-    uint64_t t0 = cyc();
     for (uint32_t i = 0; i < PAGE_DATA_WORDS; i++) buf[i] = (uint32_t)src[i];
-    uint64_t t1 = cyc();
+    prof_mark("widen to one word per 32-bit beat");
 
     /* feed the encoder: 4096 x 16-bit words, one per 32-bit beat */
     dcache_flush_range(DMA_WRITE_BUF_ADDR, PAGE_DATA_WORDS * 4u);
+    prof_mark("L2 flush of the staging buffer");
     if (pc_mm2s(MM2STREAM_DATA_BASE, (uint64_t)DMA_WRITE_BUF_ADDR, PAGE_DATA_WORDS * 4u) != 0) return -3;
+    prof_mark("MM2S DMA into the encoder (16 KB)");
     uint64_t t2 = cyc();
     /* The synchronous write burst pops nof_bytes words on consecutive clocks without waiting for data
      * (nand_ctrl_phys_layer sync_write_s0_st), so the page must be in the PHY data FIFO before the command. The MM2S
@@ -1203,7 +1230,7 @@ static int ecc_write_page(uint32_t block, uint32_t page, const uint16_t *src)
      * ~1150 clocks, 12 us at 100 MHz. ECC_WR_SETTLE_CYCLES covers that with a wide margin; the former 1M-iteration
      * delay loop took ~93 ms per page. */
     while ((cyc() - t2) < ECC_WR_SETTLE_CYCLES) { }
-    uint64_t t3 = cyc();
+    prof_mark("encoder settle (fixed 100 us wait)");
 
     /* data + parity + 1: the encoder delivers 4177 words per page; popping only 4176 leaves one word in the data
      * FIFO and the next page then starts with a word of the previous burst (seen on the NV-DDR board). Fresh pages
@@ -1227,10 +1254,9 @@ static int ecc_write_page(uint32_t block, uint32_t page, const uint16_t *src)
     cmd_push(OP_BYTE_PACK(ONFI_OP_SYNC_CMD,         0x10));
     cmd_push(OP_BYTE_PACK(ONFI_OP_WAIT_RB_N,        0x00));
     if (cmd_flush() != 0) return -4;
-    uint64_t t4 = cyc();
+    prof_mark("command stream out (MM2S, 11 ops)");
     int w = wait_cmd_bounded();
-    uint64_t t5 = cyc();
-    g_wr_t[0] = t1 - t0; g_wr_t[1] = t2 - t1; g_wr_t[2] = t3 - t2; g_wr_t[3] = t4 - t3; g_wr_t[4] = t5 - t4; g_wr_t[5] = (uint64_t)(w == 0 ? 0 : 1);
+    prof_mark("data out + tPROG (until R/B# ready)");
     if (w != 0) { phy_abort(); return -6; }                 /* command (tPROG) never completed */
     return 0;
 }
@@ -1242,13 +1268,13 @@ static int ecc_read_page(uint32_t block, uint32_t page, uint16_t *dst)
     if (ensure_initialized() != BSP_NAND_OK) return -1;
     if (g_sdr_fallback) return sdr_read_page_ecc(block, page, dst);
     if (calc_addr(block, page, 0, &a) != 0) return -2;
+    prof_path("NV-DDR, Hamming");
 
     /* Cached staging buffer, invalidated before the DMA: the Stream2MM writes through the L2 (the harts' coherence
      * point), so the CPU then reads the DMA data without a second flush - as in the SDR page read. Reading the
      * non-cached alias cost ~0.4 us per 32-bit word (2.4 MB/s on the NV-DDR board). */
-    uint64_t t0 = cyc();
     dcache_flush_range(DMA_READ_BUF_ADDR, PAGE_DATA_WORDS * 4u);
-    uint64_t t1 = cyc();
+    prof_mark("L2 flush (invalidate) of the DMA buffer");
 
     uint32_t words = PAGE_NAND_WORDS;                       /* data + parity */
     reg_wr32(NAND_CMD_NOF_BYTES, words);
@@ -1257,6 +1283,7 @@ static int ecc_read_page(uint32_t block, uint32_t page, uint16_t *dst)
     if (sync_rx_verified() != 0) return -7;                /* flash gives no synchronous data: do not arm */
     /* decoder outputs 4096 x 16-bit words, each arrives as one 32-bit beat; armed before the command (see sync_rx_verified) */
     pc_s2mm_arm(STREAM2MM_BASE, (uint64_t)DMA_READ_BUF_ADDR, PAGE_DATA_WORDS * 4u);
+    prof_mark("PHY setup + DMA arm");
     cmd_reset();
     cmd_push(OP_BYTE_PACK(ONFI_OP_WAIT_TRHW,      0x00));
     cmd_push(OP_BYTE_PACK(ONFI_OP_SYNC_CMD,       0x00));
@@ -1269,12 +1296,13 @@ static int ecc_read_page(uint32_t block, uint32_t page, uint16_t *dst)
     cmd_push(OP_BYTE_PACK(ONFI_OP_WAIT_RB_N,      0x00));
     cmd_push(OP_BYTE_PACK(ONFI_OP_SYNC_READ_DATA, 0x00));
     if (cmd_flush() != 0) return -4;
-    uint64_t t2 = cyc();
+    prof_mark("command stream out (MM2S, 10 ops)");
     (void)wait_cmd_bounded();
+    prof_mark("tR + page transfer (until command done)");
 
     int rc = pc_wait_done_s2mm(STREAM2MM_BASE, 20000000u);
     if (rc != 0) phy_abort();
-    uint64_t t3 = cyc();
+    prof_mark("S2MM DMA drain to DDR");
     __asm volatile("fence" ::: "memory");
     if (((uintptr_t)dst & 3u) == 0u) {                     /* 64-bit loads: two beats, one word in each low half */
         const uint64_t *b64 = (const uint64_t *)DMA_READ_BUF_ADDR;
@@ -1287,8 +1315,7 @@ static int ecc_read_page(uint32_t block, uint32_t page, uint16_t *dst)
         const uint32_t *b32 = (const uint32_t *)DMA_READ_BUF_ADDR;
         for (uint32_t i = 0; i < PAGE_DATA_WORDS; i++) dst[i] = (uint16_t)(b32[i] & 0xFFFFu);
     }
-    uint64_t t4 = cyc();
-    g_ecc_rd_t[0] = t1 - t0; g_ecc_rd_t[1] = t2 - t1; g_ecc_rd_t[2] = t3 - t2; g_ecc_rd_t[3] = t4 - t3;
+    prof_mark("unpack beats to 16-bit words");
     return (rc == 0) ? 0 : -5;
 }
 
@@ -1533,30 +1560,43 @@ static bsp_nand_status_t nand_target(uint32_t block, uint32_t *tblock) {
     return BSP_NAND_OK;
 }
 
+/* Both page ops record their steps in g_prof_wr / g_prof_rd (BSP_nand_profile). */
 static bsp_nand_status_t nand_program_page(uint32_t block, uint32_t page, const uint8_t *src) {
     static uint16_t words16[NAND_PAGE_DATA_SIZE / 2u] __attribute__((aligned(8)));
     nand_address_t a;
     uint32_t tb;
+    prof_begin(&g_prof_wr);
     bsp_nand_status_t rc = nand_target(block, &tb);
-    if (rc != BSP_NAND_OK) return rc;
-    if (calc_addr(tb, page, 0, &a) != 0) return BSP_NAND_ERR_OUT_OF_RANGE;
-    memcpy(words16, src, NAND_PAGE_DATA_SIZE);
-    return (ecc_write_page(tb, page, words16) == 0) ? BSP_NAND_OK : BSP_NAND_ERR_WRITE_FAILED;
+    prof_mark("select target");
+    if (rc == BSP_NAND_OK && calc_addr(tb, page, 0, &a) != 0) rc = BSP_NAND_ERR_OUT_OF_RANGE;
+    if (rc == BSP_NAND_OK) {
+        memcpy(words16, src, NAND_PAGE_DATA_SIZE);
+        prof_mark("copy in from the caller's buffer");
+        if (ecc_write_page(tb, page, words16) != 0) rc = BSP_NAND_ERR_WRITE_FAILED;
+    }
+    prof_end();
+    return rc;
 }
 
 static bsp_nand_status_t nand_read_page(uint32_t block, uint32_t page, uint8_t *dst) {
     static uint16_t words16[NAND_PAGE_DATA_SIZE / 2u] __attribute__((aligned(8)));
     nand_address_t a;
     uint32_t tb;
+    prof_begin(&g_prof_rd);
     bsp_nand_status_t rc = nand_target(block, &tb);
-    if (rc != BSP_NAND_OK) return rc;
-    if (calc_addr(tb, page, 0, &a) != 0) return BSP_NAND_ERR_OUT_OF_RANGE;
-    if (ecc_read_page(tb, page, words16) != 0) return BSP_NAND_ERR_READ_FAILED;
-    /* NV-DDR: the Hamming decoder does not pass an erased page through unchanged (see ecc_page_raw_erased()) */
-    if (!g_sdr_fallback && ecc_page_looks_erased(words16) && ecc_page_raw_erased(tb, page))
-        memset(words16, 0xFF, sizeof(words16));
-    memcpy(dst, words16, NAND_PAGE_DATA_SIZE);
-    return BSP_NAND_OK;
+    prof_mark("select target");
+    if (rc == BSP_NAND_OK && calc_addr(tb, page, 0, &a) != 0) rc = BSP_NAND_ERR_OUT_OF_RANGE;
+    if (rc == BSP_NAND_OK && ecc_read_page(tb, page, words16) != 0) rc = BSP_NAND_ERR_READ_FAILED;
+    if (rc == BSP_NAND_OK) {
+        /* NV-DDR: the Hamming decoder does not pass an erased page through unchanged (see ecc_page_raw_erased()) */
+        if (!g_sdr_fallback && ecc_page_looks_erased(words16) && ecc_page_raw_erased(tb, page))
+            memset(words16, 0xFF, sizeof(words16));
+        prof_mark("erased-page check");
+        memcpy(dst, words16, NAND_PAGE_DATA_SIZE);
+        prof_mark("copy out to the caller's buffer");
+    }
+    prof_end();
+    return rc;
 }
 
 static bsp_nand_status_t nand_erase_block(uint32_t block) {

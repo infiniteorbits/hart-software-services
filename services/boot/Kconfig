@@ -117,4 +117,111 @@ config BOOT_PARAMS_MD5_VERIFY_DISABLED
 	def_bool !BOOT_PARAMS_MD5_VERIFY
 	depends on BOOT_PARAMS
 
+menuconfig BOOT_PARAMS_LOG
+	bool "Write boot events to the Flash boot log"
+	default y
+	depends on BOOT_PARAMS
+	help
+		If enabled, the Boot Parameters driven boot appends its boot
+		events to the Bootloader log (BOOT_log_write, NAND Flash when
+		BOOT_PARAMS_NAND is defined in boards/<board>/bsp/BSP_Config.h)
+		in addition to printing them on the console: boot start, each
+		boot_sequence[] entry tried, MD5 results, rejections with their
+		reason, and the entry that booted. The application reads the
+		same log back with BOOT_log_read.
+
+		Each record is stored as "<E|W|I> <message>". Only events at or
+		above "Boot log level" are written. A failed log write is
+		reported on the console and disables the log for the rest of
+		that boot; it never blocks the boot.
+
+		If you do not know what to do here, say Y.
+
+choice
+	prompt "Boot log level"
+	default BOOT_PARAMS_LOG_LEVEL_INFO
+	depends on BOOT_PARAMS_LOG
+	help
+		Selects which boot events are written to the Flash boot log.
+		Console output is not affected.
+
+		A NAND log record takes one 8 KB page, so with the default 2 MB
+		log about 254 records are kept: at "Info" (about 5 records per
+		normal boot) that is roughly the last 50 boots.
+
+config BOOT_PARAMS_LOG_LEVEL_ERROR
+	bool "Error"
+	help
+		Rejected boot entries, store failures and boot failures only.
+		A boot without errors writes nothing.
+
+config BOOT_PARAMS_LOG_LEVEL_WARN
+	bool "Warning"
+	help
+		Errors, plus warnings such as an image booting unverified
+		because MD5 verification is disabled in this build.
+
+config BOOT_PARAMS_LOG_LEVEL_INFO
+	bool "Info"
+	help
+		Every boot event: errors, warnings, the boot start summary,
+		each entry tried, MD5 verified and the entry that booted.
+
+endchoice
+
+config BOOT_PARAMS_LOG_LEVEL
+	int
+	depends on BOOT_PARAMS_LOG
+	default 1 if BOOT_PARAMS_LOG_LEVEL_ERROR
+	default 2 if BOOT_PARAMS_LOG_LEVEL_WARN
+	default 3
+
+config BOOT_PARAMS_LOG_NAND_BASE_ADDR
+	hex "Boot log NAND base address"
+	default 0xFFD00000
+	range 0x0 0xFFE00000
+	depends on BOOT_PARAMS_LOG
+	help
+		Byte address in NAND Flash where the boot log ring starts.
+		Becomes BOOT_LOG_NAND_BASE_ADDR in boards/<board>/bsp/
+		BSP_Config.h.
+
+		Must be aligned to a NAND erase block (1 MB, 0x100000). The log
+		must lie inside the first 4 GB of the NAND and must not overlap
+		the Boot Parameters block (block 4095 at 0xFFF00000), which is
+		checked at build time. In the application, block 4092
+		(0xFFC00000) is used by the NAND unit tests.
+
+		The default, 0xFFD00000 (blocks 4093-4094), sits directly below
+		the Boot Parameters block.
+
+		The application reads this log: keep BOOT_LOG_NAND_BASE_ADDR in
+		the application's BSP_Config.h equal to this value.
+
+		Only used with the NAND backend (BOOT_PARAMS_NAND); the QSPI NOR
+		backend keeps its fixed log region.
+
+config BOOT_PARAMS_LOG_NAND_SIZE
+	hex "Boot log NAND size (bytes)"
+	default 0x200000
+	range 0x200000 0xFFF00000
+	depends on BOOT_PARAMS_LOG
+	help
+		Size in bytes of the NAND boot log ring. Becomes
+		BOOT_LOG_NAND_SIZE in boards/<board>/bsp/BSP_Config.h.
+
+		Must be a whole number of NAND erase blocks (1 MB, 0x100000),
+		and at least 2 blocks so a rotation never erases the only
+		block holding records. Each block keeps 127 records (one 8 KB
+		page each, plus a header page); a rotation erases the oldest
+		block. Each log write scans the ring, so a larger log costs a
+		little more time per record.
+
+		The default, 0x200000 (2 MB), is 2 blocks.
+
+		The application reads this log: keep BOOT_LOG_NAND_SIZE in the
+		application's BSP_Config.h equal to this value.
+
+		Only used with the NAND backend (BOOT_PARAMS_NAND).
+
 endmenu

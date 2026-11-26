@@ -21,7 +21,10 @@
  *              Koksal Kurt    | koksal.kurt@outlook.com
  * @date        February 2026 - October 2026
  *
- * @version     1.4.0       /// NAND backend on the BSP_Nand_Flash driver:
+ * @version     1.4.0       /// Build-time check that the configurable NAND
+ *                          /// log ring (BSP_Config.h) stays clear of the
+ *                          /// Boot Parameters block
+ *                          /// NAND backend on the BSP_Nand_Flash driver:
  *                          /// one 1 MB block at 0xFFF00000 (block 4095),
  *                          /// one record per 8 KB page, programmed with
  *                          /// BSP_nand_program (no erase on append)
@@ -84,12 +87,22 @@ extern "C" {
  *  addresses (this module addresses the store with 32-bit offsets). The
  *  region ends exactly at the
  *  4 GB boundary (last byte 0xFFFFFFFF); the NAND driver takes 64-bit
- *  addresses, so its range checks do not overflow there. The Bootloader
- *  log ring sits directly below (see BSP_Boot_Loader0.c). */
+ *  addresses, so its range checks do not overflow there. By default the
+ *  Bootloader log ring sits directly below (BOOT_LOG_NAND_BASE_ADDR,
+ *  BSP_Config.h; see BSP_Boot_Loader0.c). */
 #define BOOT_PARAMS_BASE_ADDR           (0xFFF00000u)
 
 /** @brief Size of the Boot Parameters region: one NAND erase block. */
 #define BOOT_PARAMS_REGION_SIZE         (BSP_NAND_BLOCK_SIZE)
+
+/* The Bootloader log ring is configurable (BOOT_LOG_NAND_BASE_ADDR /
+ * BOOT_LOG_NAND_SIZE, BSP_Config.h): it must not overlap this block.       */
+_Static_assert(
+        (((uint64_t)BOOT_LOG_NAND_BASE_ADDR + BOOT_LOG_NAND_SIZE) <=
+            (uint64_t)BOOT_PARAMS_BASE_ADDR) ||
+        ((uint64_t)BOOT_LOG_NAND_BASE_ADDR >=
+            ((uint64_t)BOOT_PARAMS_BASE_ADDR + BOOT_PARAMS_REGION_SIZE)),
+        "the NAND log ring (BSP_Config.h) overlaps the Boot Parameters block");
 
 /** @brief Record slot size. One slot per NAND page so every record program
  *  is a single page-aligned operation and no page is ever partially

@@ -14,7 +14,10 @@
  *              Koksal Kurt    | koksal.kurt@outlook.com
  * @date        February 2026 - October 2026
  *
- * @version     1.4.0       /// NAND log backend on the BSP_Nand_Flash
+ * @version     1.4.0       /// NAND log ring location and size taken from
+ *                          /// BSP_Config.h (BOOT_LOG_NAND_BASE_ADDR /
+ *                          /// BOOT_LOG_NAND_SIZE), checked at build time
+ *                          /// NAND log backend on the BSP_Nand_Flash
  *                          /// driver: 1 MB sectors (blocks 4093-4094 at
  *                          /// 0xFFD00000), the sequence header and each
  *                          /// record on a page of their own, programmed
@@ -72,16 +75,28 @@ extern "C" {
  *  erasing one ring sector never touches the other. */
 #define BOOT_LOG_SECTOR_SIZE            (BSP_NAND_BLOCK_SIZE)
 
-/** @brief Number of erase units forming the Bootloader log ring. */
-#define BOOT_LOG_NUM_SECTORS            (2u)
+/** @brief Number of erase units forming the Bootloader log ring: the ring
+ *  size set by BOOT_LOG_NAND_SIZE (BSP_Config.h; default 2 blocks). */
+#define BOOT_LOG_NUM_SECTORS            (BOOT_LOG_NAND_SIZE /                \
+                                            BOOT_LOG_SECTOR_SIZE)
 
-/** @brief Base address of the Bootloader log region: blocks 4093-4094, at
- *  the top of the 32-bit-addressable NAND window (the 32 GB the driver
- *  addresses exceed 32-bit byte addressing, so the first 4 GB window - the
- *  4096 blocks of LUN 0 - is used), directly below the Boot Parameters
- *  block at 0xFFF00000
- *  (see BSP_Boot_Params.c). */
-#define BOOT_LOG_BASE_ADDR              (0xFFD00000u)
+/** @brief Base address of the Bootloader log region, set by
+ *  BOOT_LOG_NAND_BASE_ADDR (BSP_Config.h). The log is addressed with
+ *  32-bit offsets, so it must lie in the first 4 GB window of the 32 GB
+ *  the driver addresses. Default: blocks 4093-4094 (0xFFD00000), directly
+ *  below the Boot Parameters block at 0xFFF00000 (see BSP_Boot_Params.c,
+ *  which checks the two regions do not overlap). */
+#define BOOT_LOG_BASE_ADDR              (BOOT_LOG_NAND_BASE_ADDR)
+
+_Static_assert((BOOT_LOG_NAND_BASE_ADDR % BOOT_LOG_SECTOR_SIZE) == 0u,
+        "BOOT_LOG_NAND_BASE_ADDR must be aligned to a NAND erase block");
+_Static_assert((BOOT_LOG_NAND_SIZE % BOOT_LOG_SECTOR_SIZE) == 0u,
+        "BOOT_LOG_NAND_SIZE must be a whole number of NAND erase blocks");
+_Static_assert(BOOT_LOG_NUM_SECTORS >= 2u,
+        "the NAND log ring needs at least 2 erase blocks");
+_Static_assert(((uint64_t)BOOT_LOG_NAND_BASE_ADDR + BOOT_LOG_NAND_SIZE)
+        <= 0x100000000ull,
+        "the NAND log ring must lie in the first 4 GB (32-bit addressing)");
 
 /** @brief Placement unit of the sequence header and of each log record.
  *  NAND pages cannot be partially reprogrammed, so the header and every

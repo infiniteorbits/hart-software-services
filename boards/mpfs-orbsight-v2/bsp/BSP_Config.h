@@ -8,7 +8,10 @@
  *              macros below must be kept in sync with it.
  * @author      Koksal Kurt    | koksal.kurt@outlook.com
  * @date        July 2026 - November 2026
- * @version     1.4.0       /// BSP_Nand_Flash driver (and the NAND
+ * @version     1.4.0       /// NAND Bootloader log location and size
+ *                          /// (BOOT_LOG_NAND_BASE_ADDR /
+ *                          /// BOOT_LOG_NAND_SIZE) taken from menuconfig
+ *                          /// BSP_Nand_Flash driver (and the NAND
  *                          /// backend of BSP_Boot_Params /
  *                          /// BSP_Boot_Loader0) brought over from the
  *                          /// application: NAND Flash Configuration added
@@ -20,6 +23,8 @@
 
 #ifndef BSP_CONFIG_H_
 #define BSP_CONFIG_H_
+
+#include "config.h"     /* HSS menuconfig (Kconfig) settings              */
 
 /** ----------------------------------------------------------------------------
  * @brief Selects the storage backend for Bootloader 0 persistent data
@@ -39,6 +44,41 @@
  * -----------------------------------------------------------------------------
 */
 #define BOOT_PARAMS_NAND
+
+/** ----------------------------------------------------------------------------
+ * @brief Location and size of the Bootloader log ring on NAND Flash
+ * (BOOT_PARAMS_NAND backend; the QSPI NOR backend keeps its fixed region).
+ *
+ * BOOT_LOG_NAND_BASE_ADDR is the byte address of the first ring block and
+ * BOOT_LOG_NAND_SIZE the ring size in bytes. BSP_Boot_Loader0.c checks at
+ * build time that both are whole NAND erase blocks, that the ring has at
+ * least 2 blocks and lies in the first 4 GB; BSP_Boot_Params.c checks that
+ * it does not overlap the Boot Parameters block (block 4095, 0xFFF00000).
+ *
+ * In the HSS these come from menuconfig (Services > Boot Service > Boot
+ * Parameters > Write boot events to the Flash boot log:
+ * CONFIG_BOOT_PARAMS_LOG_NAND_BASE_ADDR / CONFIG_BOOT_PARAMS_LOG_NAND_SIZE).
+ * When the boot log is disabled there, or config.h predates the options,
+ * the default layout below is used: blocks 4093-4094, directly below the
+ * Boot Parameters block.
+ *
+ * @note These values MUST match the application's BSP_Config.h: the HSS
+ * writes the boot log the application reads.
+ *
+ * @note TWEAKABLE macros, set from menuconfig
+ * -----------------------------------------------------------------------------
+*/
+#ifdef CONFIG_BOOT_PARAMS_LOG_NAND_BASE_ADDR
+#define BOOT_LOG_NAND_BASE_ADDR         ((uint32_t)CONFIG_BOOT_PARAMS_LOG_NAND_BASE_ADDR)
+#else
+#define BOOT_LOG_NAND_BASE_ADDR         (0xFFD00000u)
+#endif
+
+#ifdef CONFIG_BOOT_PARAMS_LOG_NAND_SIZE
+#define BOOT_LOG_NAND_SIZE              ((uint32_t)CONFIG_BOOT_PARAMS_LOG_NAND_SIZE)
+#else
+#define BOOT_LOG_NAND_SIZE              (0x00200000u)   /// 2 MB, 2 blocks
+#endif
 
 /** * @brief Starting sector number for eMMC read/write operations.
  * Defines the logical block address (LBA) where the data transfer begins.
