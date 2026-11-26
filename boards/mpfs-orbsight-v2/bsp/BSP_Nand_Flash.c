@@ -52,9 +52,11 @@
  *                          /// change).
  *                          /// BSP_NAND_FORCE_SYNC (BSP_Config.h): no SDR
  *                          /// fallback, the NV-DDR path is always used.
- *                          /// BSP_nand_profile(): step-by-step timing of
- *                          /// the last page read / program on every path
- *                          /// (replaces the g_sdr_rd_t, g_sdr_wr_t, g_wr_t
+ *                          /// BSP_NAND_PROFILE (BSP_Config.h): step-by-step
+ *                          /// timing of the last page read / program on
+ *                          /// every path, read by the NAND unit test via
+ *                          /// bsp_nand_dbg_profile() (not in the header;
+ *                          /// replaces the g_sdr_rd_t, g_sdr_wr_t, g_wr_t
  *                          /// and g_ecc_rd_t debugger arrays)
  * @version     1.3.0
  *
@@ -253,7 +255,7 @@ static uint32_t g_dbg_ctrl = 0u;                           /* software mirror of
 static uint32_t g_ce = 0u;                                 /* selected target, reg 0x0C[13:12]: 0 = CE1 .. 3 = CE4 (nand_select) */
 static uint32_t g_targets = 1u;                            /* bit t: target t passed the init check (CE1 always) */
 
-/* timing instrumentation: g_prof_rd / g_prof_wr (page-op profile, see prof_begin), also readable in the debugger */
+/* timing instrumentation (BSP_NAND_PROFILE): g_prof_rd / g_prof_wr, see prof_begin; also readable in the debugger */
 
 /* The SDR ops clear g_initialized: they leave the async clock mode, which the synchronous path cannot use. In SDR
  * fallback mode every access runs in that mode, so the driver stays initialized (re-running BSP_nand_init() here
@@ -369,16 +371,26 @@ static inline uint32_t reg_rd32(uint64_t a)             { return *((volatile uin
 
 static inline uint64_t cyc(void) { uint64_t c; __asm volatile("rdcycle %0" : "=r"(c)); return c; }
 
-/* ---- Page-op profile (BSP_nand_profile) ----
+/* ---- Page-op profile (BSP_NAND_PROFILE, BSP_Config.h) ----
  * nand_read_page() / nand_program_page() open a profile; every prof_mark() inside the page op closes a step: the
  * cycles since the previous mark go to the step named by the mark. The steps therefore follow the path actually taken
- * and add up to the whole page op. Outside a page op g_prof is NULL and marks only move the timestamp. */
-static bsp_nand_profile_t  g_prof_rd = { .path = "none" };   /* last page read    */
-static bsp_nand_profile_t  g_prof_wr = { .path = "none" };   /* last page program */
-static bsp_nand_profile_t *g_prof    = NULL;                 /* profile being recorded */
-static uint64_t            g_prof_t  = 0u;                   /* end of the previous step */
+ * and add up to the whole page op. Outside a page op g_prof is NULL and marks only move the timestamp. Without
+ * BSP_NAND_PROFILE the marks compile to nothing. */
+#ifdef BSP_NAND_PROFILE
+#define NAND_PROF_STEPS 12u
+typedef struct {
+    uint64_t    cycles[NAND_PROF_STEPS];   /* CPU cycles (rdcycle) of each step */
+    const char *name[NAND_PROF_STEPS];     /* what each step does */
+    const char *path;                      /* interface path taken */
+    uint32_t    steps;                     /* steps recorded */
+    uint32_t    reserved;                  /* unused (no padding) */
+} nand_prof_t;
+static nand_prof_t  g_prof_rd = { .path = "none" };          /* last page read    */
+static nand_prof_t  g_prof_wr = { .path = "none" };          /* last page program */
+static nand_prof_t *g_prof    = NULL;                        /* profile being recorded */
+static uint64_t     g_prof_t  = 0u;                          /* end of the previous step */
 
-static void prof_begin(bsp_nand_profile_t *p) {
+static void prof_begin(nand_prof_t *p) {
     p->steps = 0u;
     p->path  = "none";
     g_prof   = p;
@@ -386,7 +398,7 @@ static void prof_begin(bsp_nand_profile_t *p) {
 }
 static void prof_mark(const char *step) {
     const uint64_t t = cyc();
-    if ((g_prof != NULL) && (g_prof->steps < BSP_NAND_PROFILE_STEPS)) {
+    if ((g_prof != NULL) && (g_prof->steps < NAND_PROF_STEPS)) {
         g_prof->name[g_prof->steps]   = step;
         g_prof->cycles[g_prof->steps] = t - g_prof_t;
         g_prof->steps++;
@@ -396,10 +408,27 @@ static void prof_mark(const char *step) {
 static void prof_path(const char *path) { if (g_prof != NULL) g_prof->path = path; }
 static void prof_end(void)              { g_prof = NULL; }
 
-void BSP_nand_profile(bsp_nand_profile_t *read, bsp_nand_profile_t *program) {
-    if (read != NULL)    *read    = g_prof_rd;
-    if (program != NULL) *program = g_prof_wr;
+/* Diagnostics, not part of the BSP_Nand_Flash.h API: the step timing of the last page program (program != 0) or the
+ * last page read. Copies up to max_steps step names and CPU cycle counts in the order the steps ran, sets *path to
+ * the interface path, returns the number of steps copied. bsp_nand_unit_test.c declares it itself: keep the two
+ * prototypes the same. */
+uint32_t bsp_nand_dbg_profile(uint32_t program, const char **path, const char **names, uint64_t *cycles,
+                              uint32_t max_steps);
+uint32_t bsp_nand_dbg_profile(uint32_t program, const char **path, const char **names, uint64_t *cycles,
+                              uint32_t max_steps) {
+    const nand_prof_t *p = (program != 0u) ? &g_prof_wr : &g_prof_rd;
+    uint32_t n = (p->steps < max_steps) ? p->steps : max_steps;
+    if ((names == NULL) || (cycles == NULL)) n = 0u;
+    if (path != NULL) *path = p->path;
+    for (uint32_t i = 0; i < n; i++) { names[i] = p->name[i]; cycles[i] = p->cycles[i]; }
+    return n;
 }
+#else
+#define prof_begin(p) ((void)0)
+#define prof_mark(s)  ((void)0)
+#define prof_path(s)  ((void)0)
+#define prof_end()    ((void)0)
+#endif
 
 /* The DMA buffers live in CACHED DDR (0x8100_0000) and the fabric ProtoConv
  * masters are NOT cache-coherent. SiFive L2 controller FLUSH64 (0x0201_0200):
@@ -1560,7 +1589,7 @@ static bsp_nand_status_t nand_target(uint32_t block, uint32_t *tblock) {
     return BSP_NAND_OK;
 }
 
-/* Both page ops record their steps in g_prof_wr / g_prof_rd (BSP_nand_profile). */
+/* Both page ops record their steps in g_prof_wr / g_prof_rd (BSP_NAND_PROFILE). */
 static bsp_nand_status_t nand_program_page(uint32_t block, uint32_t page, const uint8_t *src) {
     static uint16_t words16[NAND_PAGE_DATA_SIZE / 2u] __attribute__((aligned(8)));
     nand_address_t a;
